@@ -210,9 +210,16 @@ html[data-mode="kid_home"] body {
 html[data-mode="school_lms"] .app-viewport-wrapper {
   position: relative;
   background-color: var(--app-bg, #090D16);
+}
+html[data-mode="school_lms"] .app-viewport-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
   background-image:
-    linear-gradient(rgba(37, 99, 235, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(37, 99, 235, 0.045) 1px, transparent 1px);
+    linear-gradient(rgba(37, 99, 235, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.05) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
