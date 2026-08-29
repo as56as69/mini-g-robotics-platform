@@ -136,7 +136,7 @@ export const Header: React.FC<Props> = ({
           onClick={() => onToggleMode('kid_home')}
           className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs transition ${
             appMode === 'kid_home'
-              ? 'bg-gradient-to-r from-kid-primary via-kid-accent to-kid-glow text-white shadow-lg shadow-kid-primary/40'
+              ? 'active-tab-kid bg-gradient-to-r from-kid-primary via-kid-accent to-kid-glow text-white shadow-lg shadow-kid-primary/40'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -149,7 +149,7 @@ export const Header: React.FC<Props> = ({
           onClick={() => onToggleMode('school_lms')}
           className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs transition ${
             appMode === 'school_lms'
-              ? 'bg-gradient-to-r from-school-primary to-school-primaryDeep text-white border border-school-primary/40 shadow-lg shadow-school-primary/40'
+              ? 'active-tab-school bg-gradient-to-r from-school-primary to-school-primaryDeep text-white border border-school-primary/40 shadow-lg shadow-school-primary/40'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >

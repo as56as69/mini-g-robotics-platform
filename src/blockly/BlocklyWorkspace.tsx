@@ -266,7 +266,7 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
           {/* Play Live */}
           <button
             onClick={handleRunCode}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-gradient-to-r from-kid-glow to-kid-primary hover:brightness-110 text-white font-bold text-xs md:text-sm shadow-lg shadow-kid-glow/30 transition transform active:scale-95"
+            className="hero-glow flex items-center gap-2 px-4 py-1.5 rounded-xl bg-gradient-to-r from-kid-glow via-orange-500 to-amber-500 hover:brightness-110 text-white font-bold text-xs md:text-sm shadow-lg shadow-kid-glow/50 transition transform active:scale-95"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>تشغيل الكود 🚀</span>

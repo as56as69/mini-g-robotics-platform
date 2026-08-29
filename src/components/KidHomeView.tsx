@@ -65,7 +65,7 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
   return (
     <div className="flex-1 flex flex-col p-2 sm:p-4 md:p-6 gap-3 sm:gap-4 overflow-y-auto bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       {/* Gamification Streak & Activity Bar (Playful & Joyful) */}
-      <div className="relative z-10 isolate bg-gradient-to-r from-kid-primary/25 via-kid-accent/15 to-kid-primary/25 border-2 border-kid-primary/50 rounded-3xl p-3.5 sm:p-4.5 flex flex-wrap items-center justify-between gap-3 shadow-2xl shadow-kid-primary/30 overflow-hidden">
+      <div className="relative z-10 isolate bg-gradient-to-r from-kid-primary via-kid-accent/20 to-kid-primary border-2 border-kid-primary/60 rounded-3xl p-3.5 sm:p-4.5 flex flex-wrap items-center justify-between gap-3 shadow-2xl shadow-kid-primary/40 overflow-hidden">
         {/* Playful Floating Sparkles Accent */}
         <div className="absolute right-2 top-2 opacity-15 text-5xl pointer-events-none animate-spin">
           ✨
@@ -90,19 +90,19 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
 
         {/* Counters & Submit Quest Trigger */}
         <div className="relative z-10 flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 bg-slate-950/90 px-3 py-1.5 rounded-2xl border border-orange-500/40 text-orange-400 font-black text-xs shadow-md">
-            <Flame className="w-4 h-4 fill-orange-500 animate-bounce" />
+          <div className="flex items-center gap-1.5 bg-gradient-to-r from-orange-600/30 to-kid-glow/25 px-3 py-1.5 rounded-2xl border border-kid-glow/50 text-orange-200 font-black text-xs shadow-md">
+            <Flame className="w-4 h-4 fill-orange-400 animate-bounce" />
             <span>حماس 5 أيام متتالية! 🔥</span>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-950/90 px-3 py-1.5 rounded-2xl border border-amber-500/40 text-amber-300 font-black text-xs shadow-md">
+          <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500/30 to-orange-500/25 px-3 py-1.5 rounded-2xl border border-amber-400/60 text-amber-200 font-black text-xs shadow-md">
             <Star className="w-4 h-4 fill-amber-400" />
             <span>240 نجمة ⭐</span>
           </div>
 
           <button
             onClick={triggerCelebration}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-2xl bg-gradient-to-r from-kid-glow via-kid-primary to-kid-accent hover:brightness-110 text-white font-black text-xs shadow-lg shadow-kid-primary/30 transition transform active:scale-95"
+            className="hero-glow flex items-center gap-1.5 px-4 py-1.5 rounded-2xl bg-gradient-to-r from-kid-glow via-orange-500 to-amber-500 hover:brightness-110 text-white font-black text-xs shadow-lg shadow-kid-glow/50 transition transform active:scale-95"
           >
             <Trophy className="w-4 h-4" />
             <span>تسليم التحدي 🎁</span>
