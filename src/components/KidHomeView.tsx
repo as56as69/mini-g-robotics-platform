@@ -29,8 +29,10 @@ import { NeuralNetworkKidStudioModal } from './NeuralNetworkKidStudioModal';
 import { CommunityShowcaseModal } from './CommunityShowcaseModal';
 import { SoundFXManager } from '../ble/SoundFX';
 
-import { Robot3DVisualizer } from '../simulator/Robot3DVisualizer';
 import { AICodeReviewerModal } from './AICodeReviewerModal';
+
+// Heavy WebGL 3D scene is lazy-loaded only when needed
+const Robot3DVisualizer = React.lazy(() => import('../simulator3d/Robot3DVisualizer'));
 
 interface Props {
   activeModel: RobotModelType;
@@ -431,9 +433,18 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
             </div>
           </div>
 
-          <div className="w-full h-[380px] sm:h-[450px]">
+          <div className="w-full h-[380px] sm:h-[450px] rounded-2xl overflow-hidden">
             {view3D ? (
-              <Robot3DVisualizer state={state} />
+              <React.Suspense
+                fallback={
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-slate-950 rounded-2xl border border-slate-800">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 animate-pulse" />
+                    <span className="text-xs text-slate-400 font-bold">تحميل محرك المجسم ثلاثي الأبعاد... 🧊</span>
+                  </div>
+                }
+              >
+                <Robot3DVisualizer state={state} />
+              </React.Suspense>
             ) : (
               <RobotSimulator state={state} />
             )}
