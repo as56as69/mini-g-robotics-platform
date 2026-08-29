@@ -25,6 +25,15 @@ export default {
           green: '#10B981',
           cyan: '#06B6D4',
           pink: '#EC4899',
+          primary: '#6C5CE7',
+          accent: '#00CEC9',
+          glow: '#FF7675',
+        },
+        school: {
+          primary: '#2563EB',
+          primaryDeep: '#1E3A8A',
+          live: '#10B981',
+          muted: '#64748B',
         }
       },
       fontFamily: {

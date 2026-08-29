@@ -21,6 +21,10 @@ export function App() {
     });
   }, []);
 
+  useEffect(() => {
+    document.documentElement.dataset.mode = appMode;
+  }, [appMode]);
+
   const handleModelSelect = (model: RobotModelType) => {
     setActiveModel(model);
     bleService.setModel(model);

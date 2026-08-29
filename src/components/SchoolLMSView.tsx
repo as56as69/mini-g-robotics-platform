@@ -177,7 +177,7 @@ export const SchoolLMSView: React.FC<Props> = ({ activeModel }) => {
         <button
           onClick={() => setActiveTab('creator')}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold whitespace-nowrap transition ${
-            activeTab === 'creator' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'creator' ? 'bg-school-primary text-white shadow-md shadow-school-primary/30' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <PlusCircle className="w-4 h-4" />
@@ -317,7 +317,7 @@ export const SchoolLMSView: React.FC<Props> = ({ activeModel }) => {
                   </div>
 
                   <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-800">
-                    <div className="bg-gradient-to-r from-blue-500 to-cyan-400 h-full rounded-full" style={{ width: `${cls.completionRate}%` }} />
+                    <div className="bg-gradient-to-r from-school-primary to-school-primaryDeep h-full rounded-full" style={{ width: `${cls.completionRate}%` }} />
                   </div>
                 </div>
               ))}
@@ -427,7 +427,7 @@ export const SchoolLMSView: React.FC<Props> = ({ activeModel }) => {
       {activeTab === 'creator' && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-6 shadow-2xl max-w-2xl mx-auto w-full">
           <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-800">
-            <PlusCircle className="w-5 h-5 text-indigo-400" />
+            <PlusCircle className="w-5 h-5 text-school-primary" />
             <h3 className="font-bold text-sm md:text-base text-white">
               محرر وبناء المناهج الهندسية المخصصة (STEM Curriculum Builder)
             </h3>
@@ -498,7 +498,7 @@ export const SchoolLMSView: React.FC<Props> = ({ activeModel }) => {
 
             <button
               type="submit"
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold transition shadow-lg active:scale-95"
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-school-primary to-school-primaryDeep hover:brightness-110 text-white font-bold transition shadow-lg active:scale-95"
             >
               اعتماد ونشر الوحدة التعليمية للفصول 🚀
             </button>

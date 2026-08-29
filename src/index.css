@@ -176,3 +176,36 @@ body,
   z-index: 1;
   min-height: 0;
 }
+
+/* ===== Visual identity: per-mode theming ===== */
+html[data-mode="kid_home"] {
+  --app-bg: #0F172A;
+  --app-radius: 16px;
+  --brand-primary: #6C5CE7;
+  --brand-accent: #00CEC9;
+  --brand-glow: #FF7675;
+}
+
+html[data-mode="school_lms"] {
+  --app-bg: #090D16;
+  --app-radius: 8px;
+  --brand-primary: #2563EB;
+  --brand-accent: #10B981;
+  --brand-glow: #64748B;
+}
+
+html[data-mode="school_lms"] body {
+  background-color: #090D16;
+  background-image:
+    linear-gradient(rgba(37, 99, 235, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+html[data-mode="kid_home"] body {
+  background-color: #0F172A;
+}
+
+.app-viewport-wrapper {
+  background-color: var(--app-bg, #0F172A);
+}

@@ -56,7 +56,7 @@ export const Header: React.FC<Props> = ({
               <h1 className={`text-sm sm:text-base font-black ${
                 isSchool 
                   ? 'text-white tracking-wide font-mono' 
-                  : 'bg-gradient-to-r from-purple-400 via-pink-400 to-amber-300 bg-clip-text text-transparent'
+                  : 'bg-gradient-to-r from-kid-primary via-kid-accent to-kid-glow bg-clip-text text-transparent'
               }`}>
                 {isSchool ? 'منظومة ميني جي الأكاديمية' : 'مغامرات ميني جي للروبوتكس'}
               </h1>
@@ -130,13 +130,13 @@ export const Header: React.FC<Props> = ({
 
       {/* Mode Switcher (School Edition vs Kid Home Edition) */}
       <div className={`flex items-center p-0.5 sm:p-1 rounded-xl sm:rounded-2xl border transition-all ${
-        isSchool ? 'bg-slate-900 border-slate-750 shadow-inner' : 'bg-slate-950 border-purple-900/40'
+        isSchool ? 'bg-slate-900 border-slate-750 shadow-inner' : 'bg-slate-950 border-kid-primary/40'
       }`}>
         <button
           onClick={() => onToggleMode('kid_home')}
           className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs transition ${
             appMode === 'kid_home'
-              ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-pink-500 text-white shadow-lg shadow-orange-500/30'
+              ? 'bg-gradient-to-r from-kid-primary via-kid-accent to-kid-glow text-white shadow-lg shadow-kid-primary/40'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -149,7 +149,7 @@ export const Header: React.FC<Props> = ({
           onClick={() => onToggleMode('school_lms')}
           className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs transition ${
             appMode === 'school_lms'
-              ? 'bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-800 text-white border border-blue-400/30 shadow-lg shadow-blue-900/40'
+              ? 'bg-gradient-to-r from-school-primary to-school-primaryDeep text-white border border-school-primary/40 shadow-lg shadow-school-primary/40'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -166,8 +166,8 @@ export const Header: React.FC<Props> = ({
           onClick={toggleFullscreen}
           className={`p-1.5 sm:p-2 rounded-xl transition shadow active:scale-95 border ${
             isSchool 
-              ? 'bg-slate-900 hover:bg-slate-800 border-slate-750 text-slate-300' 
-              : 'bg-slate-800 hover:bg-slate-750 border-purple-800/40 text-purple-300'
+              ? 'bg-slate-900 hover:bg-slate-800 border-slate-750 text-school-muted' 
+              : 'bg-slate-800 hover:bg-slate-750 border-kid-primary/50 text-kid-accent'
           }`}
           title="وضع العرض المسرحي الكامل للفصل والشاشات الكبيرة"
         >
@@ -187,8 +187,8 @@ export const Header: React.FC<Props> = ({
             isBleConnected
               ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-600/30'
               : isSchool
-              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 border border-blue-400/30'
-              : 'bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:brightness-110'
+              ? 'bg-gradient-to-r from-school-primary to-school-primaryDeep text-white hover:brightness-110 border border-school-primary/40'
+              : 'bg-gradient-to-r from-kid-glow via-kid-primary to-kid-accent text-white hover:brightness-110 border border-kid-primary/40'
           }`}
         >
           {isBleConnected ? (

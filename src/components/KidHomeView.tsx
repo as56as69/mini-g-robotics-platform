@@ -65,7 +65,7 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
   return (
     <div className="flex-1 flex flex-col p-2 sm:p-4 md:p-6 gap-3 sm:gap-4 overflow-y-auto bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       {/* Gamification Streak & Activity Bar (Playful & Joyful) */}
-      <div className="relative z-10 isolate bg-gradient-to-r from-purple-950/70 via-indigo-950/60 to-purple-950/70 border-2 border-purple-500/40 rounded-3xl p-3.5 sm:p-4.5 flex flex-wrap items-center justify-between gap-3 shadow-2xl shadow-purple-950/40 overflow-hidden">
+      <div className="relative z-10 isolate bg-gradient-to-r from-kid-primary/25 via-kid-accent/15 to-kid-primary/25 border-2 border-kid-primary/50 rounded-3xl p-3.5 sm:p-4.5 flex flex-wrap items-center justify-between gap-3 shadow-2xl shadow-kid-primary/30 overflow-hidden">
         {/* Playful Floating Sparkles Accent */}
         <div className="absolute right-2 top-2 opacity-15 text-5xl pointer-events-none animate-spin">
           ✨
@@ -84,7 +84,7 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
                 المستوى 3: بطل المستكشفين 🏆
               </span>
             </div>
-            <p className="text-xs text-purple-200/80 mt-0.5 hidden sm:block font-medium">{modelInfo.taglineAr}</p>
+            <p className="text-xs text-kid-accent/80 mt-0.5 hidden sm:block font-medium">{modelInfo.taglineAr}</p>
           </div>
         </div>
 
@@ -102,7 +102,7 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
 
           <button
             onClick={triggerCelebration}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-2xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:brightness-110 text-white font-black text-xs shadow-lg shadow-pink-500/30 transition transform active:scale-95"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-2xl bg-gradient-to-r from-kid-glow via-kid-primary to-kid-accent hover:brightness-110 text-white font-black text-xs shadow-lg shadow-kid-primary/30 transition transform active:scale-95"
           >
             <Trophy className="w-4 h-4" />
             <span>تسليم التحدي 🎁</span>
@@ -111,11 +111,11 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
       </div>
 
       {/* Mobile Switcher Tab (Shown only on small screens < 1024px) */}
-      <div className="lg:hidden flex items-center bg-slate-950 p-1 rounded-2xl border border-purple-900/40 shadow-lg">
+      <div className="lg:hidden flex items-center bg-slate-950 p-1 rounded-2xl border border-kid-primary/40 shadow-lg">
         <button
           onClick={() => setMobileTab('code')}
           className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-            mobileTab === 'code' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md' : 'text-slate-400'
+            mobileTab === 'code' ? 'bg-gradient-to-r from-kid-primary to-kid-accent text-white shadow-md' : 'text-slate-400'
           }`}
         >
           <Code className="w-4 h-4" />
@@ -124,7 +124,7 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
         <button
           onClick={() => setMobileTab('simulator')}
           className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-            mobileTab === 'simulator' ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md' : 'text-slate-400'
+            mobileTab === 'simulator' ? 'bg-gradient-to-r from-kid-accent to-kid-primary text-white shadow-md' : 'text-slate-400'
           }`}
         >
           <Bot className="w-4 h-4" />
@@ -141,11 +141,11 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
           </div>
 
           {/* Playful & Joyful Feature Navigation Bar */}
-          <div className="flex items-center bg-slate-950/90 p-1.5 rounded-2xl border border-purple-900/40 overflow-x-auto gap-1.5 text-xs shadow-lg scrollbar-none">
+          <div className="flex items-center bg-slate-950/90 p-1.5 rounded-2xl border border-kid-primary/40 overflow-x-auto gap-1.5 text-xs shadow-lg scrollbar-none">
             <button
               onClick={() => setActiveTabPanel('remote')}
               className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition ${
-                activeTabPanel === 'remote' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+                activeTabPanel === 'remote' ? 'bg-gradient-to-r from-kid-primary to-kid-accent text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               🎮 ريموت
@@ -320,7 +320,7 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
                 <AIPersonaChatModal activePersona={state.g_activePersona} />
               ) : (
                 <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col justify-center items-center text-center text-slate-400 text-xs shadow-lg">
-                  <Sparkles className="w-8 h-8 text-indigo-400 mb-2 animate-bounce" />
+                  <Sparkles className="w-8 h-8 text-kid-accent mb-2 animate-bounce" />
                   <p className="font-bold text-slate-200">التحكم المباشر نشط</p>
                   <p className="text-[11px] mt-1">يتم إرسال كافة الأوامر عبر Web Bluetooth للروبوت الحقيقي والمحاكي في نفس الوقت!</p>
                 </div>
@@ -417,7 +417,7 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
               <button
                 onClick={() => setView3D(false)}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
-                  !view3D ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                  !view3D ? 'bg-gradient-to-r from-kid-primary to-kid-accent text-white shadow' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 2D الحلبة
@@ -425,7 +425,7 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
               <button
                 onClick={() => setView3D(true)}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
-                  view3D ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                  view3D ? 'bg-gradient-to-r from-kid-accent to-kid-primary text-white shadow' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 3D مجسم 🧊
@@ -451,7 +451,7 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
           </div>
 
           {/* Model Quick Info Card */}
-          <div className="bg-slate-900/80 backdrop-blur rounded-3xl p-3.5 border border-purple-900/30 text-xs shadow-lg">
+          <div className="bg-slate-900/80 backdrop-blur rounded-3xl p-3.5 border border-kid-primary/40 text-xs shadow-lg">
             <div className="font-bold text-slate-200 mb-1.5 flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-kid-yellow animate-pulse" />
               <span>ميزات هذا الإصدار في الكود:</span>
