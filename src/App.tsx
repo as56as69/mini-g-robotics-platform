@@ -48,7 +48,7 @@ export function App() {
       />
 
       {/* Main View Area (Kid Explorer vs School LMS) */}
-      <main className="flex-1 flex overflow-hidden">
+      <main className="relative z-[1] flex-1 flex overflow-hidden">
         {appMode === 'kid_home' ? (
           <KidHomeView activeModel={activeModel} state={robotState} />
         ) : (

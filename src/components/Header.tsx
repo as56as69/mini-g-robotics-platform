@@ -40,7 +40,7 @@ export const Header: React.FC<Props> = ({
   };
 
   return (
-    <header className={`min-h-14 sm:h-16 px-2 sm:px-6 py-1.5 sm:py-0 flex items-center justify-between sticky top-0 z-40 flex-wrap gap-2 transition-colors duration-500 border-b ${
+    <header className={`min-h-14 sm:h-16 px-2 sm:px-6 py-1.5 sm:py-0 flex items-center justify-between relative z-10 flex-wrap gap-2 transition-colors duration-500 border-b ${
       isSchool 
         ? 'bg-slate-950/95 border-slate-800 shadow-xl shadow-slate-950/50' 
         : 'bg-slate-900/95 border-purple-900/40 shadow-xl shadow-purple-950/20'
