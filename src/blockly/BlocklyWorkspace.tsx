@@ -40,10 +40,15 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
       const ws = Blockly.inject(blocklyDiv.current, {
         toolbox: toolboxConfig,
         trashcan: true,
-        scrollbars: true,
+        scrollbars: false,
         sounds: true,
         rtl: true, // Arabic support
         renderer: 'geras',
+        move: {
+          scrollbars: false,
+          drag: true,
+          wheel: false,
+        },
         grid: {
           spacing: 25,
           length: 3,
@@ -53,7 +58,7 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
         zoom: {
           controls: true,
           wheel: true,
-          startScale: 0.9,
+          startScale: 0.8,
           maxScale: 2.0,
           minScale: 0.4,
           scaleSpeed: 1.1,
@@ -206,7 +211,7 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
   };
 
   return (
-    <div className={`relative z-10 isolate w-full flex flex-col bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl transition-all duration-300 ${
+    <div className={`relative z-10 isolate w-full max-w-full min-w-0 flex flex-col bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl transition-all duration-300 ${
       isExpanded ? 'h-[750px]' : 'h-[480px]'
     }`}>
       {/* Workspace Action Bar */}
@@ -270,7 +275,7 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
       </div>
 
       {/* Blockly Canvas Container - Explicit Flex-1 with min-height */}
-      <div className="relative w-full flex-1 min-h-[380px] bg-slate-950 overflow-hidden isolate">
+      <div className="relative w-full max-w-full min-w-0 flex-1 min-h-[380px] bg-slate-950 overflow-hidden isolate">
         <div ref={blocklyDiv} className="absolute inset-0 w-full h-full" />
       </div>
     </div>
