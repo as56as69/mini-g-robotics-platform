@@ -110,7 +110,7 @@ export const SchoolLMSView: React.FC<Props> = ({ activeModel }) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col p-3 md:p-6 gap-4 sm:gap-6 overflow-y-auto bg-slate-950 text-slate-100">
+    <div className="flex-1 flex flex-col p-3 md:p-6 gap-4 sm:gap-6 overflow-y-auto bg-transparent text-slate-100">
       {/* Heavy Academic Mission Control Header */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-925 to-slate-900 border border-slate-750 rounded-2xl p-4 md:p-5 flex flex-wrap items-center justify-between gap-4 shadow-2xl relative overflow-hidden">
         {/* Subtle Tech Watermark Background */}
