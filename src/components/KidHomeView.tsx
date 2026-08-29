@@ -65,7 +65,7 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
   return (
     <div className="flex-1 flex flex-col p-2 sm:p-4 md:p-6 gap-3 sm:gap-4 overflow-y-auto bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       {/* Gamification Streak & Activity Bar (Playful & Joyful) */}
-      <div className="relative z-10 isolate bg-gradient-to-r from-kid-primary via-kid-accent/20 to-kid-primary border-2 border-kid-primary/60 rounded-3xl p-3.5 sm:p-4.5 flex flex-wrap items-center justify-between gap-3 shadow-2xl shadow-kid-primary/40 overflow-hidden">
+      <div className="relative z-10 isolate bg-gradient-to-r from-kid-primary via-kid-accent/25 to-kid-primary border-2 border-kid-accent/70 rounded-3xl p-3.5 sm:p-4.5 flex flex-wrap items-center justify-between gap-3 shadow-2xl shadow-kid-accent/40 overflow-hidden">
         {/* Playful Floating Sparkles Accent */}
         <div className="absolute right-2 top-2 opacity-15 text-5xl pointer-events-none animate-spin">
           ✨

@@ -157,7 +157,7 @@ export const SchoolLMSView: React.FC<Props> = ({ activeModel }) => {
         <button
           onClick={() => setActiveTab('classes')}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold whitespace-nowrap transition ${
-            activeTab === 'classes' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'classes' ? 'bg-gradient-to-r from-school-primaryDeep to-school-primary text-white border border-white/10 shadow-md shadow-school-primary/30' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <Users className="w-4 h-4" />
@@ -167,7 +167,7 @@ export const SchoolLMSView: React.FC<Props> = ({ activeModel }) => {
         <button
           onClick={() => setActiveTab('curriculum')}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold whitespace-nowrap transition ${
-            activeTab === 'curriculum' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'curriculum' ? 'bg-gradient-to-r from-school-primaryDeep to-school-primary text-white border border-white/10 shadow-md shadow-school-primary/30' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <BookOpen className="w-4 h-4" />
@@ -247,7 +247,7 @@ export const SchoolLMSView: React.FC<Props> = ({ activeModel }) => {
         <button
           onClick={() => setActiveTab('analytics')}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold whitespace-nowrap transition ${
-            activeTab === 'analytics' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'analytics' ? 'bg-gradient-to-r from-school-primaryDeep to-school-primary text-white border border-white/10 shadow-md shadow-school-primary/30' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <BarChart3 className="w-4 h-4" />
@@ -283,7 +283,7 @@ export const SchoolLMSView: React.FC<Props> = ({ activeModel }) => {
                     setClasses(prev => [...prev, newC]);
                   }
                 }}
-                className="px-2.5 py-1 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 text-xs flex items-center gap-1 font-bold transition border border-blue-500/30"
+                className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-school-primaryDeep to-school-primary text-white hover:brightness-110 text-xs flex items-center gap-1 font-bold transition border border-white/10 shadow"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>إضافة شعبة</span>
@@ -413,7 +413,7 @@ export const SchoolLMSView: React.FC<Props> = ({ activeModel }) => {
                 <span className="text-[10px] text-slate-400 truncate max-w-[180px]">
                   المعيار: {lesson.targetCriteria.descriptionAr}
                 </span>
-                <button className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow">
+                <button className="px-3 py-1.5 bg-gradient-to-r from-school-primaryDeep to-school-primary text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow border border-white/10">
                   <PlayCircle className="w-3.5 h-3.5" />
                   <span>تفعيل</span>
                 </button>
