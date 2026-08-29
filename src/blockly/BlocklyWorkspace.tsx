@@ -19,6 +19,18 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
   const [savedNotify, setSavedNotify] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Field editor popups (colour picker, dropdowns, text inputs) are mounted
+  // on <body> and can pile up as leftover columns over the block area if they
+  // aren't closed when the workspace changes, resizes, or disposes.
+  const closeOpenPopups = () => {
+    try {
+      Blockly.WidgetDiv.hide();
+      Blockly.DropDownDiv.hideWithoutAnimation();
+    } catch (e) {
+      // no-op if not yet injected
+    }
+  };
+
   useEffect(() => {
     initCustomBlockly();
 
@@ -64,6 +76,15 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
 
       workspaceRef.current = ws;
 
+      // Close the category flyout right after a block is clicked/dragged out
+      // so it doesn't linger as a vertical column over the blocks area.
+      try {
+        const fl = ws.getFlyout() as Blockly.Flyout | null;
+        fl?.setAutoClose(true);
+      } catch (e) {
+        // no-op if flyout unavailable (e.g. simple toolbox)
+      }
+
       // Check LocalStorage for saved workspace
       const savedKey = `mini_g_workspace_${model}`;
       const cachedXml = localStorage.getItem(savedKey);
@@ -95,11 +116,13 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
       if (workspaceRef.current) {
         Blockly.svgResize(workspaceRef.current);
       }
+      closeOpenPopups();
     };
     window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      closeOpenPopups();
       if (workspaceRef.current) {
         workspaceRef.current.dispose();
         workspaceRef.current = null;
@@ -109,6 +132,7 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
 
   // Handle expansion / resize updates
   useEffect(() => {
+    closeOpenPopups();
     if (workspaceRef.current) {
       setTimeout(() => {
         Blockly.svgResize(workspaceRef.current!);
@@ -132,6 +156,7 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
 
   const handleRunCode = async () => {
     if (!workspaceRef.current) return;
+    closeOpenPopups();
     SoundFXManager.playRobotChirp();
     const code = javascriptGenerator.workspaceToCode(workspaceRef.current);
     if (onCodeRun) onCodeRun();
@@ -149,6 +174,7 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
 
   const handleSaveProject = () => {
     if (!workspaceRef.current) return;
+    closeOpenPopups();
     SoundFXManager.playClickBeep();
     const xmlDom = Blockly.Xml.workspaceToDom(workspaceRef.current);
     const xmlText = Blockly.Xml.domToText(xmlDom);
@@ -172,6 +198,7 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
 
   const handleResetWorkspace = () => {
     if (!workspaceRef.current) return;
+    closeOpenPopups();
     SoundFXManager.playClickBeep();
     workspaceRef.current.clear();
     const dom = Blockly.utils.xml.textToDom(getStarterXml(model));
@@ -180,7 +207,7 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
 
   return (
     <div className={`relative w-full flex flex-col bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl transition-all duration-300 ${
-      isExpanded ? 'h-[750px]' : 'h-[480px] lg:h-full'
+      isExpanded ? 'h-[750px]' : 'h-[480px]'
     }`}>
       {/* Workspace Action Bar */}
       <div className="h-14 bg-slate-800/95 backdrop-blur px-3 md:px-4 flex items-center justify-between border-b border-slate-700 flex-wrap gap-2 flex-shrink-0 z-30">
