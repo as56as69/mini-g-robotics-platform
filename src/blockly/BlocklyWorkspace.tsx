@@ -206,7 +206,7 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
   };
 
   return (
-    <div className={`relative w-full flex flex-col bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl transition-all duration-300 ${
+    <div className={`relative z-10 isolate w-full flex flex-col bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl transition-all duration-300 ${
       isExpanded ? 'h-[750px]' : 'h-[480px]'
     }`}>
       {/* Workspace Action Bar */}
@@ -270,7 +270,7 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
       </div>
 
       {/* Blockly Canvas Container - Explicit Flex-1 with min-height */}
-      <div className="relative w-full flex-1 min-h-[380px] bg-slate-950 overflow-hidden">
+      <div className="relative w-full flex-1 min-h-[380px] bg-slate-950 overflow-hidden isolate">
         <div ref={blocklyDiv} className="absolute inset-0 w-full h-full" />
       </div>
     </div>

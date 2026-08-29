@@ -65,13 +65,13 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
   return (
     <div className="flex-1 flex flex-col p-2 sm:p-4 md:p-6 gap-3 sm:gap-4 overflow-y-auto bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       {/* Gamification Streak & Activity Bar (Playful & Joyful) */}
-      <div className="bg-gradient-to-r from-purple-950/70 via-indigo-950/60 to-purple-950/70 border-2 border-purple-500/40 rounded-3xl p-3.5 sm:p-4.5 flex flex-wrap items-center justify-between gap-3 shadow-2xl shadow-purple-950/40 relative overflow-hidden">
+      <div className="relative z-10 isolate bg-gradient-to-r from-purple-950/70 via-indigo-950/60 to-purple-950/70 border-2 border-purple-500/40 rounded-3xl p-3.5 sm:p-4.5 flex flex-wrap items-center justify-between gap-3 shadow-2xl shadow-purple-950/40 overflow-hidden">
         {/* Playful Floating Sparkles Accent */}
         <div className="absolute right-2 top-2 opacity-15 text-5xl pointer-events-none animate-spin">
           ✨
         </div>
 
-        <div className="flex items-center gap-3 z-10">
+        <div className="relative z-10 flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 p-0.5 shadow-lg shadow-orange-500/30 flex-shrink-0 animate-pulse">
             <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-2xl">
               🚀
@@ -89,7 +89,7 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
         </div>
 
         {/* Counters & Submit Quest Trigger */}
-        <div className="flex items-center gap-2 flex-wrap z-10">
+        <div className="relative z-10 flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 bg-slate-950/90 px-3 py-1.5 rounded-2xl border border-orange-500/40 text-orange-400 font-black text-xs shadow-md">
             <Flame className="w-4 h-4 fill-orange-500 animate-bounce" />
             <span>حماس 5 أيام متتالية! 🔥</span>
