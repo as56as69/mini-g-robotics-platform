@@ -126,27 +126,33 @@ class BLEManager {
 
   /**
    * Send binary command packet to ESP32 / Virtual Engine
+   * Accepts either an RGB byte array or a hex string (e.g. "#ff0000")
    */
-  public async sendCommand(cmd: number, data: number[] = []) {
-    const packet = BLEProtocol.buildPacket(this.currentState.model, cmd, data);
-    
-    // 1. Send via Web Bluetooth characteristic if connected
-    if (this.characteristic && this.device?.gatt?.connected) {
-      try {
-        await this.characteristic.writeValue(packet);
-      } catch (err) {
-        console.error('Error sending BLE packet:', err);
+  public async sendCommand(cmd: number, data: number[] | string = []) {
+    // Only build a binary packet for real BLE when data is numeric
+    if (Array.isArray(data)) {
+      const packet = BLEProtocol.buildPacket(this.currentState.model, cmd, data);
+      if (this.characteristic && this.device?.gatt?.connected) {
+        try {
+          await this.characteristic.writeValue(packet);
+        } catch (err) {
+          console.error('Error sending BLE packet:', err);
+        }
       }
     }
-
-    // 2. Dispatch to Simulator / Virtual State
+    // 2. Dispatch to Simulator / Virtual State (handles both formats)
     this.updateVirtualState(cmd, data);
   }
 
-  private updateVirtualState(cmd: number, data: number[]) {
+  private updateVirtualState(cmd: number, data: number[] | any) {
     switch (cmd) {
       // Mini G-F
       case CMD_CODES.GF_SET_LED_RGB: {
+        // Accept RGB triplet OR hex string (from Blockly / Direct Panel)
+        if (typeof data === 'string' && (data as any).startsWith('#')) {
+          this.notifyStateListeners({ gf_ledColor: data });
+          break;
+        }
         const [r, g, b] = data;
         const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
         this.notifyStateListeners({ gf_ledColor: hex });
