@@ -88,10 +88,6 @@
   fill: #ffffff !important;
 }
 
-.blocklyScrollbarHandle {
-  fill: #475569 !important;
-}
-
 /* Prevent overflow clipping */
 .blocklySvg {
   width: 100% !important;
@@ -130,18 +126,29 @@ body,
   max-height: 100% !important;
 }
 
-/* Thin, unobtrusive Blockly scrollbars so they don't read as a solid gray
-   column sitting on top of the blocks. */
-.blocklyScrollbarBackground {
+/* Hide the gray Blockly scrollbar column entirely (the gray handle is the
+   culprit). Keep scrollability via mouse-wheel / touch drag. */
+.blocklyMainWorkspaceScrollbar,
+.blocklyFlyoutScrollbar,
+.blocklyScrollbarBackground,
+.blocklyScrollbarHandle {
   opacity: 0 !important;
 }
 
-.blocklyScrollbarHandle {
-  fill: #475569 !important;
-  opacity: 0.6 !important;
+.blocklyScrollbarHorizontal,
+.blocklyScrollbarVertical {
+  pointer-events: none !important;
 }
 
-.blocklyScrollbarVertical {
-  /* stay within the canvas and don't cover draggable blocks */
-  max-height: 100% !important;
+/* Ensure the Blockly injection container itself never shows a browser
+   scrollbar (the fixed-height container overflowing vertically). */
+#blocklyDiv,
+.blocklyWidgetDiv {
+  overflow: hidden !important;
+}
+
+#blocklyDiv::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
