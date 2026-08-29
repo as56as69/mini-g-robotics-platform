@@ -19,7 +19,7 @@ export function defineMiniGMBlocks() {
         );
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour('#06B6D4');
+      this.setColour('#22D3EE');
       this.setTooltip('تغيير شكل ونظرة العيون على شاشة Mini G-M');
     },
   };
@@ -41,7 +41,7 @@ export function defineMiniGMBlocks() {
         );
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour('#8B5CF6');
+      this.setColour('#A78BFA');
       this.setTooltip('تدوير رأس الروبوت عبر محرك العنق السيرفو');
     },
   };
@@ -84,7 +84,7 @@ export function defineMiniGMBlocks() {
         );
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour('#06B6D4');
+      this.setColour('#22D3EE');
       this.setTooltip('إظهار رسم بكسل مخصص على شاشة الـ ESP32');
     },
   };

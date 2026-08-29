@@ -209,3 +209,25 @@ html[data-mode="kid_home"] body {
 .app-viewport-wrapper {
   background-color: var(--app-bg, #0F172A);
 }
+
+/* ===== BLE "alive" pulsing glow for the connected state ===== */
+@keyframes blePulseGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55), 0 0 6px 2px rgba(16, 185, 129, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0), 0 0 18px 6px rgba(16, 185, 129, 0.65);
+    transform: scale(1.03);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0), 0 0 6px 2px rgba(16, 185, 129, 0.35);
+    transform: scale(1);
+  }
+}
+
+.ble-live-pulse {
+  animation: blePulseGlow 1.6s ease-in-out infinite;
+  will-change: box-shadow, transform;
+}
+

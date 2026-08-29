@@ -298,11 +298,11 @@ function getToolboxForModel(model: RobotModelType) {
     `;
   } else if (model === 'mini_gm') {
     modelBlocks = `
-      <category name="👀 عيون الشاشة" colour="#06B6D4">
+      <category name="👀 عيون الشاشة" colour="#22D3EE">
         <block type="gm_set_expression"></block>
         <block type="gm_set_custom_face"></block>
       </category>
-      <category name="🤖 حركة الرأس" colour="#8B5CF6">
+      <category name="🤖 حركة الرأس" colour="#A78BFA">
         <block type="gm_rotate_head"></block>
       </category>
       <category name="🎵 الأصوات والنغمات" colour="#F59E0B">
@@ -311,10 +311,10 @@ function getToolboxForModel(model: RobotModelType) {
     `;
   } else {
     modelBlocks = `
-      <category name="🚗 قيادة العجلات" colour="#3B82F6">
+      <category name="🚗 قيادة العجلات" colour="#60A5FA">
         <block type="g_drive"></block>
       </category>
-      <category name="🦾 مفاصل الأذرع" colour="#8B5CF6">
+      <category name="🦾 مفاصل الأذرع" colour="#A78BFA">
         <block type="g_move_arms"></block>
       </category>
       <category name="🎭 شخصيات الذكاء الاصطناعي" colour="#EC4899">
@@ -328,7 +328,7 @@ function getToolboxForModel(model: RobotModelType) {
     <xml xmlns="https://developers.google.com/blockly/xml" id="toolbox" style="display: none">
       ${modelBlocks}
       <sep></sep>
-      <category name="🔁 التكرار والتحكم" colour="#6366F1">
+      <category name="🔁 التكرار والتحكم" colour="#818CF8">
         <block type="controls_repeat_ext">
           <value name="TIMES">
             <shadow type="math_number">

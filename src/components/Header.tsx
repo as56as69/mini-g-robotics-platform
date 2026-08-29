@@ -185,7 +185,7 @@ export const Header: React.FC<Props> = ({
           onClick={onBleConnect}
           className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl font-bold text-[11px] sm:text-xs shadow-md transition transform active:scale-95 ${
             isBleConnected
-              ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-600/30'
+              ? 'ble-live-pulse bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-600/30'
               : isSchool
               ? 'bg-gradient-to-r from-school-primary to-school-primaryDeep text-white hover:brightness-110 border border-school-primary/40'
               : 'bg-gradient-to-r from-kid-glow via-kid-primary to-kid-accent text-white hover:brightness-110 border border-kid-primary/40'

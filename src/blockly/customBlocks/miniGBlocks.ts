@@ -19,7 +19,7 @@ export function defineMiniGBlocks() {
         );
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour('#3B82F6');
+      this.setColour('#60A5FA');
       this.setTooltip('قيادة محركات العجلات في قاعدة الروبوت');
     },
   };
@@ -40,7 +40,7 @@ export function defineMiniGBlocks() {
         );
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour('#8B5CF6');
+      this.setColour('#A78BFA');
       this.setTooltip('تحريك مفاصل أذرع الروبوت');
     },
   };
