@@ -35,7 +35,7 @@ export function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden select-none">
+    <div className="app-viewport-wrapper flex flex-col min-h-screen w-screen bg-slate-950 text-slate-100 select-none">
       {/* Universal Top Header */}
       <Header
         activeModel={activeModel}
@@ -48,7 +48,7 @@ export function App() {
       />
 
       {/* Main View Area (Kid Explorer vs School LMS) */}
-      <main className="relative z-[1] flex-1 flex overflow-hidden">
+      <main className="main-dashboard-content relative z-[1] flex-1 flex overflow-hidden pt-1 sm:pt-2">
         {appMode === 'kid_home' ? (
           <KidHomeView activeModel={activeModel} state={robotState} />
         ) : (
