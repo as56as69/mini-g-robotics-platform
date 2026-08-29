@@ -14,7 +14,7 @@ interface Props {
 export const DirectControlPanel: React.FC<Props> = ({ model }) => {
   // Mini G-F Controls
   const setGFColor = async (hex: string) => {
-    await bleService.sendCommand(CMD_CODES.GF_SET_LED_RGB, [hex as any]);
+    await bleService.sendCommand(CMD_CODES.GF_SET_LED_RGB, hex);
   };
 
   const triggerGFHaptic = async (duration: number) => {

@@ -148,13 +148,20 @@ class BLEManager {
     switch (cmd) {
       // Mini G-F
       case CMD_CODES.GF_SET_LED_RGB: {
-        // Accept RGB triplet OR hex string (from Blockly / Direct Panel)
-        if (typeof data === 'string' && (data as any).startsWith('#')) {
-          this.notifyStateListeners({ gf_ledColor: data });
-          break;
+        // Accept RGB triplet, a raw hex string, or a hex string wrapped in an
+        // array (as sent by the Direct Control Panel, e.g. ['#ff0000'])
+        let hex: string | undefined;
+        if (typeof data === 'string') {
+          hex = data;
+        } else {
+          const first = Array.isArray(data) ? data[0] : data;
+          if (typeof first === 'string' && first.startsWith('#')) {
+            hex = first;
+          } else {
+            const [r, g, b] = data as number[];
+            hex = `#${((1 << 24) + ((r || 0) << 16) + ((g || 0) << 8) + (b || 0)).toString(16).slice(1)}`;
+          }
         }
-        const [r, g, b] = data;
-        const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
         this.notifyStateListeners({ gf_ledColor: hex });
         break;
       }
