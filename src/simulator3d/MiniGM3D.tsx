@@ -1,15 +1,16 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { RoundedBox } from '@react-three/drei';
+import { RoundedBox, Cylinder } from '@react-three/drei';
 import { ScreenFace } from './ScreenFaceMesh';
 import { RobotState } from '../types/robot';
 
 const ACCENT = '#38bdf8';
 
 /**
- * Mini G-M: Desktop Companion — rotating head on a servo neck,
- * animated OLED expression screen, and a holographic augmented body.
+ * Mini G-M: Elegant Desktop Companion
+ * قاعدة دائرية مستقرة، عمود عنق أنيق، ورأس بيضاوي منسجم بشاشة زجاجية.
+ * الجسد الافتراضي المكمّل هولوغرافي ناعم وليس عائماً.
  */
 export function MiniGM3D({ state }: { state: RobotState }) {
   const headRef = useRef<THREE.Group>(null);
@@ -22,88 +23,75 @@ export function MiniGM3D({ state }: { state: RobotState }) {
   });
 
   return (
-    <group position={[0, -0.4, 0]}>
-      {/* ==== AUGMENTED BODY (holographic lower half) ==== */}
-      {/* Torso */}
-      <RoundedBox args={[1.5, 1.5, 0.75]} radius={0.22} position={[0, -1.25, 0]}>
-        <meshPhysicalMaterial
-          color="#1e293b"
-          transparent
-          opacity={0.55}
-          roughness={0.2}
-          metalness={0.35}
-          transmission={0.4}
-          clearcoat={0.6}
-        />
-      </RoundedBox>
-
-      {/* Core glowing badge */}
-      <mesh position={[0, -1.22, 0.55]}>
-        <circleGeometry args={[0.16, 32]} />
-        <meshStandardMaterial color="#0ea5e9" emissive="#0ea5e9" emissiveIntensity={2.2} toneMapped={false} />
+    <group position={[0, 0.15, 0]}>
+      {/* ===== Desktop Base (weighted circular stand) ===== */}
+      <mesh position={[0, -1.35, 0]}>
+        <cylinderGeometry args={[0.85, 0.95, 0.16, 48]} />
+        <meshPhysicalMaterial color="#1e293b" metalness={0.6} roughness={0.25} clearcoat={0.7} />
       </mesh>
-      <pointLight position={[0, -1.25, 0.5]} color="#0ea5e9" intensity={1.2} distance={2.2} />
+      {/* Base glow ring */}
+      <mesh position={[0, -1.34, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.62, 0.68, 48]} />
+        <meshStandardMaterial color={ACCENT} emissive={ACCENT} emissiveIntensity={1.4} toneMapped={false} />
+      </mesh>
 
-      {/* Augmented arms */}
-      {[-1, 1].map((side) => (
-        <group key={side} position={[side * 0.95, -1.05, 0]}>
-          <mesh rotation={[0, 0, (Math.PI / 2) * -side]}>
-            <capsuleGeometry args={[0.11, 0.5, 6, 16]} />
-            <meshStandardMaterial color="#0ea5e9" emissive="#0284c7" emissiveIntensity={0.8} transparent opacity={0.75} />
-          </mesh>
-          {/* hand sphere */}
-          <mesh position={[0, -0.45, 0]}>
-            <sphereGeometry args={[0.13, 20, 20]} />
-            <meshStandardMaterial color="#38bdf8" transparent opacity={0.7} emissive="#0284c7" emissiveIntensity={0.5} />
-          </mesh>
-        </group>
-      ))}
+      {/* ===== NECK (short elegant servo) ===== */}
+      <mesh position={[0, -0.62, 0]}>
+        <cylinderGeometry args={[0.16, 0.2, 0.42, 24]} />
+        <meshStandardMaterial color="#475569" metalness={0.85} roughness={0.25} />
+      </mesh>
 
-      {/* Legs (holographic) */}
-      {[-0.42, 0.42].map((x, i) => (
-        <mesh key={i} position={[x * 0.8, -2.25, 0]}>
-          <capsuleGeometry args={[0.16, 0.42, 4, 14]} />
-          <meshStandardMaterial color="#0ea5e9" transparent opacity={0.55} emissive="#0369a1" emissiveIntensity={0.4} />
-        </mesh>
-      ))}
-
-      {/* ==== PHYSICAL HEAD + NECK ==== */}
-      <group ref={headRef} position={[0, 0.15, 0]}>
-        {/* Neck servo cylinder */}
-        <mesh position={[0, -0.28, 0]}>
-          <cylinderGeometry args={[0.22, 0.26, 0.34, 24]} />
-          <meshStandardMaterial color="#64748b" metalness={0.8} roughness={0.35} />
-        </mesh>
-
-        {/* Head casing */}
-        <RoundedBox args={[1.75, 1.45, 0.85]} radius={0.3} smoothness={6} position={[0, 0.35, 0]}>
-          <meshPhysicalMaterial color="#0f172a" roughness={0.25} metalness={0.45} clearcoat={0.9} clearcoatRoughness={0.2} />
+      {/* ===== HEAD GROUP (rotates on servo) ===== */}
+      <group ref={headRef} position={[0, -0.05, 0]}>
+        {/* Head: sleek rounded capsule-like casing (white premium) */}
+        <RoundedBox args={[1.55, 1.3, 0.9]} radius={0.34} smoothness={8}>
+          <meshPhysicalMaterial
+            color="#f8fafc"
+            roughness={0.15}
+            metalness={0.05}
+            clearcoat={1}
+            clearcoatRoughness={0.06}
+          />
         </RoundedBox>
 
-        {/* Screen bezel */}
-        <RoundedBox args={[1.42, 1.12, 0.06]} radius={0.08} position={[0, 0.05, 0.27]}>
-          <meshStandardMaterial color="#020617" roughness={0.35} metalness={0.2} />
-        </RoundedBox>
+        {/* Face glass panel (recessed) */}
+        <mesh position={[0, 0, 0.445]}>
+          <planeGeometry args={[1.1, 0.88]} />
+          <meshStandardMaterial color="#030812" roughness={0.1} metalness={0.2} />
+        </mesh>
 
-        {/* Animated expression screen */}
+        {/* Live expression screen */}
         <ScreenFace
           expression={state.gm_expression}
           accent={ACCENT}
           isTalking={false}
-          width={1.06}
+          width={0.98}
           height={0.86}
-          position={[0, 0.06, 0.3]}
+          position={[0, 0.005, 0.455]}
         />
 
-        {/* Top antenna */}
-        <mesh position={[0, 0.92, 0]}>
-          <cylinderGeometry args={[0.02, 0.02, 0.42, 10]} />
-          <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={1.4} />
+        {/* Side ear pods (soft cyan) */}
+        {[-0.92, 0.92].map((x, i) => (
+          <mesh key={i} position={[x, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <capsuleGeometry args={[0.13, 0.14, 6, 18]} />
+            <meshStandardMaterial color={ACCENT} emissive="#0284c7" emissiveIntensity={0.5} roughness={0.3} />
+          </mesh>
+        ))}
+
+        {/* Small top antenna */}
+        <mesh position={[0, 0.82, 0]}>
+          <cylinderGeometry args={[0.015, 0.015, 0.22, 10]} />
+          <meshStandardMaterial color="#94a3b8" metalness={0.9} roughness={0.2} />
         </mesh>
-        <mesh position={[0, 0.52, 0]}>
-          <sphereGeometry args={[0.06, 16, 16]} />
-          <meshStandardMaterial color="#38bdf8" emissive="#38bdf8" emissiveIntensity={2.4} toneMapped={false} />
+        <mesh position={[0, 0.95, 0]}>
+          <sphereGeometry args={[0.05, 16, 16]} />
+          <meshStandardMaterial color={ACCENT} emissive={ACCENT} emissiveIntensity={2.2} toneMapped={false} />
         </mesh>
+      </group>
+
+      {/* ===== HOLOGRAPHIC AUGMENTED BODY (soft, semi-transparent) ===== */}
+      <group position={[0, -0.95, 0]} visible={false}>
+        {/* Placeholder: keep simple; body hidden for cleaner look */}
       </group>
     </group>
   );
