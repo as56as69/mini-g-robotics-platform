@@ -1,7 +1,7 @@
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { createFaceCanvas, drawFace } from './ScreenFace';
+import { drawFace } from './ScreenFace';
 
 interface ScreenFaceProps {
   /** Expression key from RobotState (happy/surprised/love/sleepy/cool/wink) */
