@@ -1,16 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { RobotState } from '../types/robot';
-import { Sparkles, Eye, Volume2, Cpu, Compass, Flag, ShieldAlert, RefreshCw } from 'lucide-react';
+import { Sparkles, Eye, Volume2, Cpu, RefreshCw } from 'lucide-react';
 
 interface Props {
   state: RobotState;
 }
 
+/* ============ Premium palette (matches 3D edition) ============ */
+const ACCENT = '#38bdf8';
+
 export const RobotSimulator: React.FC<Props> = ({ state }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [arenaMode, setArenaMode] = useState<'free' | 'track' | 'maze'>('free');
-
-  // Robot spatial position in Arena for Mini G
   const posRef = useRef({ x: 250, y: 320, heading: -Math.PI / 2 });
 
   useEffect(() => {
@@ -22,10 +23,8 @@ export const RobotSimulator: React.FC<Props> = ({ state }) => {
     let animationFrameId: number;
 
     const render = () => {
-      // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw Chosen Arena Background
       if (arenaMode === 'track') {
         drawTrackArena(ctx, canvas.width, canvas.height);
       } else if (arenaMode === 'maze') {
@@ -34,29 +33,25 @@ export const RobotSimulator: React.FC<Props> = ({ state }) => {
         drawArenaBackground(ctx, canvas.width, canvas.height);
       }
 
-      // Update spatial position for Mini G if wheels are turning
       if (state.model === 'mini_g') {
         const speedL = state.g_wheelSpeedL || 0;
         const speedR = state.g_wheelSpeedR || 0;
-        const linearVel = (speedL + speedR) / 40;
-        const angularVel = (speedR - speedL) / 800;
+        const linearVel = (speedL + speedR) / 60;
+        const angularVel = (speedR - speedL) / 900;
 
         posRef.current.heading += angularVel;
         posRef.current.x += Math.cos(posRef.current.heading) * linearVel;
         posRef.current.y += Math.sin(posRef.current.heading) * linearVel;
 
-        // Keep inside bounds
-        posRef.current.x = Math.max(60, Math.min(canvas.width - 60, posRef.current.x));
-        posRef.current.y = Math.max(60, Math.min(canvas.height - 60, posRef.current.y));
+        posRef.current.x = Math.max(70, Math.min(canvas.width - 70, posRef.current.x));
+        posRef.current.y = Math.max(90, Math.min(canvas.height - 70, posRef.current.y));
       }
 
-      // Render Active Model Simulator
       if (state.model === 'mini_gf') {
         drawMiniGF(ctx, canvas.width / 2, canvas.height / 2, state);
       } else if (state.model === 'mini_gm') {
         drawMiniGM(ctx, canvas.width / 2, canvas.height / 2, state);
       } else {
-        // Mini G inside Arena with spatial coordinates
         drawMiniGSpatial(ctx, posRef.current.x, posRef.current.y, posRef.current.heading, state);
       }
 
@@ -65,9 +60,7 @@ export const RobotSimulator: React.FC<Props> = ({ state }) => {
 
     render();
 
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-    };
+    return () => cancelAnimationFrame(animationFrameId);
   }, [state, arenaMode]);
 
   const resetPosition = () => {
@@ -76,7 +69,6 @@ export const RobotSimulator: React.FC<Props> = ({ state }) => {
 
   return (
     <div className="relative w-full h-full flex flex-col bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
-      {/* Simulator Overlay Header */}
       <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
         <div className="bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/60 flex items-center gap-2 shadow-lg pointer-events-auto">
           <div className={`w-2.5 h-2.5 rounded-full ${state.connected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
@@ -85,7 +77,6 @@ export const RobotSimulator: React.FC<Props> = ({ state }) => {
           </span>
         </div>
 
-        {/* Arena Mode Switcher for Mini G / General */}
         {state.model === 'mini_g' && (
           <div className="flex items-center gap-1 bg-slate-900/90 backdrop-blur-md p-1 rounded-xl border border-slate-700 pointer-events-auto shadow-md">
             <button
@@ -122,7 +113,6 @@ export const RobotSimulator: React.FC<Props> = ({ state }) => {
           </div>
         )}
 
-        {/* Telemetry quick status badge */}
         <div className="hidden sm:flex items-center gap-2 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/60 text-xs font-semibold text-slate-300">
           {state.model === 'mini_gf' && (
             <span className="flex items-center gap-1">
@@ -144,15 +134,8 @@ export const RobotSimulator: React.FC<Props> = ({ state }) => {
         </div>
       </div>
 
-      {/* 2D Canvas */}
-      <canvas
-        ref={canvasRef}
-        width={500}
-        height={450}
-        className="w-full h-full object-contain"
-      />
+      <canvas ref={canvasRef} width={500} height={450} className="w-full h-full object-contain" />
 
-      {/* Talking bubble for Mini G */}
       {state.model === 'mini_g' && state.g_isTalking && (
         <div className="absolute bottom-4 left-6 right-6 z-20 bg-purple-600/90 backdrop-blur-md text-white px-4 py-2 rounded-2xl shadow-xl border border-purple-400/40 animate-bounce flex items-center gap-2">
           <Volume2 className="w-5 h-5 flex-shrink-0 animate-pulse" />
@@ -168,7 +151,6 @@ export const RobotSimulator: React.FC<Props> = ({ state }) => {
 function drawArenaBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillStyle = '#090d16';
   ctx.fillRect(0, 0, w, h);
-
   ctx.strokeStyle = '#1e293b';
   ctx.lineWidth = 1;
   const step = 30;
@@ -188,8 +170,6 @@ function drawArenaBackground(ctx: CanvasRenderingContext2D, w: number, h: number
 
 function drawTrackArena(ctx: CanvasRenderingContext2D, w: number, h: number) {
   drawArenaBackground(ctx, w, h);
-
-  // Black line track for line follower logic
   ctx.strokeStyle = '#0284c7';
   ctx.lineWidth = 28;
   ctx.lineCap = 'round';
@@ -197,8 +177,6 @@ function drawTrackArena(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.beginPath();
   ctx.ellipse(w / 2, h / 2, 160, 110, 0, 0, Math.PI * 2);
   ctx.stroke();
-
-  // Finish Line Flags
   ctx.fillStyle = '#eab308';
   ctx.font = 'bold 12px Cairo';
   ctx.fillText('🏁 خط البداية / النهاية', w / 2 - 50, h / 2 + 125);
@@ -206,23 +184,15 @@ function drawTrackArena(ctx: CanvasRenderingContext2D, w: number, h: number) {
 
 function drawMazeArena(ctx: CanvasRenderingContext2D, w: number, h: number) {
   drawArenaBackground(ctx, w, h);
-
-  // Walls / Obstacles
   ctx.fillStyle = '#ef4444';
   ctx.strokeStyle = '#f87171';
   ctx.lineWidth = 2;
-
-  // Obstacle 1
   roundRect(ctx, 120, 100, 40, 140, 8);
   ctx.fill();
   ctx.stroke();
-
-  // Obstacle 2
   roundRect(ctx, 280, 180, 120, 40, 8);
   ctx.fill();
   ctx.stroke();
-
-  // Star Target
   ctx.fillStyle = '#facc15';
   ctx.beginPath();
   ctx.arc(380, 110, 18, 0, Math.PI * 2);
@@ -234,192 +204,218 @@ function drawMazeArena(ctx: CanvasRenderingContext2D, w: number, h: number) {
 
 // ------------------- MODEL RENDERERS ------------------- //
 
+/* ======== Mini G-F: Premium Keychain Medal ======== */
 function drawMiniGF(ctx: CanvasRenderingContext2D, cx: number, cy: number, state: RobotState) {
   ctx.save();
   ctx.translate(cx, cy);
 
   if (state.gf_vibrating) {
-    ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+    ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
   }
 
-  // Keychain Ring Top
-  ctx.strokeStyle = '#94a3b8';
+  // Keyring (polished silver)
+  ctx.strokeStyle = '#e2e8f0';
   ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.arc(0, -95, 20, 0, Math.PI * 2);
+  ctx.arc(0, -98, 19, 0, Math.PI * 2);
   ctx.stroke();
 
   ctx.fillStyle = '#cbd5e1';
-  ctx.fillRect(-4, -75, 8, 15);
-
-  // Head Housing
-  ctx.fillStyle = '#1e293b';
-  ctx.strokeStyle = '#475569';
-  ctx.lineWidth = 4;
-  roundRect(ctx, -70, -60, 140, 120, 30);
-  ctx.fill();
-  ctx.stroke();
-
-  // Cute Antennas
-  ctx.fillStyle = '#38bdf8';
-  ctx.beginPath();
-  ctx.arc(-70, 0, 12, 0, Math.PI * 2);
-  ctx.arc(70, 0, 12, 0, Math.PI * 2);
+  roundRect(ctx, -5, -80, 10, 20, 4);
   ctx.fill();
 
-  // Glossy Screen Face
-  ctx.fillStyle = '#0f172a';
-  roundRect(ctx, -55, -45, 110, 85, 20);
+  // Body: glossy white pill with gradient
+  const bodyGrad = ctx.createLinearGradient(0, -62, 0, 62);
+  bodyGrad.addColorStop(0, '#ffffff');
+  bodyGrad.addColorStop(0.55, '#eef2f7');
+  bodyGrad.addColorStop(1, '#d7dfeb');
+  ctx.fillStyle = bodyGrad;
+  roundRect(ctx, -72, -62, 140, 122, 34);
+  ctx.fill();
+  // Top glossy highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  roundRect(ctx, -62, -56, 92, 30, 15);
   ctx.fill();
 
-  // LED Glowing Eyes
+  // Face inset (dark glass)
+  ctx.fillStyle = '#050912';
+  roundRect(ctx, -52, -40, 104, 82, 18);
+  ctx.fill();
+
+  // LED glowing eyes (rounded capsules)
   const glowColor = state.gf_ledColor || '#22c55e';
   ctx.shadowColor = glowColor;
-  ctx.shadowBlur = 25;
+  ctx.shadowBlur = 20;
   ctx.fillStyle = glowColor;
-
-  ctx.beginPath();
-  ctx.arc(-26, -10, 14, 0, Math.PI * 2);
-  ctx.arc(26, -10, 14, 0, Math.PI * 2);
+  roundRect(ctx, -36, -24, 16, 26, 8);
+  ctx.fill();
+  roundRect(ctx, 21, -24, 16, 26, 8);
   ctx.fill();
   ctx.shadowBlur = 0;
 
-  // Smile
-  ctx.strokeStyle = '#64748b';
-  ctx.lineWidth = 3;
+  // Smile (glowing, subtle)
+  ctx.strokeStyle = glowColor;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.arc(0, 12, 12, 0, Math.PI);
+  ctx.arc(0, -4, 10, Math.PI * 0.15, Math.PI * 0.85);
   ctx.stroke();
 
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = 'bold 12px Cairo, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Mini G-F Keychain', 0, 95);
+  // Side antennas (white nubs)
+  ctx.fillStyle = '#f1f5f9';
+  roundRect(ctx, -80, -12, 14, 18, 9);
+  ctx.fill();
+  roundRect(ctx, 66, -12, 14, 18, 9);
+  ctx.fill();
 
   ctx.restore();
 }
 
+/* ======== Mini G-M: Elegant Desktop Companion (REDESIGNED) ======== */
 function drawMiniGM(ctx: CanvasRenderingContext2D, cx: number, cy: number, state: RobotState) {
   ctx.save();
-  ctx.translate(cx, cy);
+  ctx.translate(cx, cy + 30);
 
-  // Augmented Torso & Limbs
+  // ===== Desktop stand (weighted circular base) =====
   ctx.fillStyle = '#1e293b';
-  ctx.strokeStyle = '#0284c7';
-  ctx.lineWidth = 3;
-
-  // Legs
-  ctx.fillStyle = '#0f172a';
-  roundRect(ctx, -40, 90, 25, 45, 8);
-  roundRect(ctx, 15, 90, 25, 45, 8);
-  ctx.fill();
-  ctx.stroke();
-
-  // Body Torso
-  ctx.fillStyle = '#1e293b';
-  roundRect(ctx, -55, 30, 110, 75, 20);
-  ctx.fill();
-  ctx.stroke();
-
-  // Core Badge
-  ctx.fillStyle = '#0284c7';
   ctx.beginPath();
-  ctx.arc(0, 65, 14, 0, Math.PI * 2);
+  ctx.ellipse(0, 128, 64, 15, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Arms
-  roundRect(ctx, -75, 35, 18, 50, 8);
-  roundRect(ctx, 57, 35, 18, 50, 8);
-  ctx.fill();
-
-  // Rotating Head & Neck
-  ctx.save();
-  const rad = (state.gm_headAngle * Math.PI) / 180;
-  ctx.rotate(rad);
-
-  ctx.fillStyle = '#64748b';
-  ctx.fillRect(-15, 15, 30, 20);
-
-  ctx.fillStyle = '#0f172a';
-  ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 4;
-  roundRect(ctx, -75, -95, 150, 115, 28);
-  ctx.fill();
+  // Base glow ring
+  ctx.strokeStyle = ACCENT;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 106, 50, 12, 0, 0, Math.PI * 2);
   ctx.stroke();
 
-  ctx.fillStyle = '#020617';
-  roundRect(ctx, -60, -80, 120, 85, 18);
+  // ===== NECK (elegant servo) =====
+  ctx.fillStyle = '#475569';
+  roundRect(ctx, -14, 28, 30, 42, 7);
   ctx.fill();
 
+  // ===== ROTATING HEAD GROUP =====
+  ctx.save();
+  ctx.translate(0, -32);
+  ctx.rotate((state.gm_headAngle * Math.PI) / 180);
+
+  // Head: premium white rounded casing with gradient
+  const headGrad = ctx.createLinearGradient(0, -100, 0, 30);
+  headGrad.addColorStop(0, '#ffffff');
+  headGrad.addColorStop(1, '#dbe3ec');
+  ctx.fillStyle = headGrad;
+  roundRect(ctx, -70, -100, 148, 122, 30);
+  ctx.fill();
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Top glossy highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  roundRect(ctx, -58, -92, 84, 26, 13);
+  ctx.fill();
+
+  // Face glass (dark inset)
+  ctx.fillStyle = '#030812';
+  roundRect(ctx, -54, -68, 120, 78, 18);
+  ctx.fill();
+
+  // Live expression eyes (with blink)
   drawExpressionEyes(ctx, state.gm_expression);
 
-  ctx.restore();
+  // Antenna ball
+  ctx.fillStyle = ACCENT;
+  ctx.shadowColor = ACCENT;
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.arc(0, -108, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(0, -104);
+  ctx.lineTo(0, -80);
+  ctx.stroke();
 
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 12px Cairo, sans-serif';
+  ctx.restore(); // end head rotation
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = 'bold 11px Cairo, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('Mini G-M Desktop (+ Augmented Body)', 0, 160);
+  ctx.fillText('Mini G-M', 0, 128);
 
   ctx.restore();
 }
 
+/* ======== Mini G: Humanoid in Arena ======== */
 function drawMiniGSpatial(ctx: CanvasRenderingContext2D, x: number, y: number, heading: number, state: RobotState) {
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(0.65, 0.65); // Scale appropriately for spatial arena
+  ctx.scale(0.52, 0.55);
 
-  // Mobile Wheeled Base
-  ctx.fillStyle = '#0f172a';
-  ctx.strokeStyle = '#9333ea';
-  ctx.lineWidth = 4;
-  roundRect(ctx, -85, 100, 170, 35, 15);
-  ctx.fill();
-  ctx.stroke();
-
-  // Wheels
-  ctx.fillStyle = '#334155';
-  roundRect(ctx, -95, 95, 20, 45, 8);
-  roundRect(ctx, 75, 95, 20, 45, 8);
-  ctx.fill();
-
-  // Torso
-  ctx.fillStyle = '#1e1b4b';
-  ctx.strokeStyle = '#a855f7';
+  // Base (white rounded)
+  ctx.fillStyle = '#e2e8f0';
+  ctx.strokeStyle = '#cbd5e1';
   ctx.lineWidth = 3;
-  roundRect(ctx, -65, -15, 130, 115, 24);
+  roundRect(ctx, -82, 100, 170, 38, 18);
   ctx.fill();
   ctx.stroke();
 
-  // Core Heartbeat Pulse
-  ctx.fillStyle = '#ec4899';
+  // Wheels (dark tires, light hubs)
+  ctx.fillStyle = '#1e293b';
+  roundRect(ctx, -95, 96, 20, 44, 10);
+  roundRect(ctx, 76, 96, 20, 44, 10);
+  ctx.fill();
+  ctx.fillStyle = '#94a3b8';
+  roundRect(ctx, -90, 108, 10, 18, 5);
+  roundRect(ctx, 82, 108, 10, 18, 5);
+  ctx.fill();
+
+  // Torso (white premium)
+  ctx.fillStyle = '#f8fafc';
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 3;
+  roundRect(ctx, -58, -28, 132, 102, 26);
+  ctx.fill();
+  ctx.stroke();
+
+  // Core glow
+  ctx.fillStyle = '#38bdf8';
+  ctx.shadowColor = '#38bdf8';
+  ctx.shadowBlur = 16;
   ctx.beginPath();
-  ctx.arc(0, 40, 18, 0, Math.PI * 2);
+  ctx.arc(0, 32, 13, 0, Math.PI * 2);
   ctx.fill();
+  ctx.shadowBlur = 0;
 
-  // Articulated Arms
-  // Left Arm
-  ctx.save();
-  ctx.translate(-65, 0);
-  ctx.rotate((-state.g_armLeftAngle * Math.PI) / 180);
-  ctx.fillStyle = '#6b21a8';
-  roundRect(ctx, -18, 0, 18, 70, 8);
-  ctx.fill();
-  ctx.restore();
+  // Arms: shoulder pivots with natural swing
+  for (const s of [-1, 1]) {
+    const angle = s === -1 ? state.g_armLeftAngle : state.g_armRightAngle;
+    ctx.save();
+    ctx.translate(s * 74, -12);
+    ctx.rotate((s * -(angle || 0) * Math.PI) / 180);
+    // upper arm
+    ctx.fillStyle = '#eef2f7';
+    roundRect(ctx, -11, 0, 15, 42, 9);
+    ctx.fill();
+    // elbow
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.arc(0, 44, 7, 0, Math.PI * 2);
+    ctx.fill();
+    // hand (accent)
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(0, 74, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
-  // Right Arm
-  ctx.save();
-  ctx.translate(65, 0);
-  ctx.rotate((state.g_armRightAngle * Math.PI) / 180);
-  ctx.fillStyle = '#6b21a8';
-  roundRect(ctx, 0, 0, 18, 70, 8);
-  ctx.fill();
-  ctx.restore();
-
-  // Smart Head Screen with Dynamic AI Personas
-  ctx.fillStyle = '#0f172a';
-  ctx.strokeStyle = '#c084fc';
-  ctx.lineWidth = 4;
-  roundRect(ctx, -70, -125, 140, 100, 24);
+  // Head (white rounded, friendly)
+  ctx.fillStyle = '#f8fafc';
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 3;
+  roundRect(ctx, -68, -128, 140, 92, 28);
   ctx.fill();
   ctx.stroke();
 
@@ -431,7 +427,7 @@ function drawMiniGSpatial(ctx: CanvasRenderingContext2D, x: number, y: number, h
 // ------------------- SUB-RENDERERS ------------------- //
 
 function drawExpressionEyes(ctx: CanvasRenderingContext2D, expr: string) {
-  ctx.fillStyle = '#38bdf8';
+  const blinkCycle = Date.now() % 3400 < 140;
   ctx.shadowColor = '#38bdf8';
   ctx.shadowBlur = 15;
 
@@ -448,12 +444,24 @@ function drawExpressionEyes(ctx: CanvasRenderingContext2D, expr: string) {
     ctx.lineTo(42, -35);
     ctx.stroke();
   } else if (expr === 'surprised' || expr === '1') {
+    ctx.fillStyle = '#e0f2fe';
     ctx.beginPath();
     ctx.arc(-28, -38, 16, 0, Math.PI * 2);
     ctx.arc(28, -38, 16, 0, Math.PI * 2);
     ctx.fill();
+  } else if (blinkCycle) {
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-40, -35);
+    ctx.lineTo(-16, -35);
+    ctx.moveTo(16, -35);
+    ctx.lineTo(40, -35);
+    ctx.stroke();
   } else {
+    ctx.fillStyle = '#7dd3fc';
     roundRect(ctx, -40, -50, 24, 30, 8);
+    ctx.fill();
     roundRect(ctx, 16, -50, 24, 30, 8);
     ctx.fill();
   }
@@ -462,42 +470,57 @@ function drawExpressionEyes(ctx: CanvasRenderingContext2D, expr: string) {
 }
 
 function drawPersonaFace(ctx: CanvasRenderingContext2D, persona: string, isTalking: boolean) {
-  ctx.fillStyle = '#f8fafc';
+  const accent =
+    persona === 'alkhwarizmi' || persona === '0'
+      ? '#fbbf24'
+      : persona === 'astronaut' || persona === '1'
+      ? '#22d3ee'
+      : '#a855f7';
+
   ctx.textAlign = 'center';
 
-  if (persona === 'alkhwarizmi' || persona === '0') {
-    ctx.fillStyle = '#eab308';
-    ctx.font = 'bold 11px Cairo';
-    ctx.fillText('📜 الخوارزمي', 0, -100);
-    ctx.fillStyle = '#38bdf8';
-    roundRect(ctx, -32, -80, 20, 15, 4);
-    roundRect(ctx, 12, -80, 20, 15, 4);
-    ctx.fill();
-  } else if (persona === 'astronaut' || persona === '1') {
-    ctx.fillStyle = '#06b6d4';
-    ctx.font = 'bold 11px Cairo';
-    ctx.fillText('🚀 رائد الفضاء', 0, -100);
-    ctx.fillStyle = '#38bdf8';
-    roundRect(ctx, -40, -85, 80, 25, 10);
-    ctx.fill();
-  } else {
-    ctx.fillStyle = '#a855f7';
-    ctx.font = 'bold 11px Cairo';
-    ctx.fillText('🤖 ميني جي الذكي', 0, -100);
-    ctx.fillStyle = '#38bdf8';
-    roundRect(ctx, -32, -80, 20, 22, 6);
-    roundRect(ctx, 12, -80, 20, 22, 6);
-    ctx.fill();
-  }
+  // Happy arc eyes
+  ctx.save();
+  ctx.strokeStyle = '#7dd3fc';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(-24, -62, 14, Math.PI * 1.15, Math.PI * 1.85);
+  ctx.moveTo(46, -62);
+  ctx.arc(26, -68, 15, Math.PI * 1.15, Math.PI * 1.85);
+  ctx.stroke();
+  ctx.restore();
 
-  ctx.fillStyle = '#ec4899';
+  // Persona name chip
+  ctx.fillStyle = accent;
+  roundRect(ctx, -36, -122, 70, 20, 10);
+  ctx.fill();
+  ctx.fillStyle = '#0f172a';
+  ctx.font = 'bold 12px Cairo';
+  ctx.fillText(
+    persona === '0' || persona === 'alkhwarizmi'
+      ? '📜 الخوارزمي'
+      : persona === 'astronaut' || persona === '1'
+      ? '🚀 رائد الفضاء'
+      : persona === 'einstein'
+      ? '💡 أينشتاين'
+      : '🤖 ميني جي',
+    0,
+    -114
+  );
+
+  // Mouth (lip-sync)
   if (isTalking) {
+    ctx.fillStyle = '#ec4899';
     const mouthHeight = 10 + Math.sin(Date.now() / 80) * 8;
-    roundRect(ctx, -18, -48, 36, mouthHeight, 6);
+    roundRect(ctx, -18, -40, 36, mouthHeight, 6);
     ctx.fill();
   } else {
-    roundRect(ctx, -14, -45, 28, 6, 3);
-    ctx.fill();
+    ctx.strokeStyle = '#7dd3fc';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(0, -52, 20, Math.PI * 0.18, Math.PI * 0.82);
+    ctx.stroke();
   }
 }
 
