@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Award, Printer, Download, Sparkles, UserCheck, Star, ShieldCheck } from 'lucide-react';
+import { Award, Printer, Download, Sparkles, UserCheck, Star, ShieldCheck, CheckCircle2, Bookmark } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export const CertificateGeneratorModal: React.FC = () => {
-  const [studentName, setStudentName] = useState('زينب حيدر');
-  const [courseName, setCourseName] = useState('أساسيات برمجة الروبوتات والذكاء الاصطناعي (ميني جي)');
-  const [coachName, setCoachName] = useState('المدرب علي أحمد');
+  const [studentName, setStudentName] = useState('زينب حيدر الموسوي');
+  const [courseName, setCourseName] = useState('مسار هندسة الروبوتات والبرمجة الخوارزمية (منظومة Mini G)');
+  const [coachName, setCoachName] = useState('المهندس علي أحمد التميمي');
   const [dateStr, setDateStr] = useState('2026-08-29');
 
   const handlePrint = () => {
@@ -14,27 +14,33 @@ export const CertificateGeneratorModal: React.FC = () => {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col gap-5 max-w-4xl mx-auto w-full">
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 shadow-2xl flex flex-col gap-5 max-w-4xl mx-auto w-full">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-800 flex-wrap gap-2">
         <div className="flex items-center gap-2.5">
-          <Award className="w-5 h-5 text-amber-400" />
-          <h3 className="font-bold text-sm md:text-base text-white">
-            مركز إصدار وطباعة شهادات الإنجاز للطلاب (Official STEM Certificate)
-          </h3>
+          <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <Award className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-sm md:text-base text-white">
+              مركز إصدار الشهادات الهندسية المعتمدة (Official STEM Certificate of Excellence)
+            </h3>
+            <p className="text-[11px] text-slate-400">شهادات تفوق رسمية بطابع أكاديمي مرموق تمنح للطلاب المتميزين في مشاريع الروبوتكس</p>
+          </div>
         </div>
+
         <button
           onClick={handlePrint}
-          className="flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-xl text-xs transition shadow-lg active:scale-95"
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:brightness-110 text-slate-950 font-black rounded-xl text-xs transition shadow-lg active:scale-95"
         >
           <Printer className="w-4 h-4" />
-          <span>طباعة الشهادة الآن 🖨️</span>
+          <span>طباعة الشهادة المعتمدة 🖨️</span>
         </button>
       </div>
 
       {/* Editor Controls */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs">
         <div>
-          <label className="block text-slate-400 mb-1 font-bold">اسم الطالب / الطالبة:</label>
+          <label className="block text-slate-400 mb-1 font-bold">اسم الطالب / المهندس الصغير:</label>
           <input
             type="text"
             value={studentName}
@@ -43,7 +49,7 @@ export const CertificateGeneratorModal: React.FC = () => {
           />
         </div>
         <div>
-          <label className="block text-slate-400 mb-1 font-bold">عنوان الدورة / المنهج:</label>
+          <label className="block text-slate-400 mb-1 font-bold">عنوان المسار / المنهج التدريبي:</label>
           <input
             type="text"
             value={courseName}
@@ -52,7 +58,7 @@ export const CertificateGeneratorModal: React.FC = () => {
           />
         </div>
         <div>
-          <label className="block text-slate-400 mb-1 font-bold">اسم المدرب المعتمد:</label>
+          <label className="block text-slate-400 mb-1 font-bold">المدرب / المشرف الأكاديمي:</label>
           <input
             type="text"
             value={coachName}
@@ -62,53 +68,62 @@ export const CertificateGeneratorModal: React.FC = () => {
         </div>
       </div>
 
-      {/* Certificate Visual Canvas Preview (Print-friendly) */}
-      <div className="relative bg-gradient-to-br from-amber-50 via-slate-50 to-orange-50 text-slate-900 p-8 rounded-2xl border-4 border-double border-amber-600 shadow-2xl flex flex-col items-center text-center gap-4 select-none overflow-hidden min-h-[380px] print:m-0 print:border-none print:shadow-none">
-        {/* Decorative corner badges */}
-        <div className="absolute top-4 right-4 text-3xl opacity-40">🤖</div>
-        <div className="absolute top-4 left-4 text-3xl opacity-40">🚀</div>
-        <div className="absolute bottom-4 right-4 text-3xl opacity-40">⭐</div>
-        <div className="absolute bottom-4 left-4 text-3xl opacity-40">🏆</div>
+      {/* Heavy Academic Certificate Preview */}
+      <div className="relative bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 p-8 md:p-12 rounded-2xl border-4 border-double border-amber-500/80 shadow-2xl flex flex-col items-center text-center gap-5 select-none overflow-hidden min-h-[440px] print:m-0 print:border-none print:shadow-none">
+        {/* Subtle Guilloche / Border Corner Accents */}
+        <div className="absolute top-4 right-4 text-amber-500/30 text-4xl">❖</div>
+        <div className="absolute top-4 left-4 text-amber-500/30 text-4xl">❖</div>
+        <div className="absolute bottom-4 right-4 text-amber-500/30 text-4xl">❖</div>
+        <div className="absolute bottom-4 left-4 text-amber-500/30 text-4xl">❖</div>
 
-        {/* Header Ribbon */}
-        <div className="flex flex-col items-center">
-          <div className="flex items-center gap-2 text-amber-700 font-black tracking-wider text-xs">
+        {/* Certificate Header Strip */}
+        <div className="flex flex-col items-center gap-1">
+          <div className="flex items-center gap-2 text-amber-400 font-mono text-[11px] font-bold tracking-widest uppercase">
             <Sparkles className="w-4 h-4" />
-            <span>منصة ميني جي للروبوتكس والذكاء الاصطناعي للأطفال</span>
+            <span>MINI G ROBOTICS & STEM ACADEMY</span>
             <Sparkles className="w-4 h-4" />
           </div>
-          <h2 className="text-2xl md:text-3xl font-black text-slate-900 mt-1 tracking-tight">
-            شهادة تفوق وإنجاز برمجي 🎓
+          <h2 className="text-2xl md:text-3xl font-black text-white mt-1 tracking-tight">
+            شهادة تفوق واعتماد هندسي 🎓
           </h2>
-          <div className="w-24 h-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full mt-1.5" />
+          <div className="w-36 h-1 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400 rounded-full mt-1" />
         </div>
 
-        {/* Body Text */}
-        <p className="text-xs md:text-sm text-slate-600 max-w-lg mt-1">
-          تُمنح هذه الشهادة تقديراً للجهد المتميز والإبداع المنطقي للبطل / البطلة:
+        {/* Recipient Statement */}
+        <p className="text-xs md:text-sm text-slate-400 max-w-lg mt-2">
+          تشهد إدارة المنصة ومختبرات الروبوتكس المعتمدة بأن المهندس / المهندسة الصغيرة:
         </p>
 
-        <div className="text-xl md:text-2xl font-black text-indigo-900 border-b-2 border-indigo-300 pb-1 px-8">
-          {studentName || 'اسم الطالب'}
+        <div className="text-2xl md:text-3xl font-black text-amber-300 border-b-2 border-amber-500/40 pb-2 px-10 tracking-wide font-serif">
+          {studentName || 'اسم الطالب الثلاثي'}
         </div>
 
-        <p className="text-xs text-slate-600 max-w-md">
-          لاختتامه بنجاح كافة التحديات العملية والبرمجة الرسومية والتحكم اللحظي بروبوتات <span className="font-bold text-slate-800">Mini G Platform</span> ضمن مسار:
+        <p className="text-xs text-slate-300 max-w-lg leading-relaxed">
+          قد أتم بنجاح واقتدار كافة متطلبات المشاريع التطبيقية والبرمجة الخوارزمية وبناء التوأم الرقمي والتحكم بأنظمة الـ <strong className="text-white">ESP32</strong> ضمن المسار التخصصي:
         </p>
 
-        <div className="text-sm font-bold text-amber-800 bg-amber-100/70 px-4 py-1.5 rounded-full border border-amber-300/80">
+        <div className="text-xs sm:text-sm font-bold text-blue-300 bg-blue-950/60 px-5 py-2 rounded-xl border border-blue-500/40 shadow-inner">
           {courseName}
         </div>
 
-        {/* Footer Signatures */}
-        <div className="w-full grid grid-cols-2 pt-6 mt-auto border-t border-slate-300 text-xs">
+        {/* Signatures & Seal */}
+        <div className="w-full grid grid-cols-3 items-center pt-8 mt-auto border-t border-slate-800 text-xs">
           <div className="flex flex-col items-center">
-            <span className="text-slate-500 text-[11px]">المدرب المشرف:</span>
-            <span className="font-bold text-slate-900 mt-0.5">{coachName}</span>
+            <span className="text-slate-500 text-[10px]">المدرب المشرف:</span>
+            <span className="font-bold text-white mt-0.5">{coachName}</span>
           </div>
+
+          {/* Official Gold Seal Badge */}
+          <div className="flex flex-col items-center justify-center">
+            <div className="w-14 h-14 rounded-full border-2 border-amber-400 bg-amber-500/20 flex items-center justify-center text-amber-300 text-xl font-bold shadow-lg shadow-amber-500/20">
+              ★
+            </div>
+            <span className="text-[9px] text-amber-400 font-mono mt-1">OFFICIAL SEAL</span>
+          </div>
+
           <div className="flex flex-col items-center">
-            <span className="text-slate-500 text-[11px]">التاريخ والاعتماد:</span>
-            <span className="font-bold text-slate-900 mt-0.5">{dateStr}</span>
+            <span className="text-slate-500 text-[10px]">تاريخ الاعتماد:</span>
+            <span className="font-bold text-white mt-0.5 font-mono">{dateStr}</span>
           </div>
         </div>
       </div>
