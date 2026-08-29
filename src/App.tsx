@@ -39,7 +39,7 @@ export function App() {
   };
 
   return (
-    <div className="app-viewport-wrapper flex flex-col min-h-screen w-screen bg-slate-950 text-slate-100 select-none">
+    <div className="app-viewport-wrapper flex flex-col min-h-screen w-screen text-slate-100 select-none">
       {/* Universal Top Header */}
       <Header
         activeModel={activeModel}

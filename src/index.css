@@ -196,10 +196,6 @@ html[data-mode="school_lms"] {
 
 html[data-mode="school_lms"] body {
   background-color: #090D16;
-  background-image:
-    linear-gradient(rgba(37, 99, 235, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(37, 99, 235, 0.04) 1px, transparent 1px);
-  background-size: 32px 32px;
 }
 
 html[data-mode="kid_home"] body {
@@ -208,6 +204,16 @@ html[data-mode="kid_home"] body {
 
 .app-viewport-wrapper {
   background-color: var(--app-bg, #0F172A);
+}
+
+/* ===== School academic grid overlay (engineering lab blueprint) ===== */
+html[data-mode="school_lms"] .app-viewport-wrapper {
+  position: relative;
+  background-color: var(--app-bg, #090D16);
+  background-image:
+    linear-gradient(rgba(37, 99, 235, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.045) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 /* ===== BLE "alive" pulsing glow for the connected state ===== */
