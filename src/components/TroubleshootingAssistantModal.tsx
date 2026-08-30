@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RobotModelType, ROBOT_MODELS } from '../types/robot';
-import { Wrench, CheckCircle2, AlertTriangle, HelpCircle, RefreshCw, Sparkles, Cpu } from 'lucide-react';
+import { bleService } from '../ble/BLEManager';
+import { SoundFXManager } from '../ble/SoundFX';
+import { Wrench, CheckCircle2, AlertTriangle, HelpCircle, RefreshCw, Sparkles, Cpu, Cable, Wifi } from 'lucide-react';
 
 interface Props {
   model: RobotModelType;
@@ -90,11 +92,29 @@ export const TroubleshootingAssistantModal: React.FC<Props> = ({ model }) => {
   const issues = COMMON_ISSUES[model] || COMMON_ISSUES['mini_gf'];
   const [selectedIssue, setSelectedIssue] = useState<IssueDiagnosis>(issues[0]);
   const [diagnosing, setDiagnosing] = useState(false);
+  const [scanResult, setScanResult] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Reset selection whenever the model prop changes (even if reused in place)
+  useEffect(() => {
+    setSelectedIssue((COMMON_ISSUES[model] || COMMON_ISSUES['mini_gf'])[0]);
+    setScanResult(null);
+  }, [model]);
 
   const runAutoScan = () => {
+    if (diagnosing) return;
     setDiagnosing(true);
+    const bleConnected = (bleService as any).isConnected ? bleService.isConnected() : false;
+    SoundFXManager.playRobotChirp();
     setTimeout(() => {
       setDiagnosing(false);
+      if (bleConnected) {
+        setScanResult({ ok: true, text: '✅ تم اكتشاف اتصال BLE فعلي بالروبوت بنجاح — الموجة والتردد سليمان.' });
+      } else {
+        setScanResult({
+          ok: false,
+          text: '⚠️ وضع المحاكاة الافتراضي (اللا سلكي): لا يوجد اتصال BLE فعلي حالياً. لتشخيص حقيقي اضغط «اتصال BLE» في اللوحة الرئيسية ثم أعد الفحص.'
+        });
+      }
     }, 800);
   };
 
@@ -120,6 +140,18 @@ export const TroubleshootingAssistantModal: React.FC<Props> = ({ model }) => {
           <span>{diagnosing ? 'جاري الفحص...' : 'فحص الاتصال الذاتي 🔍'}</span>
         </button>
       </div>
+
+      {/* Auto-Scan Result */}
+      {scanResult && (
+        <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
+          scanResult.ok
+            ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+            : 'bg-amber-950/40 border-amber-500/40 text-amber-300'
+        }`}>
+          <Cable className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span>{scanResult.text}</span>
+        </div>
+      )}
 
       {/* Issues Selection List */}
       <div className="flex flex-col gap-2">

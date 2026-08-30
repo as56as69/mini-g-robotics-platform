@@ -1,38 +1,98 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Bot, Sparkles, CheckCircle2, AlertTriangle, Lightbulb, RefreshCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { SoundFXManager } from '../ble/SoundFX';
 
+interface ReviewResult {
+  score: number;
+  positives: string[];
+  tips: string[];
+  grade: string;
+}
+
+function analyzeStudentCode(code: string): ReviewResult {
+  const trimmed = code.trim();
+  if (!trimmed) {
+    return {
+      score: 0,
+      grade: 'لا يوجد كود بعد 🍃',
+      positives: ['مساحة العمل فارغة حالياً'],
+      tips: ['اسحب كتل الأوامر من القائمة إلى فضاء العمل ثم اضغط زر «تشغيل» لتحليل برنامجك الحقيقي!']
+    };
+  }
+
+  const cmdMatches = code.match(/__BLE_DISPATCH__\((\d+)/g) || [];
+  const uniqueCmds = new Set(cmdMatches.map(m => m.match(/\d+/)?.[0]));
+  const cmdCount = cmdMatches.length;
+  const loopCount = (code.match(/\bfor\s*\(/g) || []).length + (code.match(/\bwhile\s*\(/g) || []).length;
+  const condCount = (code.match(/\bif\s*\(/g) || []).length;
+  const delayCount = (code.match(/wait\(\d+\)/g) || []).length;
+
+  // Real heuristic scoring based on what is actually in the program
+  let score = 35;
+  const positives: string[] = [];
+  const tips: string[] = [];
+
+  if (cmdCount >= 1) { score += 15; positives.push(`برنامجك يرسل ${Math.min(cmdCount, 20).toLocaleString('en-US')} أمراً حقيقياً للروبوت عبر BLE ترجمةً لبلوكاتك`); }
+  if (uniqueCmds.size >= 2) { score += 8; positives.push(`استخدمت ${uniqueCmds.size} أوامر مختلفة (تشويق وتنوع في البرنامج)`); }
+  if (uniqueCmds.size >= 4) { score += 7; positives.push('تنويع ممتاز بين حركة الروبوت والأضواء والأصوات'); }
+  if (loopCount >= 1) { score += 12; positives.push('أحسنت! استخدمت حلقة تكرار لتقليل تكرار الكتل المكررة (توفير ذاكرة الـ ESP32)'); }
+  else { tips.push('جرّب استخدام كتلة «التكرار» بدل تكرار نفس الكتل عدة مرات لتقصير برنامجك'); }
+  if (condCount >= 1) { score += 9; positives.push('استخدام جيد للشروط في الأحداث الشرطية'); }
+  else { tips.push('فكّر بإضافة كتلة شرطية «عندما...» لتجعل الروبوت يقرر بنفسه (ذكاء صناعي بسيط!)'); }
+  if (delayCount >= 1) { score += 6; positives.push('أضفت فترات انتظار مناسبة بين الأوامر ليتنفس الروبوت'); }
+  else if (cmdCount >= 4) { tips.push('أضف كتلة «انتظار» بين الأوامر المتتالية حتى يظهر أثر كل أمر بوضوح'); }
+  if (cmdCount >= 6) { score += 5; tips.push('برنامج طموح! جرّب حفظه في مساحة مشروعك ثم تصميم سيناريو جديد'); }
+  else { tips.push('هل يمكنك إضافة خطوة جديدة (نغمة أو ضوء) ليجعل برنامجك أكثر إبداعاً؟'); }
+
+  score = Math.min(100, Math.max(0, score));
+  const grade =
+    score >= 90 ? 'ممتاز وذكي جداً! 🌟' :
+    score >= 70 ? 'جيد جداً، استمر بالإبداع! 🚀' :
+    score >= 45 ? 'بداية رائعة، جرب التحسينات التالية!' : 'خطوة أولى طيبة، أكمل البرنامج!';
+
+  return {
+    score,
+    grade,
+    positives: positives.length ? positives.slice(0, 4) : ['برنامجك يعمل — خطوة أولى جيدة!'],
+    tips: tips.length ? tips.slice(0, 3) : ['فكر بسيناريو أكبر يدمج الحساسات والحركة معاً!']
+  };
+}
+
 export const AICodeReviewerModal: React.FC = () => {
   const [analyzing, setAnalyzing] = useState(false);
-  const [reviewResult, setReviewResult] = useState<{
-    score: number;
-    positives: string[];
-    tips: string[];
-    grade: string;
-  }>({
-    score: 95,
-    grade: 'ممتاز وذكي جداً! 🌟',
-    positives: [
-      'استخدام منظم لحلقات التكرار لتوفير استهلاك الذاكرة في الـ ESP32',
-      'تزامن ممتاز بين حركة المحركات وإشارات الليدات الضوئية',
-      'بناء منطقي سليم للأحداث الشرطية عند استشعار الحواجز'
-    ],
-    tips: [
-      'يمكنك إضافة نغمة تحذيرية صوتية قصيرة قبل دوران المحرك لزيادة الأمان للأطفال',
-      'جرب تقليل زمن الانتظار بمقدار 100ms لاستجابة أسرع للروبوت'
-    ]
+  const [reviewResult, setReviewResult] = useState<ReviewResult>({
+    score: 0,
+    grade: 'لم يُحلل بعد 🧠',
+    positives: ['اضغط «فحص كود الطالب» لتحليل البرنامج الحالي في مساحة العمل'],
+    tips: ['شغّل برنامجك من مساحة البلوكات أولاً، ثم اضغط الفحص هنا']
   });
+  const mountedRef = useRef(true);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const handleRunAnalysis = () => {
+    if (analyzing) return;
     setAnalyzing(true);
     SoundFXManager.playRobotChirp();
 
-    setTimeout(() => {
+    timerRef.current = window.setTimeout(() => {
+      if (!mountedRef.current) return;
+      const code = (window as any).__LAST_STUDENT_CODE__ || '';
+      const result = analyzeStudentCode(code);
+      setReviewResult(result);
       setAnalyzing(false);
+      if (result.score <= 0) return;
       SoundFXManager.playVictory();
       confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
-    }, 1200);
+    }, 800);
   };
 
   return (

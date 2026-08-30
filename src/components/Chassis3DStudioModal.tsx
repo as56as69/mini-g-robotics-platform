@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { RobotModelType, ROBOT_MODELS } from '../types/robot';
 import { Box, Download, Layers, Sparkles, Check, Sliders, Palette } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -8,6 +8,97 @@ interface Props {
   model: RobotModelType;
 }
 
+// ---- Real ASCII-STL generator that reflects every studio customization ----
+function buildChassisSTL(params: {
+  headShape: 'rounded' | 'cubical' | 'cylinder';
+  antennaStyle: 'single' | 'dual' | 'dish';
+  wheelSize: number;
+  hasWheels: boolean;
+}): string {
+  const facets: string[] = [];
+  const addTri = (a: number[], b: number[], c: number[]) => {
+    facets.push(
+      `  facet normal 0 0 0\n    outer loop\n` +
+      `      vertex ${a[0]} ${a[1]} ${a[2]}\n` +
+      `      vertex ${b[0]} ${b[1]} ${b[2]}\n` +
+      `      vertex ${c[0]} ${c[1]} ${c[2]}\n` +
+      `    endloop\n  endfacet`
+    );
+  };
+
+  const addBox = (cx: number, cy: number, cz: number, w: number, h: number, d: number) => {
+    const x0 = cx - w / 2, y0 = cy - d / 2, z0 = cz - h / 2;
+    const x1 = cx + w / 2, y1 = cy + d / 2, z1 = cz + h / 2;
+    const v = (x: number, y: number, z: number) => [x, y, z];
+    const quad = (p: number[][]) => {
+      addTri(p[0], p[1], p[2]); addTri(p[0], p[2], p[3]);
+    };
+    quad([v(x0,y0,z0), v(x1,y0,z0), v(x1,y1,z0), v(x0,y1,z0)]); // bottom
+    quad([v(x0,y0,z1), v(x0,y1,z1), v(x1,y1,z1), v(x1,y0,z1)]); // top
+    quad([v(x0,y0,z0), v(x0,y1,z0), v(x0,y1,z1), v(x0,y0,z1)]); // x-
+    quad([v(x1,y0,z0), v(x1,y0,z1), v(x1,y1,z1), v(x1,y1,z0)]); // x+
+    quad([v(x0,y0,z0), v(x0,y0,z1), v(x1,y0,z1), v(x1,y0,z0)]); // y-
+    quad([v(x0,y1,z0), v(x1,y1,z0), v(x1,y1,z1), v(x0,y1,z1)]); // y+
+  };
+
+  const addCylinderZ = (cx: number, cy: number, cz: number, r: number, h: number, seg = 16) => {
+    const ring = (z: number) =>
+      Array.from({ length: seg }, (_, i) => {
+        const a = (i / seg) * Math.PI * 2;
+        return [cx + Math.cos(a) * r, cy + Math.sin(a) * r, z];
+      });
+    const ring0 = ring(cz), ring1 = ring(cz + h);
+    for (let i = 0; i < seg; i++) {
+      const j = (i + 1) % seg;
+      addTri(ring0[i], ring0[j], ring1[j]);
+      addTri(ring0[i], ring1[j], ring1[i]);
+    }
+    for (let i = 1; i < seg - 1; i++) {
+      addTri([cx, cy, cz], ring0[i], ring0[i + 1]);
+      addTri([cx, cy, cz + h], ring1[i + 1], ring1[i]);
+    }
+  };
+
+  const axis = params.headShape === 'rounded' ? [96, 84, 118] : params.headShape === 'cubical' ? [88, 96, 108] : [null, null, 116];
+
+  // Desktop base
+  addBox(0, 0, 6, 84, 12, 74);
+
+  // Head / body per selected shape
+  const bodyCz = 6 + (axis[2] ?? 0) / 2;
+  if (params.headShape === 'cylinder') {
+    addCylinderZ(0, 0, 6, 42, axis[2] as number, 20);
+  } else {
+    addBox(0, 0, bodyCz, axis[0] as number, axis[2] as number, axis[1] as number);
+  }
+
+  // Face display window
+  addBox(0, 0, (axis[2] ?? 0) * 0.66, 52, 40, 5);
+
+  // Antennas per style
+  const topZ = (axis[2] ?? 0) + 6;
+  if (params.antennaStyle === 'dual') {
+    addCylinderZ(-40, -30, topZ, 3.5, 46, 10);
+    addCylinderZ(40, -30, topZ, 3.5, 46, 10);
+    addBox(0, 0, topZ + 46, 74, 26, 8);
+  } else if (params.antennaStyle === 'single') {
+    addCylinderZ(0, -30, topZ, 4, 66, 10);
+    addBox(0, 0, topZ + 66, 16, 16, 16);
+  } else {
+    addCylinderZ(0, -30, topZ, 4, 40, 10);
+    addBox(0, 0, topZ + 40, 78, 12, 26);
+  }
+
+  // Wheels (only for the wheeled model; size follows the slider)
+  if (params.hasWheels) {
+    const r = params.wheelSize / 2;
+    addCylinderZ(-52, 0, 6, r, 18, 18);
+    addCylinderZ(52, 0, 6, r, 18, 18);
+  }
+
+  return `solid mini_g_custom_chassis_${params.headShape}_${params.antennaStyle}\n${facets.join('\n')}\nendsolid mini_g_custom_chassis\n`;
+}
+
 export const Chassis3DStudioModal: React.FC<Props> = ({ model }) => {
   const modelInfo = ROBOT_MODELS[model];
   const [headShape, setHeadShape] = useState<'rounded' | 'cubical' | 'cylinder'>('rounded');
@@ -15,35 +106,46 @@ export const Chassis3DStudioModal: React.FC<Props> = ({ model }) => {
   const [antennaStyle, setAntennaStyle] = useState<'single' | 'dual' | 'dish'>('dual');
   const [wheelSize, setWheelSize] = useState(42);
   const [exporting, setExporting] = useState(false);
+  const timerRef = useRef<number | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const handleExportSTL = () => {
+    if (exporting) return;
     SoundFXManager.playRobotChirp();
     setExporting(true);
 
-    setTimeout(() => {
-      // Generate a mock ASCII STL 3D file for 3D printing
-      const stlContent = `solid mini_g_custom_chassis
-  facet normal 0.0 0.0 1.0
-    outer loop
-      vertex 0.0 0.0 0.0
-      vertex 10.0 0.0 0.0
-      vertex 10.0 10.0 0.0
-    endloop
-  endfacet
-endsolid mini_g_custom_chassis`;
+    timerRef.current = window.setTimeout(() => {
+      if (!mountedRef.current) return;
+      const stlContent = buildChassisSTL({
+        headShape,
+        antennaStyle,
+        wheelSize,
+        hasWheels: model === 'mini_g'
+      });
 
       const blob = new Blob([stlContent], { type: 'model/stl' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${model}_custom_chassis_3d.stl`;
+      a.download = `${model}_chassis_${headShape}_${antennaStyle}_w${wheelSize}mm.stl`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      // Delay revoking so the download is not interrupted in strict browsers
+      window.setTimeout(() => URL.revokeObjectURL(url), 3000);
 
       setExporting(false);
       SoundFXManager.playVictory();
       confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
-    }, 1000);
+    }, 600);
   };
 
   return (
@@ -166,6 +268,25 @@ endsolid mini_g_custom_chassis`;
               ))}
             </div>
           </div>
+
+          {/* Wheel Size Slider (only for the wheeled robot) */}
+          {model === 'mini_g' && (
+            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col gap-1.5">
+              <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+                <span>قطر العجلات: <strong className="text-cyan-300">{wheelSize}mm</strong></span>
+              </span>
+              <input
+                type="range"
+                min={30}
+                max={70}
+                value={wheelSize}
+                onChange={e => { SoundFXManager.playClickBeep(); setWheelSize(Number(e.target.value)); }}
+                className="w-full accent-cyan-500"
+              />
+              <span className="text-[10px] text-slate-500">30mm — 70mm (لعجلات الحركة التفاضلية)</span>
+            </div>
+          )}
 
           {/* Color Palette */}
           <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col gap-1.5">

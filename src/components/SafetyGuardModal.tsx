@@ -1,18 +1,36 @@
 import React, { useState } from 'react';
-import { Shield, Lock, Eye, CheckCircle2, AlertTriangle, Key, Users, Sparkles } from 'lucide-react';
+import { Shield, Lock, Eye, CheckCircle2, AlertTriangle, Key, Users, Sparkles, Hammer, Bell } from 'lucide-react';
 import { SoundFXManager } from '../ble/SoundFX';
+import { safetyManager } from '../ble/SafetyManager';
+
+type DevField =
+  | 'voiceSafeFilter'
+  | 'bleRestricted'
+  | 'maxVolumeLimit'
+  | 'studentCodeExportAllowed'
+  | 'save';
+
+const FIELD_LABELS: Record<DevField, string> = {
+  voiceSafeFilter: 'فلتر الأمان الصوتي والذكاء الاصطناعي',
+  bleRestricted: 'حظر الأجهزة غير المعرفة بالفصل',
+  maxVolumeLimit: 'الحد الأقصى لمستوى صوت الروبوت',
+  studentCodeExportAllowed: 'السماح بتصدير وحفظ الأكواد',
+  save: 'حفظ وتأمين الفصل',
+};
 
 export const SafetyGuardModal: React.FC = () => {
-  const [bleRestricted, setBleRestricted] = useState(false);
-  const [voiceSafeFilter, setVoiceSafeFilter] = useState(true);
-  const [maxVolumeLimit, setMaxVolumeLimit] = useState(80);
-  const [studentCodeExportAllowed, setStudentCodeExportAllowed] = useState(true);
-  const [saveNotify, setSaveNotify] = useState(false);
+  const initial = safetyManager.get();
+  const [bleRestricted, setBleRestricted] = useState(initial.bleRestricted);
+  const [voiceSafeFilter, setVoiceSafeFilter] = useState(initial.voiceSafeFilter);
+  const [maxVolumeLimit, setMaxVolumeLimit] = useState(initial.maxVolumeLimit);
+  const [studentCodeExportAllowed, setStudentCodeExportAllowed] = useState(initial.studentCodeExportAllowed);
+  const [devToast, setDevToast] = useState<string | null>(null);
 
-  const handleSaveSettings = () => {
+  const showDev = (field: DevField) => {
     SoundFXManager.playClickBeep();
-    setSaveNotify(true);
-    setTimeout(() => setSaveNotify(false), 2000);
+    setDevToast(`قيد التطوير 🚧 — ${FIELD_LABELS[field]}`);
+    window.clearTimeout((showDev as any)._t);
+    (showDev as any)._t = window.setTimeout(() => setDevToast(null), 2600);
   };
 
   return (
@@ -28,9 +46,9 @@ export const SafetyGuardModal: React.FC = () => {
           </div>
         </div>
 
-        <span className="text-xs bg-emerald-500/20 text-emerald-300 font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
-          <Lock className="w-3.5 h-3.5" />
-          <span>حماية مشددة للأطفال 🛡️</span>
+        <span className="text-xs bg-amber-500/20 text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1">
+          <Hammer className="w-3.5 h-3.5" />
+          <span>قيد التطوير 🚧</span>
         </span>
       </div>
 
@@ -46,13 +64,13 @@ export const SafetyGuardModal: React.FC = () => {
             <input
               type="checkbox"
               checked={voiceSafeFilter}
-              onChange={e => setVoiceSafeFilter(e.target.checked)}
+              onChange={e => { setVoiceSafeFilter(e.target.checked); showDev('voiceSafeFilter'); }}
               className="w-4 h-4 rounded text-emerald-600 cursor-pointer mt-1"
             />
           </div>
-          <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" />
-            <span>نظام Kid-Safe AI Prompt نشط</span>
+          <span className="text-[10px] text-amber-400 font-bold flex items-center gap-1">
+            <Hammer className="w-3 h-3" />
+            <span>قيد التطوير</span>
           </span>
         </div>
 
@@ -66,11 +84,14 @@ export const SafetyGuardModal: React.FC = () => {
             <input
               type="checkbox"
               checked={bleRestricted}
-              onChange={e => setBleRestricted(e.target.checked)}
+              onChange={e => { setBleRestricted(e.target.checked); showDev('bleRestricted'); }}
               className="w-4 h-4 rounded text-emerald-600 cursor-pointer mt-1"
             />
           </div>
-          <span className="text-[10px] text-slate-400">تأمين شبكة BLE GATT</span>
+          <span className="text-[10px] text-amber-400 font-bold flex items-center gap-1">
+            <Hammer className="w-3 h-3" />
+            <span>قيد التطوير</span>
+          </span>
         </div>
 
         {/* Toggle 3: Max Volume Limit */}
@@ -84,7 +105,7 @@ export const SafetyGuardModal: React.FC = () => {
             min="20"
             max="100"
             value={maxVolumeLimit}
-            onChange={e => setMaxVolumeLimit(Number(e.target.value))}
+            onChange={e => { setMaxVolumeLimit(Number(e.target.value)); showDev('maxVolumeLimit'); }}
             className="w-full accent-emerald-500 cursor-pointer"
           />
         </div>
@@ -99,11 +120,14 @@ export const SafetyGuardModal: React.FC = () => {
             <input
               type="checkbox"
               checked={studentCodeExportAllowed}
-              onChange={e => setStudentCodeExportAllowed(e.target.checked)}
+              onChange={e => { setStudentCodeExportAllowed(e.target.checked); showDev('studentCodeExportAllowed'); }}
               className="w-4 h-4 rounded text-emerald-600 cursor-pointer mt-1"
             />
           </div>
-          <span className="text-[10px] text-indigo-400 font-bold">متاح لجميع حسابات الطلاب</span>
+          <span className="text-[10px] text-amber-400 font-bold flex items-center gap-1">
+            <Hammer className="w-3 h-3" />
+            <span>قيد التطوير</span>
+          </span>
         </div>
       </div>
 
@@ -113,13 +137,21 @@ export const SafetyGuardModal: React.FC = () => {
           يتم تطبيق إعدادات الأمان على كافة أجهزة المعمل المشتركة
         </span>
         <button
-          onClick={handleSaveSettings}
+          onClick={() => showDev('save')}
           className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-xs transition shadow active:scale-95 flex items-center gap-1.5"
         >
-          {saveNotify && <CheckCircle2 className="w-4 h-4" />}
-          <span>{saveNotify ? 'تم الحفظ وتطبيق الأمان!' : 'حفظ وتأمين الفصل 🔒'}</span>
+          <Lock className="w-4 h-4" />
+          <span>حفظ وتأمين الفصل 🔒</span>
         </button>
       </div>
+
+      {/* Dev toast */}
+      {devToast && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[10000] bg-slate-950/95 border border-amber-500/50 text-amber-200 text-xs font-black px-4 py-2.5 rounded-2xl shadow-2xl shadow-amber-500/20 backdrop-blur whitespace-nowrap max-w-[92vw] text-center flex items-center gap-2">
+          <Bell className="w-4 h-4 text-amber-400" />
+          <span>{devToast}</span>
+        </div>
+      )}
     </div>
   );
 };

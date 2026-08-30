@@ -138,11 +138,15 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
   // Handle expansion / resize updates
   useEffect(() => {
     closeOpenPopups();
-    if (workspaceRef.current) {
-      setTimeout(() => {
-        Blockly.svgResize(workspaceRef.current!);
-      }, 150);
-    }
+    const ws = workspaceRef.current;
+    if (!ws) return;
+    // Guard: cancel if unmounted, and only resize if the same (still-alive) workspace
+    const timer = window.setTimeout(() => {
+      if (workspaceRef.current === ws) {
+        Blockly.svgResize(ws);
+      }
+    }, 150);
+    return () => window.clearTimeout(timer);
   }, [isExpanded]);
 
   useEffect(() => {
@@ -164,6 +168,8 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
     closeOpenPopups();
     SoundFXManager.playRobotChirp();
     const code = javascriptGenerator.workspaceToCode(workspaceRef.current);
+    // Expose the student's actual generated program for the AI Code Reviewer
+    (window as any).__LAST_STUDENT_CODE__ = code;
     if (onCodeRun) onCodeRun();
 
     try {

@@ -33,11 +33,17 @@ void handleCommand(uint8_t cmd, uint8_t* data, size_t len) {
     Serial.printf("[Mini G-M] Neck Servo rotated to: %d deg\n", servoPos);
   }
   else if (cmd == 0x22 && len >= 2) {
-    // 0x22: Play Melody Tone [Frequency, Duration]
+    // 0x22: Play Melody Tone [Freq/10, Duration_blocks]
+    // PWA sends frequency ÷10 (same scale as the simulator); each "block" = 100ms
     uint16_t freq = data[0] * 10;
-    uint16_t duration = data[1] * 100;
-    tone(PIN_SPEAKER, freq, duration);
-    Serial.printf("[Mini G-M] Playing Tone: %d Hz for %d ms\n", freq, duration);
+    uint16_t durationMs = data[1] * 100;    // matched to the PWA's note grid
+    if (durationMs == 0 || freq == 0) {
+      noTone(PIN_SPEAKER);                  // explicit stop
+      Serial.println("[Mini G-M] Tone stopped");
+    } else {
+      tone(PIN_SPEAKER, freq, min(durationMs, (uint16_t)5000));  // cap at 5s
+      Serial.printf("[Mini G-M] Playing Tone: %d Hz for %d ms\n", freq, durationMs);
+    }
   }
 }
 

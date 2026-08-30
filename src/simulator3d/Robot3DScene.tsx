@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, ContactShadows, Environment } from '@react-three/drei';
+import { OrbitControls, ContactShadows, Environment, Lightformer } from '@react-three/drei';
 import { RobotState } from '../types/robot';
 import { MiniGF3D } from './MiniGF3D';
 import { MiniGM3D } from './MiniGM3D';
@@ -38,8 +38,16 @@ export default function Robot3DScene({ state }: { state: RobotState }) {
       {/* Gentle rim from behind */}
       <directionalLight position={[1, 3, -4]} intensity={0.3} color="#c4b5fd" />
 
-      {/* ==== ENVIRONMENT (soft indoor reflections) ==== */}
-      <Environment preset="apartment" background={false} />
+      {/* ==== ENVIRONMENT (procedural studio — fully offline, no CDN fetch) ==== */}
+      <Environment resolution={256} frames={1}>
+        <group>
+          <Lightformer form="rect" intensity={3.2} color="#e8f6ff" position={[0, 4, -9]} scale={[12, 6, 1]} />
+          <Lightformer form="rect" intensity={1.6} color="#ffffff" position={[-6, 2, 3]} rotation={[0, Math.PI / 2.4, 0]} scale={[8, 4, 1]} />
+          <Lightformer form="rect" intensity={2.2} color="#cfe8ff" position={[6, 1.5, 2]} rotation={[0, -Math.PI / 2.4, 0]} scale={[8, 4, 1]} />
+          <Lightformer form="ring" intensity={1.1} color="#b6a3ff" position={[0, 5, 4]} scale={6} />
+          <Lightformer form="rect" intensity={0.8} color="#0a3b61" position={[0, -4, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[20, 20, 1]} />
+        </group>
+      </Environment>
 
       {/* ==== ROBOT (auto-centered per model) ==== */}
       <group position={[0, -0.15, 0]}>

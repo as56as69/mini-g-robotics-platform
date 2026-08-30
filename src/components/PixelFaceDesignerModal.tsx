@@ -85,8 +85,19 @@ export const PixelFaceDesignerModal: React.FC<Props> = ({ model }) => {
 
   const handleSendToRobot = async () => {
     SoundFXManager.playRobotChirp();
-    // Send 8x8 custom expression command
-    await bleService.sendCommand(CMD_CODES.GM_SET_EXPRESSION, [99]);
+    // Encode the 8x8 design as 8 row bytes (MSB = leftmost pixel, same
+    // encoding as generateHexBytes) and send them as a custom face.
+    const bytes: number[] = [];
+    for (let r = 0; r < 8; r++) {
+      let b = 0;
+      for (let c = 0; c < 8; c++) {
+        if (grid[r][c]) {
+          b |= 1 << (7 - c);
+        }
+      }
+      bytes.push(b);
+    }
+    await bleService.sendCommand(CMD_CODES.GM_SET_EXPRESSION, bytes);
   };
 
   const handleCopyCode = () => {

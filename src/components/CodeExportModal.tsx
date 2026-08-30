@@ -1,15 +1,51 @@
 import React, { useState } from 'react';
 import { RobotModelType, ROBOT_MODELS } from '../types/robot';
 import { Download, Code, Cpu, Copy, Check, FileCode, Play, Sparkles } from 'lucide-react';
+import { pinoutManager } from '../ble/PinoutManager';
+import { safetyManager } from '../ble/SafetyManager';
 
 interface Props {
   model: RobotModelType;
 }
 
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {}
+  try {
+    // Fallback for older / non-secure contexts
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 export const CodeExportModal: React.FC<Props> = ({ model }) => {
   const [lang, setLang] = useState<'cpp' | 'python'>('cpp');
   const [copied, setCopied] = useState(false);
+  const [exportBlocked, setExportBlocked] = useState(false);
   const modelInfo = ROBOT_MODELS[model];
+  const pins = pinoutManager.get(model);
+
+  const isExportAllowed = () => {
+    const allowed = safetyManager.get().studentCodeExportAllowed;
+    if (!allowed) {
+      setExportBlocked(true);
+      setTimeout(() => setExportBlocked(false), 2200);
+    }
+    return allowed;
+  };
 
   const getSourceCode = () => {
     if (lang === 'cpp') {
@@ -18,9 +54,9 @@ export const CodeExportModal: React.FC<Props> = ({ model }) => {
 #include <BLEDevice.h>
 #include <BLEServer.h>
 
-#define PIN_HAPTIC 4
-#define PIN_TOUCH  2
-#define PIN_RGB    8
+#define PIN_HAPTIC ${pins.pinHaptic}
+#define PIN_TOUCH  ${pins.pinTouch}
+#define PIN_RGB    ${pins.pinLed}
 
 void setup() {
   Serial.begin(115200);
@@ -42,8 +78,8 @@ void loop() {
 #include <BLEDevice.h>
 #include <ESP32Servo.h>
 
-#define PIN_SERVO 18
-#define PIN_BUZZER 19
+#define PIN_SERVO  ${pins.pinServo}
+#define PIN_BUZZER ${pins.pinBuzzer}
 
 Servo neckServo;
 
@@ -63,10 +99,10 @@ void loop() {
 #include <BLEDevice.h>
 #include <ESP32Servo.h>
 
-#define PIN_MOTOR_L 14
-#define PIN_MOTOR_R 27
-#define PIN_ARM_L   25
-#define PIN_ARM_R   26
+#define PIN_MOTOR_L ${pins.pinMotorL}
+#define PIN_MOTOR_R ${pins.pinMotorR}
+#define PIN_ARM_L   ${pins.pinArmL}
+#define PIN_ARM_R   ${pins.pinArmR}
 
 Servo armLeft, armRight;
 
@@ -98,13 +134,17 @@ print("Connected to Mini G Live Studio!")
     }
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(getSourceCode());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    if (!isExportAllowed()) return;
+    const copiedOk = await copyTextToClipboard(getSourceCode());
+    if (copiedOk) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleDownload = () => {
+    if (!isExportAllowed()) return;
     const code = getSourceCode();
     const ext = lang === 'cpp' ? 'ino' : 'py';
     const filename = `${model}_firmware.${ext}`;
@@ -113,8 +153,11 @@ print("Connected to Mini G Live Studio!")
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    // Delay revoking so strict browsers do not cancel the download
+    setTimeout(() => URL.revokeObjectURL(url), 2500);
   };
 
   return (

@@ -16,6 +16,13 @@
 #define PIN_TOUCH_SENSOR    2
 #define PIN_RGB_LED         8
 
+// ESP32-C3 has NO capacitive-touch peripheral, so touchRead() is only valid
+// on ESP32-S3 and ESP32 (original). For C3 boards, wire a push-button to
+// PIN_TOUCH_SENSOR (active LOW) and compile with: -DUSE_TOUCH_SENSOR=0
+#ifndef USE_TOUCH_SENSOR
+  #define USE_TOUCH_SENSOR 1
+#endif
+
 BLEServer* pServer = NULL;
 BLECharacteristic* pCharacteristic = NULL;
 bool deviceConnected = false;
@@ -32,7 +39,8 @@ void handleCommand(uint8_t cmd, uint8_t* data, size_t len) {
   } 
   else if (cmd == 0x11 && len >= 1) {
     // 0x11: Trigger Haptic Vibration [Duration_MS]
-    int duration = data[0] * 10;
+    // NOTE: the PWA sends the value in milliseconds already (no *10 scaling)
+    int duration = data[0];
     Serial.printf("[Mini G-F] Vibration Pulse for %d ms\n", duration);
     digitalWrite(PIN_HAPTIC_MOTOR, HIGH);
     delay(duration);
@@ -73,6 +81,9 @@ void setup() {
   Serial.begin(115200);
   pinMode(PIN_HAPTIC_MOTOR, OUTPUT);
   digitalWrite(PIN_HAPTIC_MOTOR, LOW);
+#if !USE_TOUCH_SENSOR
+  pinMode(PIN_TOUCH_SENSOR, INPUT_PULLUP);
+#endif
 
   // Initialize BLE
   BLEDevice::init("Mini-G-F Keychain");
@@ -100,7 +111,7 @@ void setup() {
 }
 
 void loop() {
-  // Touch Sensor check
+#if USE_TOUCH_SENSOR
   int touchVal = touchRead(PIN_TOUCH_SENSOR);
   if (touchVal < 30) { // Touch detected
     Serial.println("[Mini G-F] Touch Event Triggered!");
@@ -110,5 +121,14 @@ void loop() {
     digitalWrite(PIN_HAPTIC_MOTOR, LOW);
     delay(300);
   }
+#else
+  if (digitalRead(PIN_TOUCH_SENSOR) == LOW) { // Button pressed (active LOW)
+    Serial.println("[Mini G-F] Touch (Button) Event Triggered!");
+    digitalWrite(PIN_HAPTIC_MOTOR, HIGH);
+    delay(80);
+    digitalWrite(PIN_HAPTIC_MOTOR, LOW);
+    delay(300);
+  }
+#endif
   delay(50);
 }

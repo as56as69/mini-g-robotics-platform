@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { RobotModelType, ROBOT_MODELS } from '../types/robot';
-import { Sparkles, Heart, Share2, Play, User, Download, Eye } from 'lucide-react';
+import { bleService } from '../ble/BLEManager';
+import { CMD_CODES } from '../ble/Protocol';
+import { Sparkles, Heart, Share2, Play, User, Download, Eye, X, Send } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { SoundFXManager } from '../ble/SoundFX';
 
@@ -51,6 +53,70 @@ const COMMUNITY_PROJECTS: ShowcaseProject[] = [
 export const CommunityShowcaseModal: React.FC = () => {
   const [projects, setProjects] = useState<ShowcaseProject[]>(COMMUNITY_PROJECTS);
   const [likedIds, setLikedIds] = useState<string[]>([]);
+  const [showShareForm, setShowShareForm] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newAuthor, setNewAuthor] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [newRobot, setNewRobot] = useState<RobotModelType>('mini_gm');
+  const [tryId, setTryId] = useState<string | null>(null);
+
+  // Demo scripts per robot model – actually executed on the twin via BLE
+  const PROJECT_DEMO_SCRIPTS: Record<RobotModelType, Array<[number, number[]]>> = {
+    mini_gf: [
+      [CMD_CODES.GF_SET_LED_RGB, [255, 60, 60]],
+      [CMD_CODES.GF_TRIGGER_HAPTIC, [80]],
+      [CMD_CODES.GF_BLINK_LED, [3]]
+    ],
+    mini_gm: [
+      [CMD_CODES.GM_SET_EXPRESSION, [2]],
+      [CMD_CODES.GM_ROTATE_HEAD, [-30]],
+      [CMD_CODES.GM_PLAY_TONE, [88, 2]]
+    ],
+    mini_g: [
+      [CMD_CODES.G_SET_PERSONA, [0]],
+      [CMD_CODES.G_SPEAK_PHRASE, 'أهلاً بكم أيها الأبطال!'] as any,
+      [CMD_CODES.G_DRIVE_MOTORS, [40, 40]]
+    ]
+  };
+
+  const tryProject = async (proj: ShowcaseProject) => {
+    if (tryId) return;
+    setTryId(proj.id);
+    SoundFXManager.playRobotChirp();
+    const actions = PROJECT_DEMO_SCRIPTS[proj.robot] || PROJECT_DEMO_SCRIPTS['mini_gm'];
+    try {
+      for (const [cmd, data] of actions) {
+        await bleService.sendCommand(cmd, data);
+        await new Promise(r => setTimeout(r, 400));
+      }
+      SoundFXManager.playVictory();
+      confetti({ particleCount: 30, spread: 45, origin: { y: 0.7 } });
+    } catch (e) {
+      /* BLE write failure – simulator still handles it */
+    } finally {
+      setTryId(null);
+    }
+  };
+
+  const publishProject = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newAuthor.trim() || !newDesc.trim()) return;
+    SoundFXManager.playVictory();
+    confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+    const project: ShowcaseProject = {
+      id: `p_user_${Date.now()}`,
+      title: newTitle.trim(),
+      author: newAuthor.trim(),
+      avatar: '🎨',
+      robot: newRobot,
+      likes: 0,
+      description: newDesc.trim(),
+      tags: ['نشر حديثاً', ROBOT_MODELS[newRobot].name]
+    };
+    setProjects(prev => [project, ...prev]);
+    setShowShareForm(false);
+    setNewTitle(''); setNewAuthor(''); setNewDesc('');
+  };
 
   const toggleLike = (id: string) => {
     SoundFXManager.playClickBeep();
@@ -86,16 +152,59 @@ export const CommunityShowcaseModal: React.FC = () => {
         </div>
 
         <button
-          onClick={() => {
-            SoundFXManager.playVictory();
-            confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
-          }}
+          onClick={() => { setShowShareForm(v => !v); SoundFXManager.playClickBeep(); }}
           className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-xl text-xs transition shadow active:scale-95"
         >
-          <Share2 className="w-3.5 h-3.5" />
-          <span>+ انشر مشروعي للمعرض 🌟</span>
+          {showShareForm ? <X className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+          <span>{showShareForm ? 'إلغاء' : '+ انشر مشروعي للمعرض 🌟'}</span>
         </button>
       </div>
+
+      {/* Share Form */}
+      {showShareForm && (
+        <form onSubmit={publishProject} className="bg-slate-950 p-4 rounded-2xl border border-amber-500/30 flex flex-col gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              type="text"
+              value={newTitle}
+              onChange={e => setNewTitle(e.target.value)}
+              placeholder="عنوان مشروعك (مثال: روبوت يوقظني صباحاً ⏰)"
+              className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 sm:col-span-2"
+            />
+            <input
+              type="text"
+              value={newAuthor}
+              onChange={e => setNewAuthor(e.target.value)}
+              placeholder="اسمك وعمرك (مثال: سارة أحمد - 9 سنوات)"
+              className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500"
+            />
+            <select
+              value={newRobot}
+              onChange={e => setNewRobot(e.target.value as RobotModelType)}
+              className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
+            >
+              {(Object.keys(ROBOT_MODELS) as RobotModelType[]).map(m => (
+                <option key={m} value={m}>{ROBOT_MODELS[m].name} — {ROBOT_MODELS[m].nameAr}</option>
+              ))}
+            </select>
+          </div>
+          <textarea
+            value={newDesc}
+            onChange={e => setNewDesc(e.target.value)}
+            rows={2}
+            placeholder="اشرح فكرة مشروعك بجملة أو جملتين..."
+            className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 resize-none"
+          />
+          <button
+            type="submit"
+            disabled={!newTitle.trim() || !newAuthor.trim() || !newDesc.trim()}
+            className="self-end flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 disabled:opacity-40 text-slate-950 font-black rounded-xl text-xs transition shadow hover:from-amber-400 hover:to-orange-400 active:scale-95"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>نشر مشروعي 🚀</span>
+          </button>
+        </form>
+      )}
 
       {/* Projects Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -148,12 +257,10 @@ export const CommunityShowcaseModal: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() => {
-                    SoundFXManager.playRobotChirp();
-                    alert(`تم تحميل وبرمجة مشروع: "${proj.title}" في مساحة العمل بنجاح!`);
-                  }}
-                  className="p-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white transition"
-                  title="استيراد وتجربة الكود"
+                  onClick={() => tryProject(proj)}
+                  disabled={tryId !== null}
+                  className={`p-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white transition ${tryId === proj.id ? 'animate-pulse' : ''}`}
+                  title="استيراد وتجربة الكود (تشغيل توضيحي على الروبوت)"
                 >
                   <Play className="w-3.5 h-3.5" />
                 </button>

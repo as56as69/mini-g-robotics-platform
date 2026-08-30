@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { drawFace } from './ScreenFace';
@@ -46,6 +46,12 @@ export function ScreenFace({
     tex.magFilter = THREE.LinearFilter;
     return tex;
   }, [canvas]);
+
+  // Release the GPU texture when the face (or the whole 3D scene) unmounts —
+  // prevents a memory leak on every simulator open/close.
+  useEffect(() => () => {
+    texture.dispose();
+  }, [texture]);
 
   useFrame(() => {
     drawFace(ctx, { expression, t: performance.now(), accent, isTalking });

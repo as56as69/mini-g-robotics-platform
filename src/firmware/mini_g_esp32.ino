@@ -44,9 +44,21 @@ void handleCommand(uint8_t cmd, uint8_t* data, size_t len) {
     uint8_t personaId = data[0];
     Serial.printf("[Mini G] Switching GenAI Persona: %d\n", personaId);
   }
-  else if (cmd == 0x34) {
-    // 0x34: Trigger AI Speech & Lip Sync
-    Serial.println("[Mini G] AI Speech synthesis & Lip Sync started");
+  else if (cmd == 0x34 && len > 0) {
+    // 0x34: AI Speech & Lip Sync with the spoken phrase (UTF-8 text in data)
+    char phrase[128];
+    size_t n = (len < sizeof(phrase) - 1) ? len : sizeof(phrase) - 1;
+    memcpy(phrase, data, n);
+    phrase[n] = '\0';
+    Serial.printf("[Mini G] AI Speech: %s\n", phrase);
+    // Optional: forward phrase to speech module / screen controller here
+  }
+  else if (cmd == 0x35) {
+    // 0x35: Emergency Stop All
+    armLeft.write(0);
+    armRight.write(0);
+    Serial.println("[Mini G] EMERGENCY STOP ALL! Wheels & arms halted.");
+    // Set your motor-driver PWM pins to 0 (stop) here
   }
 }
 

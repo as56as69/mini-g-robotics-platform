@@ -22,20 +22,23 @@ export const Header: React.FC<Props> = ({
   battery,
 }) => {
   const modelInfo = ROBOT_MODELS[activeModel];
-  const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [isFullscreen, setIsFullscreen] = React.useState(() => typeof document !== 'undefined' && !!document.fullscreenElement);
   const [modelDropdownOpen, setModelDropdownOpen] = React.useState(false);
+
+  // Track the REAL fullscreen state (covers Esc exit + rejected requests)
+  React.useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
 
   const isSchool = appMode === 'school_lms';
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
-      setIsFullscreen(true);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-        setIsFullscreen(false);
-      }
+    } else if (document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
     }
   };
 

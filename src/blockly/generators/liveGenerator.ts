@@ -18,7 +18,7 @@ export function initCustomBlockly() {
    ============================================================ */
   javascriptGenerator.forBlock['gf_set_color'] = function (block: any) {
     const color = block.getFieldValue('COLOR');
-    return `await window.__BLE_DISPATCH__(${CMD_CODES.GF_SET_LED_RGB}, "${color}");\n`;
+    return `await window.__BLE_DISPATCH__(${CMD_CODES.GF_SET_LED_RGB}, ${JSON.stringify(color)});\n`;
   };
 
   javascriptGenerator.forBlock['gf_vibrate'] = function (block: any) {
@@ -45,7 +45,9 @@ export function initCustomBlockly() {
 
   javascriptGenerator.forBlock['gm_play_sound'] = function (block: any) {
     const params = block.getFieldValue('SOUND_PARAMS').split(',').map(Number);
-    return `await window.__BLE_DISPATCH__(${CMD_CODES.GM_PLAY_TONE}, [${params[0]}, ${params[1]}]);\n`;
+    // Firmware expects frequency ÷10 (mini_gm_esp32.ino multiplies ×10)
+    const freq = Math.max(1, Math.round((params[0] || 0) / 10));
+    return `await window.__BLE_DISPATCH__(${CMD_CODES.GM_PLAY_TONE}, [${freq}, ${params[1]}]);\n`;
   };
 
   javascriptGenerator.forBlock['gm_set_custom_face'] = function (block: any) {
@@ -81,7 +83,7 @@ export function initCustomBlockly() {
 
   javascriptGenerator.forBlock['g_ai_speak'] = function (block: any) {
     const text = block.getFieldValue('SPEECH_TEXT');
-    return `await window.__BLE_DISPATCH__(${CMD_CODES.G_SPEAK_PHRASE}, "${text}");\n`;
+    return `await window.__BLE_DISPATCH__(${CMD_CODES.G_SPEAK_PHRASE}, ${JSON.stringify(text)});\n`;
   };
 
   initialized = true;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Terminal, Usb, Send, Play, RotateCcw, AlertCircle, CheckCircle2, Wifi } from 'lucide-react';
 
 export const WebSerialConsole: React.FC = () => {
@@ -9,6 +9,16 @@ export const WebSerialConsole: React.FC = () => {
     'يدعم شرائح: ESP32-C3 / S3 / WROOM / NodeMCU'
   ]);
   const [inputCmd, setInputCmd] = useState('');
+  const portRef = useRef<any>(null);
+  const readerRef = useRef<any>(null);
+  const disconnectedRef = useRef(false);
+
+  useEffect(() => () => {
+    // On unmount: cancel the active read + release the lock so the port
+    // never stays permanently locked.
+    disconnectedRef.current = true;
+    try { readerRef.current?.cancel?.(); } catch {}
+  }, []);
 
   const connectSerial = async () => {
     if (!('serial' in navigator)) {
@@ -19,8 +29,10 @@ export const WebSerialConsole: React.FC = () => {
     try {
       const selectedPort = await (navigator as any).serial.requestPort();
       await selectedPort.open({ baudRate: 115200 });
+      portRef.current = selectedPort;
       setPort(selectedPort);
       setConnected(true);
+      disconnectedRef.current = false;
       setLogs(prev => [...prev, '✅ تم الاتصال بنجاح بالـ ESP32 بمعدل 115200 baud']);
 
       // Read loop in background
@@ -32,11 +44,12 @@ export const WebSerialConsole: React.FC = () => {
 
   const readSerialLoop = async (serialPort: any) => {
     const textDecoder = new TextDecoderStream();
-    const readableStreamClosed = serialPort.readable.pipeTo(textDecoder.writable);
+    const readableStreamClosed = serialPort.readable.pipeTo(textDecoder.writable).catch(() => {});
     const reader = textDecoder.readable.getReader();
+    readerRef.current = reader;
 
     try {
-      while (true) {
+      while (!disconnectedRef.current) {
         const { value, done } = await reader.read();
         if (done) break;
         if (value) {
@@ -44,34 +57,49 @@ export const WebSerialConsole: React.FC = () => {
         }
       }
     } catch (e) {
-      console.error('Serial read error:', e);
+      // (e) reader.cancel() from disconnect aborts the pending read – expected
     } finally {
-      reader.releaseLock();
+      try { reader.releaseLock(); } catch {}
+      if (readerRef.current === reader) readerRef.current = null;
     }
   };
 
   const disconnectSerial = async () => {
-    if (port) {
-      try {
-        await port.close();
-      } catch (e) {}
-      setPort(null);
-      setConnected(false);
+    const activePort = portRef.current;
+    if (!activePort) return;
+
+    disconnectedRef.current = true;
+    // Break the pending read first so the stream is unlocked before close()
+    try { await readerRef.current?.cancel(); } catch {}
+    try {
+      await activePort.close();
       setLogs(prev => [...prev, '🔌 تم قطع الاتصال بالمنفذ التسلسلي.']);
+    } catch (e: any) {
+      setLogs(prev => [...prev, `⚠️ تعذر إغلاق المنفذ نظيفاً: ${e.message}`]);
     }
+    readerRef.current = null;
+    portRef.current = null;
+    setPort(null);
+    setConnected(false);
   };
 
   const sendCommand = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputCmd.trim()) return;
 
-    if (port && port.writable) {
+    const activePort = portRef.current;
+    if (activePort && activePort.writable) {
       const textEncoder = new TextEncoder();
-      const writer = port.writable.getWriter();
-      await writer.write(textEncoder.encode(inputCmd + '\n'));
-      writer.releaseLock();
-      setLogs(prev => [...prev, `> ${inputCmd}`]);
-      setInputCmd('');
+      const writer = activePort.writable.getWriter();
+      try {
+        await writer.write(textEncoder.encode(inputCmd + '\n'));
+        setLogs(prev => [...prev, `> ${inputCmd}`]);
+        setInputCmd('');
+      } catch (err: any) {
+        setLogs(prev => [...prev, `❌ فشل الكتابة للمنفذ: ${err.message}`]);
+      } finally {
+        try { writer.releaseLock(); } catch {}
+      }
     } else {
       // Simulation mode
       setLogs(prev => [...prev, `> [افتراضي] ${inputCmd}`, `[ESP32 Response] تم استقبال الأمر: "${inputCmd}" وتطبيقه بنجاح!`]);

@@ -2,8 +2,6 @@ import * as THREE from 'three';
 
 export type FaceExpression = 'happy' | 'surprised' | 'love' | 'sleepy' | 'cool' | 'wink';
 
-let ctx: CanvasRenderingContext2D;
-
 /**
  * Creates the 256x256 canvas used as the robot's live screen face.
  */
@@ -22,7 +20,7 @@ export function drawFace(
   c: CanvasRenderingContext2D,
   opts: { expression: string; t: number; accent: string; isTalking: boolean }
 ) {
-  ctx = c;
+  const ctx = c;
   const { accent, isTalking, t } = opts;
   const expr = opts.expression || 'happy';
 
@@ -53,8 +51,8 @@ export function drawFace(
 
   // ---------- EYES ----------
   if (expr === 'love') {
-    drawHeart(eyeL, eyeY);
-    drawHeart(eyeR, eyeY);
+    drawHeart(ctx, eyeL, eyeY);
+    drawHeart(ctx, eyeR, eyeY);
   } else if (expr === 'sleepy') {
     ctx.strokeStyle = '#7dd3fc';
     ctx.lineWidth = 7;
@@ -87,7 +85,7 @@ export function drawFace(
     ctx.fill();
   } else if (expr === 'surprised') {
     if (isBlinking(t)) {
-      drawClosed(eyeL, eyeR, eyeY);
+      drawClosed(ctx, eyeL, eyeR, eyeY);
     } else {
       for (const ex of [eyeL, eyeR]) {
         const g = ctx.createRadialGradient(ex, eyeY - 6, 4, ex, eyeY, 26);
@@ -102,17 +100,17 @@ export function drawFace(
     }
   } else if (expr === 'wink') {
     if (isBlinking(t)) {
-      drawClosed(eyeL, eyeR, eyeY);
+      drawClosed(ctx, eyeL, eyeR, eyeY);
     } else {
-      drawWink(eyeL, eyeY);
-      drawRound(eyeR, eyeY, accent);
+      drawWink(ctx, eyeL, eyeY);
+      drawRound(ctx, eyeR, eyeY, accent);
     }
   } else {
     if (isBlinking(t)) {
-      drawClosed(eyeL, eyeR, eyeY);
+      drawClosed(ctx, eyeL, eyeR, eyeY);
     } else {
-      drawHappyArc(eyeL, eyeY);
-      drawHappyArc(eyeR, eyeY);
+      drawHappyArc(ctx, eyeL, eyeY);
+      drawHappyArc(ctx, eyeR, eyeY);
     }
   }
 
@@ -156,7 +154,7 @@ function isBlinking(t: number): boolean {
   return (t % 3400) < 140;
 }
 
-function drawClosed(eyeL: number, eyeR: number, eyeY: number) {
+function drawClosed(ctx: CanvasRenderingContext2D, eyeL: number, eyeR: number, eyeY: number) {
   ctx.strokeStyle = '#7dd3fc';
   ctx.lineWidth = 6;
   ctx.lineCap = 'round';
@@ -168,7 +166,7 @@ function drawClosed(eyeL: number, eyeR: number, eyeY: number) {
   ctx.stroke();
 }
 
-function drawHappyArc(x: number, y: number) {
+function drawHappyArc(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.save();
   ctx.strokeStyle = '#7dd3fc';
   ctx.lineWidth = 8;
@@ -181,7 +179,7 @@ function drawHappyArc(x: number, y: number) {
   ctx.restore();
 }
 
-function drawWink(x: number, y: number) {
+function drawWink(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.save();
   ctx.strokeStyle = '#7dd3fc';
   ctx.lineWidth = 7;
@@ -192,7 +190,7 @@ function drawWink(x: number, y: number) {
   ctx.restore();
 }
 
-function drawRound(x: number, y: number, accent: string) {
+function drawRound(ctx: CanvasRenderingContext2D, x: number, y: number, accent: string) {
   const g = ctx.createRadialGradient(x, y - 6, 4, x, y, 24);
   g.addColorStop(0, '#e0f2fe');
   g.addColorStop(0.55, accent);
@@ -203,7 +201,7 @@ function drawRound(x: number, y: number, accent: string) {
   ctx.fill();
 }
 
-function drawHeart(cx: number, cy: number) {
+function drawHeart(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.scale(1.5, 1.5);

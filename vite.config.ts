@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png'],
+      includeAssets: ['robot-icon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
         name: 'منصة ميني جي للروبوتكس والبرمجة',
         short_name: 'Mini G Platform',
@@ -33,6 +33,13 @@ export default defineConfig({
   ],
   server: {
     port: 3000,
-    host: true
+    host: true,
+    proxy: {
+      // School hub API (Express + JSON file server on PORT=3300)
+      '/api': {
+        target: process.env.VITE_API_URL || 'http://localhost:3300',
+        changeOrigin: true
+      }
+    }
   }
 });

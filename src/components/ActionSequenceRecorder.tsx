@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { RobotModelType } from '../types/robot';
 import { bleService } from '../ble/BLEManager';
-import { CMD_CODES } from '../ble/Protocol';
+import { CMD_CODES, BLEProtocol } from '../ble/Protocol';
 import { SoundFXManager } from '../ble/SoundFX';
 import { Film, Play, Square, Circle, RotateCcw, ListPlus, CheckCircle2 } from 'lucide-react';
 
@@ -16,6 +16,19 @@ interface RecordedAction {
   delay: number;
 }
 
+const CMD_LABELS: Record<number, string> = {
+  [CMD_CODES.GF_SET_LED_RGB]: 'وميض لون RGB 🎨',
+  [CMD_CODES.GF_TRIGGER_HAPTIC]: 'نبضة هزاز 📳',
+  [CMD_CODES.GM_SET_EXPRESSION]: 'تعبير عيون 👀',
+  [CMD_CODES.GM_ROTATE_HEAD]: 'التفات رأس 🔄',
+  [CMD_CODES.GM_PLAY_TONE]: 'نغمة لحن 🎵',
+  [CMD_CODES.G_DRIVE_MOTORS]: 'حركة عجلات 🚗',
+  [CMD_CODES.G_SET_ARM_LEFT]: 'ذراع يسرى 🦾',
+  [CMD_CODES.G_SET_ARM_RIGHT]: 'ذراع يمنى 🦾',
+  [CMD_CODES.G_SET_PERSONA]: 'شخصية ذكاء 🤖',
+  [CMD_CODES.G_SPEAK_PHRASE]: 'كلام ذكي 🗣️',
+};
+
 export const ActionSequenceRecorder: React.FC<Props> = ({ model }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -28,6 +41,71 @@ export const ActionSequenceRecorder: React.FC<Props> = ({ model }) => {
   const addQuickAction = (name: string, cmd: number, data: number[]) => {
     SoundFXManager.playClickBeep();
     setSequence(prev => [...prev, { name, cmd, data, delay: 600 }]);
+  };
+
+  // ---- Live Recording: capture every command the student runs (from the
+  // Blockly "Run" dispatch) into the timeline while isRecording is ON.
+  const originalDispatchRef = useRef<any>(null);
+  const wrappedRef = useRef<any>(null);
+  const isWrappedRef = useRef(false);
+  const lastCmdTimeRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    // restore the global dispatch on unmount if we still own the wrapper
+    if (isWrappedRef.current && originalDispatchRef.current && (window as any).__BLE_DISPATCH__ === wrappedRef.current) {
+      (window as any).__BLE_DISPATCH__ = originalDispatchRef.current;
+    }
+  }, []);
+
+  const recordCommand = (cmd: number, param: any) => {
+    let dataBytes: number[] = [];
+    if (typeof param === 'string' && param.startsWith('#')) {
+      dataBytes = BLEProtocol.hexToRgb(param);
+    } else if (Array.isArray(param)) {
+      dataBytes = param;
+    } else if (typeof param === 'number') {
+      dataBytes = [param];
+    } else {
+      return;
+    }
+    const now = Date.now();
+    const delay = lastCmdTimeRef.current ? Math.min(2000, Math.max(100, now - lastCmdTimeRef.current)) : 400;
+    lastCmdTimeRef.current = now;
+    setSequence(prev => [...prev, {
+      name: CMD_LABELS[cmd] || `أمر روبوت #${cmd.toString(16)}`,
+      cmd,
+      data: dataBytes,
+      delay
+    }]);
+    SoundFXManager.playClickBeep();
+  };
+
+  const startRecording = () => {
+    SoundFXManager.playRobotChirp();
+    setSequence([]);
+    lastCmdTimeRef.current = null;
+    const original = (window as any).__BLE_DISPATCH__;
+    if (typeof original === 'function') {
+      originalDispatchRef.current = original;
+      const wrapped = async (cmd: any, param: any) => {
+        recordCommand(cmd, param);
+        return original(cmd, param);
+      };
+      wrappedRef.current = wrapped;
+      (window as any).__BLE_DISPATCH__ = wrapped;
+      isWrappedRef.current = true;
+    }
+    setIsRecording(true);
+  };
+
+  const stopRecording = () => {
+    SoundFXManager.playClickBeep();
+    if (isWrappedRef.current && originalDispatchRef.current && (window as any).__BLE_DISPATCH__ === wrappedRef.current) {
+      (window as any).__BLE_DISPATCH__ = originalDispatchRef.current;
+    }
+    isWrappedRef.current = false;
+    setIsRecording(false);
+    lastCmdTimeRef.current = null;
   };
 
   const playSequence = async () => {
@@ -62,6 +140,20 @@ export const ActionSequenceRecorder: React.FC<Props> = ({ model }) => {
 
         <div className="flex items-center gap-1.5">
           <button
+            onClick={isRecording ? stopRecording : startRecording}
+            className={`flex items-center gap-1 px-3 py-1 rounded-xl text-xs font-bold transition shadow active:scale-95 ${
+              isRecording
+                ? 'bg-red-600 text-white animate-pulse'
+                : 'bg-rose-600/20 text-rose-400 border border-rose-500/30 hover:bg-rose-600/30'
+            }`}
+          >
+            {isRecording ? (
+              <><Square className="w-3.5 h-3.5 fill-current" /><span>إيقاف التسجيل</span></>
+            ) : (
+              <><Circle className="w-3.5 h-3.5 fill-current" /><span>تسجيل 🔴</span></>
+            )}
+          </button>
+          <button
             onClick={playSequence}
             disabled={isPlaying || sequence.length === 0}
             className="flex items-center gap-1 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow active:scale-95"
@@ -78,6 +170,13 @@ export const ActionSequenceRecorder: React.FC<Props> = ({ model }) => {
           </button>
         </div>
       </div>
+
+      {isRecording && (
+        <div className="bg-red-950/40 border border-red-500/40 text-red-300 text-[11px] p-2 rounded-xl flex items-center gap-2">
+          <Circle className="w-3.5 h-3.5 fill-current animate-pulse" />
+          <span>التسجيل مفعّل: شغّل برنامجك من مساحة البلوكات وسيُلتقط كل أمر في السيناريو تلقائياً.</span>
+        </div>
+      )}
 
       {/* Action Sequence Timeline */}
       <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col gap-2 min-h-[90px]">

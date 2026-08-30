@@ -282,3 +282,58 @@ html[data-mode="kid_home"] body::before {
 .active-tab-kid { animation: tabGlowKid 2.2s ease-in-out infinite; }
 .active-tab-school { animation: tabGlowSchool 2.2s ease-in-out infinite; }
 
+/* ===== Print: only the badge / login cards reach the paper ===== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 7mm;
+  }
+
+  html,
+  body {
+    height: auto !important;
+    background: #ffffff !important;
+  }
+  body::before,
+  body::after {
+    display: none !important;
+  }
+
+  .app-viewport-wrapper {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+  /* hide the app chrome (header / noise) — only the badge print host survives */
+  .app-viewport-wrapper > :not(.print-wrap-host) {
+    display: none !important;
+  }
+  .print-wrap-host {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+  }
+  .print-wrap-host > :not(.print-area) {
+    display: none !important;
+  }
+
+  .print-area {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+  .print-area > * {
+    max-width: none !important;
+  }
+  .print-hide {
+    display: none !important;
+  }
+  .print-area * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+

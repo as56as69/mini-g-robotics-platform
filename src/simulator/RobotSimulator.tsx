@@ -309,6 +309,20 @@ function drawMiniGM(ctx: CanvasRenderingContext2D, cx: number, cy: number, state
   ctx.lineWidth = 2;
   ctx.stroke();
 
+  // Custom skin tint from the Costume Studio (visible on the digital twin)
+  const skin = state.costumeSkinColor || '#38bdf8';
+  if (skin !== '#38bdf8') {
+    ctx.globalAlpha = 0.16;
+    ctx.fillStyle = skin;
+    roundRect(ctx, -70, -100, 148, 122, 30);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = skin;
+    ctx.lineWidth = 3;
+    roundRect(ctx, -70, -100, 148, 122, 30);
+    ctx.stroke();
+  }
+
   // Top glossy highlight
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
   roundRect(ctx, -58, -92, 84, 26, 13);
@@ -320,7 +334,7 @@ function drawMiniGM(ctx: CanvasRenderingContext2D, cx: number, cy: number, state
   ctx.fill();
 
   // Live expression eyes (with blink)
-  drawExpressionEyes(ctx, state.gm_expression);
+  drawExpressionEyes(ctx, state.gm_expression, state.gm_customFace);
 
   // Antenna ball
   ctx.fillStyle = ACCENT;
@@ -426,7 +440,22 @@ function drawMiniGSpatial(ctx: CanvasRenderingContext2D, x: number, y: number, h
 
 // ------------------- SUB-RENDERERS ------------------- //
 
-function drawExpressionEyes(ctx: CanvasRenderingContext2D, expr: string) {
+function drawExpressionEyes(ctx: CanvasRenderingContext2D, expr: string, customFace?: number[] | null) {
+  // Hand-drawn 8x8 pixel face (from the Pixel Face Designer)
+  if (expr === 'custom' && Array.isArray(customFace) && customFace.length >= 8) {
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#7dd3fc';
+    for (let r = 0; r < 8; r++) {
+      const row = customFace[r];
+      for (let c = 0; c < 8; c++) {
+        if (row & (1 << (7 - c))) {
+          ctx.fillRect(-40 + c * 10, -72 + r * 10, 9, 9);
+        }
+      }
+    }
+    return;
+  }
+
   const blinkCycle = Date.now() % 3400 < 140;
   ctx.shadowColor = '#38bdf8';
   ctx.shadowBlur = 15;

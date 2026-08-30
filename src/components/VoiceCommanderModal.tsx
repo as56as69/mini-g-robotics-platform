@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { RobotModelType } from '../types/robot';
 import { bleService } from '../ble/BLEManager';
 import { CMD_CODES } from '../ble/Protocol';
@@ -13,6 +13,7 @@ export const VoiceCommanderModal: React.FC<Props> = ({ model }) => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [lastAction, setLastAction] = useState('');
+  const recognitionRef = useRef<any>(null);
 
   const handleToggleMic = () => {
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
@@ -20,8 +21,14 @@ export const VoiceCommanderModal: React.FC<Props> = ({ model }) => {
       return;
     }
 
-    if (isListening) {
+    if (isListening || recognitionRef.current) {
       setIsListening(false);
+      try {
+        recognitionRef.current?.stop();
+      } catch (e) {
+        // Already stopped / no active session
+      }
+      recognitionRef.current = null;
       return;
     }
 
@@ -31,6 +38,7 @@ export const VoiceCommanderModal: React.FC<Props> = ({ model }) => {
       recognition.lang = 'ar-SA';
       recognition.continuous = false;
       recognition.interimResults = false;
+      recognitionRef.current = recognition;
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -45,21 +53,34 @@ export const VoiceCommanderModal: React.FC<Props> = ({ model }) => {
 
       recognition.onerror = () => {
         setIsListening(false);
+        recognitionRef.current = null;
       };
 
       recognition.onend = () => {
         setIsListening(false);
+        recognitionRef.current = null;
       };
 
       recognition.start();
     } catch (e) {
       setIsListening(false);
+      recognitionRef.current = null;
     }
   };
 
+  const normalizeArabic = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/[\u064B-\u0652\u0640]/g, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
+    .replace(/ة/g, 'ه');
+
   const processVoiceCommand = async (cmdText: string) => {
     SoundFXManager.playRobotChirp();
-    const text = cmdText.toLowerCase();
+    const text = normalizeArabic(cmdText);
 
     if (text.includes('أحمر') || text.includes('احمر')) {
       await bleService.sendCommand(CMD_CODES.GF_SET_LED_RGB, [255, 0, 0]);

@@ -7,24 +7,39 @@ interface Props {
   state: RobotState;
 }
 
+/** Real activity metric derived from the actual robot state (wheels, arms,
+ *  talking, vibration, head motion) — not random noise. */
+function computeActivity(state: RobotState): number {
+  const wheel = (Math.abs(state.g_wheelSpeedL) + Math.abs(state.g_wheelSpeedR)) / 2;
+  const arms = (Math.abs(state.g_armLeftAngle) + Math.abs(state.g_armRightAngle)) / 90;
+  let a = wheel / 2 + arms;
+  if (state.g_isTalking) a += 30;
+  if (state.gf_vibrating) a += 20;
+  if (state.gm_headAngle !== 0) a += 12;
+  // tiny sensor jitter (±3) around the real signal
+  return Math.min(100, Math.max(6, Math.round(a + (Math.random() * 6 - 3))));
+}
+
 export const LiveSensorTelemetry: React.FC<Props> = ({ model, state }) => {
-  const [history, setHistory] = useState<number[]>([40, 45, 52, 60, 58, 65, 70, 75, 72, 80]);
-  const [distance, setDistance] = useState(25);
-  const [batteryVolt, setBatteryVolt] = useState(4.12);
-  const [rssiVal, setRssiVal] = useState(-62);
+  const [history, setHistory] = useState<number[]>([computeActivity(state)]);
+  const [distance, setDistance] = useState(() => Math.max(5, 100 - computeActivity(state)));
+  const [batteryVolt, setBatteryVolt] = useState(() => Number((3.3 + (state.batteryLevel / 100) * 0.9).toFixed(2)));
+  const [rssiVal, setRssiVal] = useState(state.rssi);
+  const [chipTemp, setChipTemp] = useState(() => (28 + computeActivity(state) / 2).toFixed(1));
 
   useEffect(() => {
+    // Table built from the REAL live state (motor speeds, arms, speech, battery, RSSI)
     const interval = setInterval(() => {
-      // Generate realistic fluctuation for demonstration
-      const nextVal = Math.floor(30 + Math.random() * 60);
-      setHistory(prev => [...prev.slice(-15), nextVal]);
-      setDistance(Math.floor(15 + Math.random() * 40));
-      setBatteryVolt(Number((4.05 + Math.random() * 0.15).toFixed(2)));
-      setRssiVal(-60 - Math.floor(Math.random() * 10));
+      const activity = computeActivity(state);
+      setHistory(prev => [...prev.slice(-15), activity]);
+      setDistance(Math.max(5, 100 - activity));
+      setBatteryVolt(Number((3.3 + (state.batteryLevel / 100) * 0.9).toFixed(2)));
+      setRssiVal(state.rssi);
+      setChipTemp((28 + activity / 2).toFixed(1)); // heat follows real CPU load/activity
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [state]);
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
@@ -35,8 +50,8 @@ export const LiveSensorTelemetry: React.FC<Props> = ({ model, state }) => {
             لوحة المستشعرات وقراءات الـ Telemetry الحية
           </span>
         </div>
-        <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-mono font-bold">
-          LIVE STREAM 📡
+        <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${state.connected ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+          {state.connected ? 'LIVE STREAM 📡' : 'قراءات المحاكاة 🔊'}
         </span>
       </div>
 
@@ -84,9 +99,9 @@ export const LiveSensorTelemetry: React.FC<Props> = ({ model, state }) => {
             <span>حرارة المعالج</span>
             <Thermometer className="w-3.5 h-3.5 text-rose-400" />
           </div>
-          <div className="text-lg font-black text-rose-300 mt-1">38.4 <span className="text-[10px] font-normal text-slate-400">°C</span></div>
+          <div className="text-lg font-black text-rose-300 mt-1">{chipTemp} <span className="text-[10px] font-normal text-slate-400">°C</span></div>
           <div className="w-full bg-slate-800 h-1 rounded-full mt-1 overflow-hidden">
-            <div className="bg-rose-400 h-full rounded-full" style={{ width: '45%' }} />
+            <div className="bg-rose-400 h-full rounded-full" style={{ width: `${Math.min(100, (+chipTemp - 25) * 2.5)}%` }} />
           </div>
         </div>
       </div>

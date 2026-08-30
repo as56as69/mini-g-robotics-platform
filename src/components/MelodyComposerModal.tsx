@@ -26,6 +26,21 @@ const PIANO_NOTES: Note[] = [
   { name: 'دو (C5)', freq: 523.25, color: 'bg-pink-500 hover:bg-pink-400' },
 ];
 
+// One shared AudioContext for the whole studio (per-note contexts leaked before)
+let audioCtx: AudioContext | null = null;
+function getAudioContext(): AudioContext | null {
+  const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+  if (!AudioCtx) return null;
+  if (!audioCtx) {
+    try {
+      audioCtx = new AudioCtx();
+    } catch (e) {
+      return null;
+    }
+  }
+  return audioCtx;
+}
+
 export const MelodyComposerModal: React.FC<Props> = ({ model }) => {
   const [melody, setMelody] = useState<Note[]>([
     PIANO_NOTES[0],
@@ -38,21 +53,26 @@ export const MelodyComposerModal: React.FC<Props> = ({ model }) => {
 
   const playToneLive = (note: Note) => {
     try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.value = note.freq;
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.35);
+      const ctx = getAudioContext();
+      if (ctx) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = note.freq;
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+        osc.onended = () => {
+          osc.disconnect();
+          gain.disconnect();
+        };
+      }
 
-      // Send to ESP32 / Robot
-      const freqScaled = Math.round(note.freq / 10);
+      // Send to ESP32 / Robot (firmware expects frequency ÷10)
+      const freqScaled = Math.max(1, Math.round(note.freq / 10));
       bleService.sendCommand(CMD_CODES.GM_PLAY_TONE, [freqScaled, 3]);
     } catch (e) {}
   };

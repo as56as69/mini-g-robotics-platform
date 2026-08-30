@@ -74,8 +74,11 @@ export interface RobotState {
   gf_vibrating: boolean;
   // Mini G-M State
   gm_expression: string;
+  gm_customFace?: number[] | null;
   gm_headAngle: number;
   gm_isPlayingSound: boolean;
+  // Avatar customization
+  costumeSkinColor: string;
   // Mini G State
   g_wheelSpeedL: number;
   g_wheelSpeedR: number;

@@ -1,0 +1,232 @@
+{
+  "classes": [
+    {
+      "id": "c1",
+      "name": "شعبة الروبوتكس المتقدم (المستوى 1)",
+      "code": "ROBO-101",
+      "grade": "المرحلة الابتدائية العليا",
+      "joinCode": "2048",
+      "activeLesson": "test",
+      "studentsCount": 0,
+      "activeLessonId": "0a59a483-0c81-4218-86ca-2cb1ab77238d"
+    },
+    {
+      "id": "c2",
+      "name": "مختبر الذكاء الاصطناعي والأتمتة (الشعبة ب)",
+      "code": "AI-204",
+      "grade": "المرحلة المتوسطة",
+      "joinCode": "7193",
+      "activeLesson": "التحكم بالمفاصل وشبكات الأعصاب",
+      "studentsCount": 0
+    },
+    {
+      "id": "c3",
+      "name": "فريق الابتكار والمسابقات الوطنية",
+      "code": "PRO-301",
+      "grade": "فريق النخبة التنافسي",
+      "joinCode": "8856",
+      "activeLesson": "تتبع المسار والملاحة الذاتية",
+      "studentsCount": 0
+    },
+    {
+      "id": "47ac463f-eda0-4aa2-8c6f-eef3a8f8ac29",
+      "name": "test",
+      "code": "ROBO-1750",
+      "grade": "الاولى",
+      "joinCode": "5546",
+      "activeLesson": "أساسيات التحكم المنطقي",
+      "studentsCount": 0
+    }
+  ],
+  "students": [
+    {
+      "id": "ec7e0796-eb1d-47fb-bd1c-aee973c97cb4",
+      "name": "زينب حيدر الموسوي",
+      "loginCode": "MG-1723",
+      "secretEmojis": [
+        "🦄",
+        "🤖",
+        "🐬"
+      ],
+      "assignedRobot": "Mini G-M (رفيق المكتب)",
+      "stationId": "Station-01",
+      "classId": "c1",
+      "status": "done",
+      "progress": "أكملت خوارزمية السيرفو",
+      "stars": 0,
+      "xp": 0,
+      "streakDays": 0,
+      "completedQuests": [],
+      "activeModel": "mini_gm",
+      "lastActivity": "2026-08-30T10:30:00.000Z"
+    },
+    {
+      "id": "618ca45d-019a-4c6d-a4e9-61f600bf0499",
+      "name": "أحمد علي السعدي",
+      "loginCode": "MG-4568",
+      "secretEmojis": [
+        "🤖",
+        "🎮",
+        "💎"
+      ],
+      "assignedRobot": "Mini G-F (الميدالية)",
+      "stationId": "Station-02",
+      "classId": "c1",
+      "status": "done",
+      "progress": "لم يبدأ بعد",
+      "stars": 0,
+      "xp": 0,
+      "streakDays": 0,
+      "completedQuests": [],
+      "activeModel": "mini_gm",
+      "lastActivity": "2026-08-30T07:44:10.631Z"
+    },
+    {
+      "id": "b5ec3b8c-792e-4d48-b614-09bdb7c2bac9",
+      "name": "جويسم الذكي",
+      "loginCode": "MG-1277",
+      "secretEmojis": [
+        "🐬",
+        "⚡",
+        "🦁"
+      ],
+      "assignedRobot": "Mini G-M (رفيق المكتب)",
+      "stationId": "Station-01",
+      "classId": "47ac463f-eda0-4aa2-8c6f-eef3a8f8ac29",
+      "status": "done",
+      "progress": "لم يبدأ بعد",
+      "stars": 0,
+      "xp": 0,
+      "streakDays": 0,
+      "completedQuests": [],
+      "activeModel": "mini_gm",
+      "lastActivity": "2026-08-30T07:38:10.159Z",
+      "certificates": [
+        {
+          "id": "e1540c27-e882-421b-ab78-62effe0bc942",
+          "certNumber": "CERT-7009",
+          "courseName": "الوحدة الأولى: البنية المعمارية للروبوت والمستشعرات",
+          "level": "تفوق",
+          "issuedAt": "2026-08-30T15:56:33.406Z"
+        }
+      ]
+    },
+    {
+      "id": "07a04846-5dae-41f2-bb61-2e86651d0956",
+      "name": "زنوبة الحبابة",
+      "loginCode": "MG-2752",
+      "secretEmojis": [
+        "🎮",
+        "⚡",
+        "🦄"
+      ],
+      "assignedRobot": "Mini G-M (رفيق المكتب)",
+      "stationId": "Station-02",
+      "classId": "47ac463f-eda0-4aa2-8c6f-eef3a8f8ac29",
+      "status": "done",
+      "progress": "الوحدة الثانية: التوأم الرقمي والتحكم بمحركات السيرفو",
+      "stars": 6,
+      "xp": 300,
+      "streakDays": 2,
+      "completedQuests": [
+        "u2"
+      ],
+      "activeModel": "mini_gm",
+      "lastActivity": "2026-08-30T07:38:58.727Z"
+    },
+    {
+      "id": "043182ad-3da0-46a7-82b8-de77ab558f39",
+      "name": "حسوني ابة عقل",
+      "loginCode": "MG-5420",
+      "secretEmojis": [
+        "🏆",
+        "⭐",
+        "🦁"
+      ],
+      "assignedRobot": "Mini G-M (رفيق المكتب)",
+      "stationId": "Station-03",
+      "classId": "47ac463f-eda0-4aa2-8c6f-eef3a8f8ac29",
+      "status": "active",
+      "progress": "لم يبدأ بعد",
+      "stars": 0,
+      "xp": 0,
+      "streakDays": 0,
+      "completedQuests": [],
+      "activeModel": "mini_gm",
+      "lastActivity": null
+    }
+  ],
+  "units": [
+    {
+      "id": "u1",
+      "titleAr": "الوحدة الأولى: البنية المعمارية للروبوت والمستشعرات",
+      "descriptionAr": "برمجة ردود الفعل اللحظية واستجابة ليدات الـ RGB لمحفزات مستشعر اللمس الكهروسكوني.",
+      "model": "mini_gf",
+      "difficulty": "مبتدئ",
+      "xpReward": 150,
+      "starsCount": 3,
+      "targetCriteria": {
+        "descriptionAr": "معالجة إشارة الدخل GPIO وتوليد نبضة PWM مع الهابتيك",
+        "targetEvent": "TOUCH_OR_COLOR"
+      },
+      "initialXml": "<xml xmlns=\"http://www.w3.org/1999/xhtml\"><block type=\"gf_set_color\"><field name=\"COLOR\">#22c55e</field></block></xml>",
+      "createdAt": "2026-08-30T00:00:00.000Z",
+      "updatedAt": "2026-08-30T00:00:00.000Z",
+      "protocolCode": "LAB-PROTOCOL-01",
+      "hardwarePins": "WS2812B Data: Pin 8 | Haptic: Pin 4 | Touch: Pin 2",
+      "blocksHint": [
+        "[🎨 لوّن الروبوت بلون: أخضر]",
+        "[📳 هزاز الروبوت: نبضة قصيرة]"
+      ],
+      "worksheetQuestions": []
+    },
+    {
+      "id": "u2",
+      "titleAr": "الوحدة الثانية: التوأم الرقمي والتحكم بمحركات السيرفو",
+      "descriptionAr": "حساب زوايا التوجيه الحركي للرأس (Kinematics) ورسم تعبيرات البكسل على شاشة الـ OLED.",
+      "model": "mini_gm",
+      "difficulty": "متوسط",
+      "xpReward": 300,
+      "starsCount": 3,
+      "targetCriteria": {
+        "descriptionAr": "معايرة زاوية الرأس بدقة 45° ومزامنة الحالة مع المحاكي",
+        "targetEvent": "SERVO_MOTION"
+      },
+      "initialXml": "<xml xmlns=\"http://www.w3.org/1999/xhtml\"><block type=\"gm_set_expression\"><field name=\"EXPRESSION\">0</field></block></xml>",
+      "createdAt": "2026-08-30T00:00:00.000Z",
+      "updatedAt": "2026-08-30T00:00:00.000Z",
+      "protocolCode": "LAB-PROTOCOL-02",
+      "hardwarePins": "Servo PWM: Pin 18 | OLED SDA: 21 / SCL: 22 | Buzzer: 19",
+      "blocksHint": [
+        "[👀 عيون الروبوت: سعيد]",
+        "[🤖 حرّك الرأس: 45 يمين]",
+        "[🎵 تشغيل نغمة: الفوز]"
+      ],
+      "worksheetQuestions": []
+    },
+    {
+      "id": "u3",
+      "titleAr": "الوحدة الثالثة: الملاحة الذاتية وتكامل الذكاء الاصطناعي",
+      "descriptionAr": "خوارزميات القيادة التفاضلية بعجلات الروبوت وربط النماذج التوليدية لتوليد نبرة صوت الخوارزمي.",
+      "model": "mini_g",
+      "difficulty": "بطل",
+      "xpReward": 600,
+      "starsCount": 3,
+      "targetCriteria": {
+        "descriptionAr": "تكامل واجهات GenAI API مع تحريك المفاصل المزدوجة",
+        "targetEvent": "AI_PERSONA_SPEAK"
+      },
+      "initialXml": "<xml xmlns=\"http://www.w3.org/1999/xhtml\"><block type=\"g_drive\"><field name=\"MOTION_SPEED\">60,60</field></block></xml>",
+      "createdAt": "2026-08-30T00:00:00.000Z",
+      "updatedAt": "2026-08-30T00:00:00.000Z",
+      "protocolCode": "LAB-PROTOCOL-03",
+      "hardwarePins": "Motors L/R: Pin 14/27 | Servos: 25/26 | Audio DAC: 22",
+      "blocksHint": [
+        "[🚗 تحرك بالعجلات: للأمام]",
+        "[🦾 حركة الأذرع: رفع اليدين]",
+        "[🎭 شخصية الذكاء: الخوارزمي]"
+      ],
+      "worksheetQuestions": []
+    }
+  ]
+}

@@ -33,26 +33,47 @@ export const KidVisionAIStudioModal: React.FC<Props> = ({ model }) => {
   ]);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState(false);
+
+  // Release the camera whenever this panel unmounts (tab switch, model change)
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, []);
+
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
 
   const toggleCamera = async () => {
     if (isCameraActive) {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-      }
+      stopCamera();
       setIsCameraActive(false);
       setIsClassifying(false);
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
+        setCameraError(false);
         setIsCameraActive(true);
         SoundFXManager.playClickBeep();
       } catch (err) {
-        // Fallback demo mode if camera blocked
-        setIsCameraActive(true);
+        // Do NOT show a fake live feed on failure — surface the permission issue
+        setIsCameraActive(false);
+        setCameraError(true);
       }
     }
   };
@@ -134,6 +155,11 @@ export const KidVisionAIStudioModal: React.FC<Props> = ({ model }) => {
           <div className="relative aspect-video bg-slate-900 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
             {isCameraActive ? (
               <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+            ) : cameraError ? (
+              <div className="text-center text-slate-500 text-xs flex flex-col items-center gap-2">
+                <Camera className="w-8 h-8 text-slate-600" />
+                <span>تعذر الوصول إلى الكاميرا (الإذن مرفوض أو غير متوفر). اسمح بالوصول ثم أعد المحاولة.</span>
+              </div>
             ) : (
               <div className="text-center text-slate-500 text-xs flex flex-col items-center gap-2">
                 <Camera className="w-8 h-8 text-slate-600" />

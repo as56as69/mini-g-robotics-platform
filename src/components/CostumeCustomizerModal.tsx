@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { RobotModelType, ROBOT_MODELS } from '../types/robot';
+import { bleService } from '../ble/BLEManager';
 import { Award, Star, Shirt, Sparkles, Check, Lock, Shield, Zap } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { SoundFXManager } from '../ble/SoundFX';
@@ -30,20 +31,43 @@ const INITIAL_COSTUMES: CostumeItem[] = [
 export const CostumeCustomizerModal: React.FC<Props> = ({ model }) => {
   const modelInfo = ROBOT_MODELS[model];
   const [costumes, setCostumes] = useState<CostumeItem[]>(INITIAL_COSTUMES);
-  const [activeSkinColor, setActiveSkinColor] = useState('#38bdf8');
+  const [activeSkinColor, setActiveSkinColor] = useState(() => {
+    try {
+      return localStorage.getItem('mg_costume_skin') || '#38bdf8';
+    } catch {
+      return '#38bdf8';
+    }
+  });
+  const [lockedNotice, setLockedNotice] = useState<string | null>(null);
 
   const toggleEquip = (id: string) => {
-    SoundFXManager.playClickBeep();
+    const item = costumes.find(c => c.id === id);
+    if (!item) return;
+    if (!item.unlocked) {
+      SoundFXManager.playClickBeep();
+      setLockedNotice(item.name);
+      window.setTimeout(() => setLockedNotice(prev => (prev === item.name ? null : prev)), 2200);
+      return;
+    }
+    const willEquip = !item.equipped;
     setCostumes(prev =>
       prev.map(c => {
-        if (c.id === id) {
-          if (!c.unlocked) return c;
-          return { ...c, equipped: !c.equipped };
-        }
+        if (c.id === id) return { ...c, equipped: willEquip };
         return c;
       })
     );
-    confetti({ particleCount: 40, spread: 50, origin: { y: 0.6 } });
+    SoundFXManager.playClickBeep();
+    if (willEquip) {
+      SoundFXManager.playVictory();
+      confetti({ particleCount: 40, spread: 50, origin: { y: 0.6 } });
+    }
+  };
+
+  const setSkinColor = (col: string) => {
+    SoundFXManager.playClickBeep();
+    setActiveSkinColor(col);
+    // Apply live on the digital twin + persist for next session
+    bleService.setCostumeSkin(col);
   };
 
   return (
@@ -74,10 +98,7 @@ export const CostumeCustomizerModal: React.FC<Props> = ({ model }) => {
           {['#38bdf8', '#a855f7', '#ec4899', '#22c55e', '#f59e0b', '#ef4444', '#ffffff'].map(col => (
             <button
               key={col}
-              onClick={() => {
-                SoundFXManager.playClickBeep();
-                setActiveSkinColor(col);
-              }}
+              onClick={() => setSkinColor(col)}
               style={{ backgroundColor: col }}
               className={`w-7 h-7 rounded-full border-2 transition transform active:scale-95 ${
                 activeSkinColor === col ? 'border-white scale-110 shadow-md shadow-white/30' : 'border-slate-700 hover:scale-105'
@@ -86,6 +107,14 @@ export const CostumeCustomizerModal: React.FC<Props> = ({ model }) => {
           ))}
         </div>
       </div>
+
+      {/* Locked item notice */}
+      {lockedNotice && (
+        <div className="bg-amber-950/50 border border-amber-500/40 text-amber-300 text-[11px] p-2 rounded-xl flex items-center gap-2">
+          <Lock className="w-3.5 h-3.5" />
+          <span>«{lockedNotice}» مقفلة — أكمل تحديات البرمجة حتى بلوغ مستواها لفتحها! 🔓</span>
+        </div>
+      )}
 
       {/* Costumes & Accessories Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">

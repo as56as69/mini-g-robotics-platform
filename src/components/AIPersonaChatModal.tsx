@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { bleService } from '../ble/BLEManager';
 import { CMD_CODES } from '../ble/Protocol';
 import { Send, Bot, Sparkles, Volume2 } from 'lucide-react';
@@ -45,6 +45,14 @@ export const AIPersonaChatModal: React.FC<Props> = ({ activePersona }) => {
   ]);
   const [inputText, setInputText] = useState('');
   const [isReplying, setIsReplying] = useState(false);
+
+  // When the teacher/student switches persona live, reset the conversation
+  // so the greeting matches the new persona (no stale replies carried over).
+  useEffect(() => {
+    setMessages([{ sender: 'bot', text: (PERSONA_INFO[activePersona] || PERSONA_INFO['friendly_bot']).greeting }]);
+    setInputText('');
+    setIsReplying(false);
+  }, [activePersona]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

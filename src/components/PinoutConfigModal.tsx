@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { RobotModelType, ROBOT_MODELS } from '../types/robot';
 import { Settings, Check } from 'lucide-react';
 import { SoundFXManager } from '../ble/SoundFX';
+import { pinoutManager } from '../ble/PinoutManager';
 
 interface Props {
   model: RobotModelType;
@@ -21,22 +22,26 @@ interface PinConfig {
 
 export const PinoutConfigModal: React.FC<Props> = ({ model }) => {
   const modelInfo = ROBOT_MODELS[model];
+  const savedPins = pinoutManager.get(model);
   const [saved, setSaved] = useState(false);
 
   const [pins, setPins] = useState<PinConfig>({
-    pinLed: '8',
-    pinHaptic: '4',
-    pinTouch: '2',
-    pinServo: '18',
-    pinBuzzer: '19',
-    pinMotorL: '14',
-    pinMotorR: '27',
-    pinArmL: '25',
-    pinArmR: '26',
+    pinLed: savedPins.pinLed,
+    pinHaptic: savedPins.pinHaptic,
+    pinTouch: savedPins.pinTouch,
+    pinServo: savedPins.pinServo,
+    pinBuzzer: savedPins.pinBuzzer,
+    pinMotorL: savedPins.pinMotorL,
+    pinMotorR: savedPins.pinMotorR,
+    pinArmL: savedPins.pinArmL,
+    pinArmR: savedPins.pinArmR,
   });
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    // Applied for real: the exported firmware in CodeExportModal reads these
+    // pin numbers from the pinoutManager store.
+    pinoutManager.set(model, pins);
     SoundFXManager.playClickBeep();
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);

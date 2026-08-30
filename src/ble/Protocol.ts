@@ -65,9 +65,17 @@ export class BLEProtocol {
 
   // Helper converters
   static hexToRgb(hex: string): [number, number, number] {
-    let cleanHex = hex.replace('#', '');
-    if (cleanHex.length === 3) {
-      cleanHex = cleanHex.split('').map(c => c + c).join('');
+    let cleanHex = String(hex ?? '').trim();
+    if (cleanHex.startsWith('#')) {
+      cleanHex = cleanHex.slice(1);
+    }
+    // Expand 3-digit (#f00) and 4-digit rgba shorthand (#ef44) to full 6
+    if (cleanHex.length === 3 || cleanHex.length === 4) {
+      cleanHex = cleanHex.split('').map(c => c + c).join('').slice(0, 6);
+    }
+    if (!/^[0-9a-fA-F]{6}$/.test(cleanHex)) {
+      console.warn(`[BLEProtocol] hexToRgb رفض لوناً غير صالح: "${hex}"`);
+      return [0, 0, 0];
     }
     const num = parseInt(cleanHex, 16);
     return [(num >> 16) & 255, (num >> 8) & 255, num & 255];

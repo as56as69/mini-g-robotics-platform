@@ -1,5 +1,6 @@
 import { RobotModelType, RobotState } from '../types/robot';
 import { BLE_CONFIG, BLEProtocol, CMD_CODES } from './Protocol';
+import { safetyManager, isChildSafePhrase, CHILD_SAFE_FALLBACK } from './SafetyManager';
 
 type ConnectionCallback = (connected: boolean, deviceName?: string) => void;
 type StateUpdateCallback = (state: Partial<RobotState>) => void;
@@ -20,8 +21,17 @@ class BLEManager {
     gf_ledColor: '#38bdf8',
     gf_vibrating: false,
     gm_expression: 'happy',
+    gm_customFace: null,
     gm_headAngle: 0,
     gm_isPlayingSound: false,
+    // Avatar customization (persisted skin color from the Costume Studio)
+    costumeSkinColor: (() => {
+      try {
+        return (typeof localStorage !== 'undefined' && localStorage.getItem('mg_costume_skin')) || '#38bdf8';
+      } catch {
+        return '#38bdf8';
+      }
+    })(),
     g_wheelSpeedL: 0,
     g_wheelSpeedR: 0,
     g_armLeftAngle: 0,
@@ -46,6 +56,15 @@ class BLEManager {
   public setModel(model: RobotModelType) {
     this.currentState.model = model;
     this.notifyStateListeners({ model });
+  }
+
+  /** Persists and applies the robot skin color live on the digital twin */
+  public setCostumeSkin(color: string) {
+    try {
+      localStorage.setItem('mg_costume_skin', color);
+    } catch {}
+    this.currentState.costumeSkinColor = color;
+    this.notifyStateListeners({ costumeSkinColor: color });
   }
 
   public onConnectionChange(cb: ConnectionCallback) {
@@ -91,7 +110,16 @@ class BLEManager {
       });
 
       this.device = device;
-      device.addEventListener('gattserverdisconnected', this.handleDisconnect.bind(this));
+      device.addEventListener('gattserverdisconnected', this.handleDisconnect);
+
+      // Teacher's "حظر الأجهزة غير المعرفة": only Mini-G units are allowed.
+      const deviceName = device.name || '';
+      if (safetyManager.get().bleRestricted && !deviceName.startsWith('Mini-G')) {
+        if (device.gatt?.connected) {
+          try { device.gatt.disconnect(); } catch (e) { /* ignore */ }
+        }
+        throw new Error('Device not in the classroom whitelist');
+      }
 
       const server = await device.gatt.connect();
       const service = await server.getPrimaryService(BLE_CONFIG.SERVICE_UUID);
@@ -104,44 +132,90 @@ class BLEManager {
     } catch (err: any) {
       console.error('BLE connection cancelled or failed:', err);
       this.isConnecting = false;
-      // Fallback to virtual simulation
-      this.virtualMode = true;
-      this.notifyConnectionListeners(true, `Virtual ${targetModel || this.currentState.model} (Simulator Only)`);
-      return true;
+      // Virtual fallback only makes sense when the user cancelled the pairing
+      // prompt or Web Bluetooth is unavailable. A genuine hardware/service
+      // failure must NOT be reported as a successful connection (M7).
+      const isUserAction =
+        err?.name === 'NotFoundError' ||
+        err?.name === 'NotAllowedError' ||
+        err?.name === 'SecurityError' ||
+        /use canceled|no matching/i.test(String(err?.message || ''));
+      const usableFallback = !this.isWebBluetoothAvailable() || isUserAction;
+      if (this.device?.gatt?.connected) {
+        try { this.device.gatt.disconnect(); } catch (e) { /* ignore */ }
+      }
+      if (usableFallback) {
+        this.virtualMode = true;
+        this.notifyConnectionListeners(true, `Virtual ${targetModel || this.currentState.model} (Simulator Only)`);
+      } else {
+        this.virtualMode = true; // simulator still usable, but reported as NOT connected
+        this.device = null;
+        this.characteristic = null;
+        this.notifyConnectionListeners(false);
+      }
+      return usableFallback;
     }
   }
 
   public async disconnect() {
     if (this.device && this.device.gatt.connected) {
-      this.device.gatt.disconnect();
+      try { this.device.gatt.disconnect(); } catch (e) { /* ignore */ }
+      // The 'gattserverdisconnected' event will invoke handleDisconnect.
     }
     this.handleDisconnect();
   }
 
-  private handleDisconnect() {
+  private handleDisconnect = (event?: any) => {
+    // Ignore stale disconnect events fired by a previously paired device.
+    if (event && event.target && this.device !== event.target) return;
+    // Idempotent: platform disconnect + manual call must not double-notify (M6).
+    if (!this.device && !this.characteristic) return;
     this.device = null;
     this.characteristic = null;
     this.notifyConnectionListeners(false);
-  }
+  };
 
   /**
    * Send binary command packet to ESP32 / Virtual Engine
    * Accepts either an RGB byte array or a hex string (e.g. "#ff0000")
    */
   public async sendCommand(cmd: number, data: number[] | string = []) {
-    // Only build a binary packet for real BLE when data is numeric
-    if (Array.isArray(data)) {
-      const packet = BLEProtocol.buildPacket(this.currentState.model, cmd, data);
-      if (this.characteristic && this.device?.gatt?.connected) {
-        try {
-          await this.characteristic.writeValue(packet);
-        } catch (err) {
-          console.error('Error sending BLE packet:', err);
-        }
+    // Voice safety filter: block inappropriate speech before it reaches either
+    // the real robot or the virtual twin (the teacher's "فلتر الأمان الصوتي").
+    let effective: number[] | string = data;
+    if (
+      cmd === CMD_CODES.G_SPEAK_PHRASE &&
+      typeof data === 'string' &&
+      safetyManager.get().voiceSafeFilter &&
+      !isChildSafePhrase(data)
+    ) {
+      effective = CHILD_SAFE_FALLBACK;
+    }
+
+    // Build a binary packet for the real ESP32 from numeric data, '#hex'
+    // color strings (→ [r,g,b]), or speech text (→ UTF-8 bytes).
+    const packetData = this.toPacketData(effective);
+    if (packetData && this.characteristic && this.device?.gatt?.connected) {
+      try {
+        const packet = BLEProtocol.buildPacket(this.currentState.model, cmd, packetData);
+        await this.characteristic.writeValue(packet);
+      } catch (err) {
+        console.error('Error sending BLE packet:', err);
       }
     }
-    // 2. Dispatch to Simulator / Virtual State (handles both formats)
-    this.updateVirtualState(cmd, data);
+    // Dispatch to Simulator / Virtual State (keeps the original argument so
+    // string forms like speech text and '#hex' are consumed correctly above)
+    this.updateVirtualState(cmd, effective);
+  }
+
+  private toPacketData(data: number[] | string): number[] | null {
+    if (Array.isArray(data)) return data;
+    if (typeof data !== 'string') return null;
+    if (data.startsWith('#')) {
+      const rgb = BLEProtocol.hexToRgb(data);
+      return rgb.some(v => !Number.isFinite(v)) ? null : [rgb[0] || 0, rgb[1] || 0, rgb[2] || 0];
+    }
+    return Array.from(new TextEncoder().encode(data));
   }
 
   private updateVirtualState(cmd: number, data: number[] | any) {
@@ -173,9 +247,15 @@ class BLEManager {
 
       // Mini G-M
       case CMD_CODES.GM_SET_EXPRESSION: {
+        const isCustomFace = Array.isArray(data) && data.length >= 8;
+        if (isCustomFace) {
+          // 8 bytes = hand-drawn 8x8 pixel face from the Pixel Face Designer
+          this.notifyStateListeners({ gm_expression: 'custom', gm_customFace: data.slice(0, 8) });
+          break;
+        }
         const emotions = ['happy', 'surprised', 'love', 'sleepy', 'cool', 'wink'];
         const expr = emotions[data[0]] || 'happy';
-        this.notifyStateListeners({ gm_expression: expr });
+        this.notifyStateListeners({ gm_expression: expr, gm_customFace: null });
         break;
       }
       case CMD_CODES.GM_ROTATE_HEAD: {
@@ -184,8 +264,10 @@ class BLEManager {
         break;
       }
       case CMD_CODES.GM_PLAY_TONE: {
+        // Firmware contract: frequency is transmitted ÷10 (see mini_gm_esp32.ino),
+        // so the virtual twin multiplies ×10 to keep the same pitch as the device.
         this.notifyStateListeners({ gm_isPlayingSound: true });
-        this.playSynthesizedTone(data[0] || 440, (data[1] || 3) * 100);
+        this.playSynthesizedTone((data[0] || 44) * 10, (data[1] || 3) * 100);
         setTimeout(() => this.notifyStateListeners({ gm_isPlayingSound: false }), (data[1] || 3) * 100);
         break;
       }
@@ -242,8 +324,9 @@ class BLEManager {
       const gain = ctx.createGain();
       osc.type = 'sine';
       osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + (durationMs / 1000));
+      const volume = 0.15 * (safetyManager.get().maxVolumeLimit / 100);
+      gain.gain.setValueAtTime(volume, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(Math.max(0.01, volume * 0.07), ctx.currentTime + (durationMs / 1000));
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();

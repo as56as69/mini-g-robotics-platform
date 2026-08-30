@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { RobotModelType } from '../types/robot';
-import { Cpu, Zap, Activity, ToggleLeft, ToggleRight, Sparkles, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Zap, ToggleLeft, ToggleRight, Hammer, Bell } from 'lucide-react';
 import { SoundFXManager } from '../ble/SoundFX';
 
 interface Props {
@@ -9,16 +9,17 @@ interface Props {
 
 export const InteractiveCircuitSimulatorModal: React.FC<Props> = ({ model }) => {
   const [switchState, setSwitchState] = useState(true);
-  const [resistanceVal, setResistanceVal] = useState(220); // 220 Ohms
-  const [inputVoltage, setInputVoltage] = useState(5.0); // 5V
+  const [devToast, setDevToast] = useState<string | null>(null);
 
-  // Ohm's Law Calculations: I = V / R, P = V * I
-  const currentMA = switchState ? Number(((inputVoltage / resistanceVal) * 1000).toFixed(1)) : 0;
-  const powerMW = switchState ? Number(((inputVoltage * currentMA)).toFixed(1)) : 0;
-  const ledBrightness = switchState ? Math.min(100, Math.max(10, Math.round(currentMA * 4.5))) : 0;
+  const notifyDev = (label: string) => {
+    SoundFXManager.playClickBeep();
+    setDevToast(`قيد التطوير 🚧 — ${label}`);
+    window.clearTimeout((notifyDev as any)._t);
+    (notifyDev as any)._t = window.setTimeout(() => setDevToast(null), 2600);
+  };
 
   const toggleSwitch = () => {
-    SoundFXManager.playClickBeep();
+    notifyDev('مفتاح الدائرة');
     setSwitchState(!switchState);
   };
 
@@ -35,42 +36,50 @@ export const InteractiveCircuitSimulatorModal: React.FC<Props> = ({ model }) => 
           </div>
         </div>
 
-        <button
-          onClick={toggleSwitch}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow active:scale-95 ${
-            switchState
-              ? 'bg-emerald-600 text-white'
-              : 'bg-slate-800 text-slate-400 border border-slate-700'
-          }`}
-        >
-          {switchState ? <ToggleRight className="w-4 h-4 text-emerald-300" /> : <ToggleLeft className="w-4 h-4" />}
-          <span>{switchState ? 'الدائرة مغلقة (تعمل 🟢)' : 'الدائرة مفتوحة (مقطوعة 🔴)'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1">
+            <Hammer className="w-3 h-3" />
+            <span>قيد التطوير 🚧</span>
+          </span>
+          <button
+            onClick={toggleSwitch}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow active:scale-95 ${
+              switchState
+                ? 'bg-emerald-600 text-white'
+                : 'bg-slate-800 text-slate-400 border border-slate-700'
+            }`}
+          >
+            {switchState ? <ToggleRight className="w-4 h-4 text-emerald-300" /> : <ToggleLeft className="w-4 h-4" />}
+            <span>{switchState ? 'الدائرة مغلقة (تعمل 🟢)' : 'الدائرة مفتوحة (مقطوعة 🔴)'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Interactive Circuit Schematic Visualizer */}
-      <div className="bg-slate-950 p-5 rounded-2xl border-2 border-slate-800 flex flex-col items-center justify-center gap-4 relative overflow-hidden min-h-[220px]">
+      <div
+        className="bg-slate-950 p-5 rounded-2xl border-2 border-slate-800 flex flex-col items-center justify-center gap-4 relative overflow-hidden min-h-[220px] cursor-pointer"
+        onClick={() => notifyDev('مخطط الدائرة')}
+      >
         {/* Animated Current Electron Flow */}
         <div className="w-full max-w-md h-32 border-4 border-slate-800 rounded-3xl relative flex items-center justify-between px-6">
           {/* Battery Node */}
-          <div className="flex flex-col items-center gap-1 bg-slate-900 p-2.5 rounded-xl border border-amber-500/40">
+          <div className="flex flex-col items-center gap-1 bg-slate-900 p-2.5 rounded-xl border border-amber-500/40" onClick={(e) => { e.stopPropagation(); notifyDev('بطارية LiPo'); }}>
             <Zap className="w-6 h-6 text-amber-400" />
-            <span className="text-[10px] font-bold text-amber-300">{inputVoltage}V LiPo</span>
+            <span className="text-[10px] font-bold text-amber-300">{model === 'mini_g' ? '7.4V' : '5.0V'} LiPo</span>
           </div>
 
           {/* Resistor Node */}
-          <div className="flex flex-col items-center gap-1 bg-slate-900 p-2.5 rounded-xl border border-indigo-500/40">
+          <div className="flex flex-col items-center gap-1 bg-slate-900 p-2.5 rounded-xl border border-indigo-500/40" onClick={(e) => { e.stopPropagation(); notifyDev('المقاومة (Resistor)'); }}>
             <span className="text-sm font-mono font-bold text-indigo-300">Ω</span>
-            <span className="text-[10px] font-bold text-indigo-300">{resistanceVal} Ω</span>
+            <span className="text-[10px] font-bold text-indigo-300">220 Ω</span>
           </div>
 
           {/* Load LED Node */}
-          <div className="flex flex-col items-center gap-1 bg-slate-900 p-2.5 rounded-xl border border-cyan-500/40">
+          <div className="flex flex-col items-center gap-1 bg-slate-900 p-2.5 rounded-xl border border-cyan-500/40" onClick={(e) => { e.stopPropagation(); notifyDev('ليد RGB'); }}>
             <div
               className={`w-6 h-6 rounded-full transition-all duration-300 ${
                 switchState ? 'bg-cyan-400 shadow-lg shadow-cyan-400' : 'bg-slate-800'
               }`}
-              style={{ filter: `brightness(${ledBrightness}%)` }}
             />
             <span className="text-[10px] font-bold text-cyan-300">RGB LED</span>
           </div>
@@ -78,49 +87,57 @@ export const InteractiveCircuitSimulatorModal: React.FC<Props> = ({ model }) => 
 
         {/* Live Gauges Bar */}
         <div className="grid grid-cols-3 gap-3 w-full text-center text-xs">
-          <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+          <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 cursor-pointer hover:border-amber-500/50 transition" onClick={() => notifyDev('شدة التيار (Current)')}>
             <span className="text-[10px] text-slate-400 block">شدة التيار (Current I):</span>
-            <span className="text-base font-black font-mono text-emerald-400">{currentMA} mA</span>
+            <span className="text-base font-black font-mono text-emerald-400">— mA</span>
           </div>
-          <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+          <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 cursor-pointer hover:border-amber-500/50 transition" onClick={() => notifyDev('القدرة المستهلكة (Power)')}>
             <span className="text-[10px] text-slate-400 block">القدرة المستهلكة (Power P):</span>
-            <span className="text-base font-black font-mono text-amber-400">{powerMW} mW</span>
+            <span className="text-base font-black font-mono text-amber-400">— mW</span>
           </div>
-          <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+          <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 cursor-pointer hover:border-amber-500/50 transition" onClick={() => notifyDev('سطوع الإضاءة')}>
             <span className="text-[10px] text-slate-400 block">سطوع الإضاءة:</span>
-            <span className="text-base font-black font-mono text-cyan-400">{ledBrightness}%</span>
+            <span className="text-base font-black font-mono text-cyan-400">— %</span>
           </div>
         </div>
       </div>
 
       {/* Sliders for Interactive Learning */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs">
-        <div>
-          <label className="text-slate-300 block mb-1 font-bold">تغيير قيمة المقاومة (Resistance): {resistanceVal} أوم</label>
+        <div onClick={() => notifyDev('منزلق المقاومة')} className="cursor-pointer">
+          <label className="text-slate-300 block mb-1 font-bold">تغيير قيمة المقاومة (Resistance): 220 أوم</label>
           <input
             type="range"
             min="100"
             max="1000"
             step="10"
-            value={resistanceVal}
-            onChange={e => setResistanceVal(Number(e.target.value))}
-            className="w-full accent-indigo-500 cursor-pointer"
+            defaultValue={220}
+            className="w-full accent-indigo-500 cursor-not-allowed opacity-50"
+            readOnly
           />
         </div>
 
-        <div>
-          <label className="text-slate-300 block mb-1 font-bold">تغيير جهد البطارية (Voltage): {inputVoltage} فولت</label>
+        <div onClick={() => notifyDev('منزلق الجهد')} className="cursor-pointer">
+          <label className="text-slate-300 block mb-1 font-bold">تغيير جهد البطارية (Voltage): 5.0 فولت</label>
           <input
             type="range"
             min="3.3"
             max="9.0"
             step="0.1"
-            value={inputVoltage}
-            onChange={e => setInputVoltage(Number(e.target.value))}
-            className="w-full accent-amber-500 cursor-pointer"
+            defaultValue={5.0}
+            className="w-full accent-amber-500 cursor-not-allowed opacity-50"
+            readOnly
           />
         </div>
       </div>
+
+      {/* Dev toast */}
+      {devToast && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[10000] bg-slate-950/95 border border-amber-500/50 text-amber-200 text-xs font-black px-4 py-2.5 rounded-2xl shadow-2xl shadow-amber-500/20 backdrop-blur whitespace-nowrap max-w-[92vw] text-center flex items-center gap-2">
+          <Bell className="w-4 h-4 text-amber-400" />
+          <span>{devToast}</span>
+        </div>
+      )}
     </div>
   );
 };

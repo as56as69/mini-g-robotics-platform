@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RobotModelType, ROBOT_MODELS } from '../types/robot';
 import { BlocklyWorkspace } from '../blockly/BlocklyWorkspace';
 import { RobotSimulator } from '../simulator/RobotSimulator';
 import { RobotState } from '../types/robot';
-import { Flame, Star, Trophy, Sparkles, CheckCircle2, Code, Bot, Sliders, Zap, Rocket } from 'lucide-react';
+import type { StudentProfile } from '../types/lms';
+import type { LessonChallenge } from '../types/lms';
+import { Flame, Star, Trophy, Sparkles, CheckCircle2, Code, Bot, Sliders, Zap, Rocket, LogOut, IdCard } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
+import { schoolApi } from '../services/schoolApi';
 import { DirectControlPanel } from './DirectControlPanel';
 import { AIPersonaChatModal } from './AIPersonaChatModal';
 import { CodeExportModal } from './CodeExportModal';
@@ -16,6 +19,7 @@ import { VoiceCommanderModal } from './VoiceCommanderModal';
 import { PinoutConfigModal } from './PinoutConfigModal';
 import { BattleArenaModal } from './BattleArenaModal';
 import { ActionSequenceRecorder } from './ActionSequenceRecorder';
+import { DevOnlyWrapper } from './DevOnlyWrapper';
 import { PixelFaceDesignerModal } from './PixelFaceDesignerModal';
 import { MelodyComposerModal } from './MelodyComposerModal';
 import { TroubleshootingAssistantModal } from './TroubleshootingAssistantModal';
@@ -27,6 +31,7 @@ import { ParentAnalyticsDashboardModal } from './ParentAnalyticsDashboardModal';
 import { Chassis3DStudioModal } from './Chassis3DStudioModal';
 import { NeuralNetworkKidStudioModal } from './NeuralNetworkKidStudioModal';
 import { CommunityShowcaseModal } from './CommunityShowcaseModal';
+import { StudentLoginModal } from './StudentLoginModal';
 import { SoundFXManager } from '../ble/SoundFX';
 
 import { AICodeReviewerModal } from './AICodeReviewerModal';
@@ -46,6 +51,28 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
   // Mobile Split View Switcher: 'code' or 'simulator' on small mobile screens
   const [mobileTab, setMobileTab] = useState<'code' | 'simulator'>('code');
 
+  // ---- Shared student identity (section join code + MG login code) ----
+  type KidSession = { student: StudentProfile; className: string; at: number };
+  const loadKidSession = (): KidSession | null => {
+    try {
+      const raw = localStorage.getItem('mg_student_session');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as KidSession;
+      if (parsed?.student?.id?.startsWith('local_')) return null; // offline journal entries are not real ids
+      if (parsed?.student?.id) return parsed;
+    } catch { /* noop */ }
+    return null;
+  };
+  const [session, setSession] = useState<KidSession | null>(loadKidSession);
+  const [showLogin, setShowLogin] = useState(false);
+  const [selectedQuest, setSelectedQuest] = useState<LessonChallenge | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const notify = (msg: string) => {
+    setToast(msg);
+    window.setTimeout(() => setToast(null), 2400);
+  };
+
   const [activeTabPanel, setActiveTabPanel] = useState<
     'remote' | 'quests' | 'neural_net' | 'showcase' | 'cad_3d' | 'vision_ai' | 
     'circuits' | 'parent_report' | 'wardrobe' | 'pixel_art' | 'melody' | 
@@ -61,6 +88,75 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
       origin: { y: 0.6 },
     });
   };
+
+  const handleQuestSelect = (quest: LessonChallenge) => {
+    setSelectedQuest(quest);
+    triggerCelebration();
+  };
+
+  const handleLinked = (student: StudentProfile, className: string) => {
+    setSession({ student, className, at: Date.now() });
+    setShowLogin(false);
+    triggerCelebration();
+    notify(`أهلاً ${student.name.split(' ')[0]}! دخلتَ إلى سجلك المشترك 🎉`);
+  };
+
+  const logout = () => {
+    try { localStorage.removeItem('mg_student_session'); } catch { /* noop */ }
+    setSession(null);
+    setSelectedQuest(null);
+  };
+
+  const submitChallenge = async () => {
+    if (!session) {
+      setShowLogin(true);
+      notify('سجّل دخولك أولاً لتسليم التحدي 🎫');
+      return;
+    }
+    if (!selectedQuest) {
+      notify('اختر مرحلة من خريطة المغامرات أولاً 🗺️');
+      return;
+    }
+    const { student } = session;
+    if ((student.completedQuests || []).includes(selectedQuest.id)) {
+      triggerCelebration();
+      notify('أنجزتَ هذه المرحلة سابقاً — جرّب مرحلة جديدة 🏅');
+      return;
+    }
+    const patch = {
+      xp: student.xp + selectedQuest.xpReward,
+      stars: student.stars + selectedQuest.starsCount,
+      streakDays: (student.streakDays || 0) + 1,
+      completedQuests: [...(student.completedQuests || []), selectedQuest.id],
+      progress: selectedQuest.titleAr,
+      status: 'done' as const,
+      lastActivity: new Date().toISOString(),
+    };
+    try {
+      const updated = await schoolApi.updateStudent(student.id, patch);
+      setSession(prev => (prev ? { ...prev, student: updated } : prev));
+      triggerCelebration();
+      notify(`تسلّمت ${selectedQuest.xpReward} XP و${selectedQuest.starsCount} نجوم ⭐ Bravo!`);
+    } catch {
+      const optimistic = { ...student, ...patch };
+      setSession(prev => (prev ? { ...prev, student: optimistic } : prev));
+      triggerCelebration();
+      notify('سُجّل محلياً — يُزامَن تلقائياً عند عودة الخادم ⏳');
+    }
+  };
+
+  // Keep the kid's shared profile live (stars/XP may change from another device)
+  const sessionId = session?.student.id;
+  useEffect(() => {
+    if (!sessionId || sessionId.startsWith('local_')) return;
+    const timer = window.setInterval(async () => {
+      try {
+        const fresh = await schoolApi.getStudent(sessionId);
+        setSession(prev => (prev ? { ...prev, student: fresh } : prev));
+      } catch { /* offline — keep current view */ }
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [sessionId]);
 
   return (
     <div className="flex-1 flex flex-col p-2 sm:p-4 md:p-6 gap-3 sm:gap-4 overflow-y-auto bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
@@ -90,18 +186,39 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
 
         {/* Counters & Submit Quest Trigger */}
         <div className="relative z-10 flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 bg-gradient-to-r from-orange-600/30 to-kid-glow/25 px-3 py-1.5 rounded-2xl border border-kid-glow/50 text-orange-200 font-black text-xs shadow-md">
-            <Flame className="w-4 h-4 fill-orange-400 animate-bounce" />
-            <span>حماس 5 أيام متتالية! 🔥</span>
-          </div>
+          {session && session.student.streakDays > 0 && (
+            <div className="flex items-center gap-1.5 bg-gradient-to-r from-orange-600/30 to-kid-glow/25 px-3 py-1.5 rounded-2xl border border-kid-glow/50 text-orange-200 font-black text-xs shadow-md">
+              <Flame className="w-4 h-4 fill-orange-400 animate-bounce" />
+              <span>{session.student.streakDays} {session.student.streakDays === 1 ? 'يوم متتالٍ' : 'أيام متتالية'}! 🔥</span>
+            </div>
+          )}
 
           <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500/30 to-orange-500/25 px-3 py-1.5 rounded-2xl border border-amber-400/60 text-amber-200 font-black text-xs shadow-md">
             <Star className="w-4 h-4 fill-amber-400" />
-            <span>240 نجمة ⭐</span>
+            <span>{session ? session.student.stars : 0} نجمة ⭐</span>
           </div>
 
+          {session ? (
+            <div className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500/20 to-teal-500/15 px-3 py-1.5 rounded-2xl border border-emerald-400/50 text-emerald-200 font-black text-xs shadow-md">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="max-w-[130px] truncate">{session.student.name}</span>
+              <span className="text-emerald-300/80 font-mono text-[10px]">+{session.student.xp} XP</span>
+              <button onClick={logout} title="خروج من الحساب" className="text-emerald-300 hover:text-white transition ml-0.5">
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowLogin(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-md transition active:scale-95"
+            >
+              <IdCard className="w-4 h-4" />
+              دخول الطالب 🎫
+            </button>
+          )}
+
           <button
-            onClick={triggerCelebration}
+            onClick={() => void submitChallenge()}
             className="hero-glow flex items-center gap-1.5 px-4 py-1.5 rounded-2xl bg-gradient-to-r from-kid-glow via-orange-500 to-amber-500 hover:brightness-110 text-white font-black text-xs shadow-lg shadow-kid-glow/50 transition transform active:scale-95"
           >
             <Trophy className="w-4 h-4" />
@@ -329,11 +446,13 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
           )}
 
           {activeTabPanel === 'quests' && (
-            <QuestMapModal model={activeModel} onSelectQuest={triggerCelebration} />
+            <QuestMapModal model={activeModel} onSelectQuest={handleQuestSelect} />
           )}
 
           {activeTabPanel === 'neural_net' && (
-            <NeuralNetworkKidStudioModal model={activeModel} />
+            <DevOnlyWrapper label="الشبكات العصبية">
+              <NeuralNetworkKidStudioModal model={activeModel} />
+            </DevOnlyWrapper>
           )}
 
           {activeTabPanel === 'showcase' && (
@@ -341,11 +460,15 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
           )}
 
           {activeTabPanel === 'cad_3d' && (
-            <Chassis3DStudioModal model={activeModel} />
+            <DevOnlyWrapper label="تصميم الثري دي (3D CAD)">
+              <Chassis3DStudioModal model={activeModel} />
+            </DevOnlyWrapper>
           )}
 
           {activeTabPanel === 'vision_ai' && (
-            <KidVisionAIStudioModal model={activeModel} />
+            <DevOnlyWrapper label="الرؤية الحاسوبية">
+              <KidVisionAIStudioModal model={activeModel} />
+            </DevOnlyWrapper>
           )}
 
           {activeTabPanel === 'circuits' && (
@@ -353,11 +476,15 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
           )}
 
           {activeTabPanel === 'parent_report' && (
-            <ParentAnalyticsDashboardModal />
+            <DevOnlyWrapper label="تقرير ولي الأمر">
+              <ParentAnalyticsDashboardModal />
+            </DevOnlyWrapper>
           )}
 
           {activeTabPanel === 'wardrobe' && (
-            <CostumeCustomizerModal model={activeModel} />
+            <DevOnlyWrapper label="الأزياء وتخصيص الروبوت">
+              <CostumeCustomizerModal model={activeModel} />
+            </DevOnlyWrapper>
           )}
 
           {activeTabPanel === 'pixel_art' && (
@@ -377,7 +504,9 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
           )}
 
           {activeTabPanel === 'ai_tutor' && (
-            <AICodeReviewerModal />
+            <DevOnlyWrapper label="المعلم الذكي">
+              <AICodeReviewerModal />
+            </DevOnlyWrapper>
           )}
 
           {activeTabPanel === 'battle' && (
@@ -385,11 +514,15 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
           )}
 
           {activeTabPanel === 'recorder' && (
-            <ActionSequenceRecorder model={activeModel} />
+            <DevOnlyWrapper label="المسجل">
+              <ActionSequenceRecorder model={activeModel} />
+            </DevOnlyWrapper>
           )}
 
           {activeTabPanel === 'telemetry' && (
-            <LiveSensorTelemetry model={activeModel} state={state} />
+            <DevOnlyWrapper label="الحساسات (Telemetry)">
+              <LiveSensorTelemetry model={activeModel} state={state} />
+            </DevOnlyWrapper>
           )}
 
           {activeTabPanel === 'voice' && (
@@ -467,6 +600,19 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
           </div>
         </div>
       </div>
+
+      {showLogin && (
+        <StudentLoginModal
+          onLinked={handleLinked}
+          onClose={() => setShowLogin(false)}
+        />
+      )}
+
+      {toast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[130] bg-slate-950/95 border border-kid-glow/50 text-white text-xs font-black px-4 py-2.5 rounded-2xl shadow-2xl shadow-kid-glow/20 backdrop-blur whitespace-nowrap max-w-[92vw] text-center">
+          {toast}
+        </div>
+      )}
     </div>
   );
 };

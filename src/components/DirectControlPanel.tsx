@@ -32,7 +32,8 @@ export const DirectControlPanel: React.FC<Props> = ({ model }) => {
   };
 
   const playGMTone = async (freq: number, duration: number) => {
-    await bleService.sendCommand(CMD_CODES.GM_PLAY_TONE, [freq, duration]);
+    // Firmware expects frequency ÷10 (mini_gm_esp32.ino multiplies ×10)
+    await bleService.sendCommand(CMD_CODES.GM_PLAY_TONE, [Math.max(1, Math.round(freq / 10)), duration]);
   };
 
   // Mini G Controls

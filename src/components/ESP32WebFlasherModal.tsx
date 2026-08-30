@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { RobotModelType, ROBOT_MODELS } from '../types/robot';
 import { Cpu, Zap, Download, RefreshCw, CheckCircle2, AlertCircle, HardDrive, Terminal } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -19,40 +19,55 @@ export const ESP32WebFlasherModal: React.FC<Props> = ({ model }) => {
     '[Flasher] متوافق مع معالجات: ESP32-C3, ESP32-S3, ESP32-D0WD'
   ]);
 
-  const handleStartFlashing = async () => {
+  const timersRef = useRef<{ step?: number; finish?: number }>({});
+
+  // Clear any pending timers when the modal unmounts (no setState after die)
+  useEffect(() => () => {
+    window.clearInterval(timersRef.current.step);
+    window.clearTimeout(timersRef.current.finish);
+    timersRef.current = {};
+  }, []);
+
+  const handleStartFlashing = () => {
+    if (flashingState === 'erasing' || flashingState === 'writing' || flashingState === 'verifying') return;
+    window.clearInterval(timersRef.current.step);
+    window.clearTimeout(timersRef.current.finish);
     SoundFXManager.playClickBeep();
     setFlashingState('erasing');
     setProgress(10);
     setLogs(prev => [...prev, '⚡ جاري الاتصال بمنفذ الـ COM / Serial...', '🧹 مسح الذاكرة الفلاشية المؤقتة (Erasing Flash)...']);
 
-    setTimeout(() => {
+    timersRef.current.finish = window.setTimeout(() => {
       setFlashingState('writing');
       setProgress(40);
       setLogs(prev => [...prev, `📦 رفع حزم الباينري الثنائية (.bin) بسرعة ${baudRate} baud...`, `📍 إزاحة العنوان: ${flashOffset}`]);
 
-      const interval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(interval);
-            setFlashingState('verifying');
-            setLogs(p => [...p, '🔍 التحقق من سلامة البايتات (MD5 Verification)...']);
-
-            setTimeout(() => {
-              setFlashingState('done');
-              setProgress(100);
-              SoundFXManager.playVictory();
-              confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
-              setLogs(p => [...p, '🎉 تم حرق وتثبيت الفريم وير بنجاح! الروبوت جاهز للعمل.']);
-            }, 800);
-            return 90;
-          }
-          return prev + 15;
-        });
+      let p = 40;
+      timersRef.current.step = window.setInterval(() => {
+        p += 15;
+        if (p >= 90) {
+          window.clearInterval(timersRef.current.step);
+          setProgress(90);
+          setFlashingState('verifying');
+          setLogs(prev => [...prev, '🔍 التحقق من سلامة البايتات (MD5 Verification)...']);
+          timersRef.current.finish = window.setTimeout(() => {
+            setFlashingState('done');
+            setProgress(100);
+            SoundFXManager.playVictory();
+            confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
+            setLogs(prev => [...prev, '🎉 تم حرق وتثبيت الفريم وير بنجاح! الروبوت جاهز للعمل.']);
+          }, 800);
+        } else {
+          setProgress(p);
+        }
       }, 300);
     }, 1000);
   };
 
   const handleResetFlasher = () => {
+    window.clearInterval(timersRef.current.step);
+    window.clearTimeout(timersRef.current.finish);
+    timersRef.current = {};
     setFlashingState('idle');
     setProgress(0);
   };
