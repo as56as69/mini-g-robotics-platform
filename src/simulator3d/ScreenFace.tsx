@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export type FaceExpression = 'happy' | 'surprised' | 'love' | 'sleepy' | 'cool' | 'wink';
+export type FaceExpression = 'happy' | 'surprised' | 'love' | 'sleepy' | 'cool' | 'wink' | 'custom';
 
 /**
  * Creates the 256x256 canvas used as the robot's live screen face.
@@ -18,10 +18,10 @@ export function createFaceCanvas(): HTMLCanvasElement {
  */
 export function drawFace(
   c: CanvasRenderingContext2D,
-  opts: { expression: string; t: number; accent: string; isTalking: boolean }
+  opts: { expression: string; t: number; accent: string; isTalking: boolean; customFace?: number[] | null }
 ) {
   const ctx = c;
-  const { accent, isTalking, t } = opts;
+  const { accent, isTalking, t, customFace } = opts;
   const expr = opts.expression || 'happy';
 
   // ---- Screen background: dark glass with vertical gradient
@@ -50,6 +50,27 @@ export function drawFace(
   const eyeR = 128 + gap;
 
   // ---------- EYES ----------
+  // Hand-drawn 8x8 pixel face (from the Pixel Face Designer) — same bit layout as 2D
+  if (expr === 'custom' && Array.isArray(customFace) && customFace.length >= 8) {
+    ctx.fillStyle = '#7dd3fc';
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 6;
+    const cell = 20;
+    const x0 = 128 - (8 * cell) / 2;
+    const y0 = 128 - (8 * cell) / 2;
+    for (let r = 0; r < 8; r++) {
+      const row = customFace[r] || 0;
+      for (let px = 0; px < 8; px++) {
+        if (row & (1 << (7 - px))) {
+          ctx.fillRect(x0 + px * cell, y0 + r * cell, cell - 2, cell - 2);
+        }
+      }
+    }
+    ctx.shadowBlur = 0;
+    return;
+  }
+
+  // ---------- EYES (standard expressions) ----------
   if (expr === 'love') {
     drawHeart(ctx, eyeL, eyeY);
     drawHeart(ctx, eyeR, eyeY);

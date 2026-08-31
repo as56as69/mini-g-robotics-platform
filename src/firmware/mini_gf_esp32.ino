@@ -46,6 +46,19 @@ void handleCommand(uint8_t cmd, uint8_t* data, size_t len) {
     delay(duration);
     digitalWrite(PIN_HAPTIC_MOTOR, LOW);
   }
+  else if (cmd == 0x12 && len >= 1) {
+    // 0x12: Blink LED [count] — each blink = ON 150ms / OFF 150ms
+    uint8_t count = data[0];
+    Serial.printf("[Mini G-F] Blink LED x%d\n", count);
+    for (int i = 0; i < count; i++) {
+      // ON phase (white flash)
+      // NOTE: replace with your WS2812B driver call, e.g. strip.fill + strip.show
+      Serial.println("[Mini G-F] LED ON");
+      delay(150);
+      Serial.println("[Mini G-F] LED OFF");
+      delay(150);
+    }
+  }
 }
 
 class MyServerCallbacks: public BLEServerCallbacks {

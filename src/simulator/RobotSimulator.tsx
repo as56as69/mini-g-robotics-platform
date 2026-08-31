@@ -242,16 +242,19 @@ function drawMiniGF(ctx: CanvasRenderingContext2D, cx: number, cy: number, state
   roundRect(ctx, -52, -40, 104, 82, 18);
   ctx.fill();
 
-  // LED glowing eyes (rounded capsules)
+  // LED glowing eyes (rounded capsules); blink command toggles them on/off
   const glowColor = state.gf_ledColor || '#22c55e';
-  ctx.shadowColor = glowColor;
-  ctx.shadowBlur = 20;
-  ctx.fillStyle = glowColor;
-  roundRect(ctx, -36, -24, 16, 26, 8);
-  ctx.fill();
-  roundRect(ctx, 21, -24, 16, 26, 8);
-  ctx.fill();
-  ctx.shadowBlur = 0;
+  const blinkPhase = state.gf_blinking ? Math.floor(Date.now() / 200) % 2 === 0 : true;
+  if (blinkPhase) {
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = glowColor;
+    roundRect(ctx, -36, -24, 16, 26, 8);
+    ctx.fill();
+    roundRect(ctx, 21, -24, 16, 26, 8);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
 
   // Smile (glowing, subtle)
   ctx.strokeStyle = glowColor;
@@ -295,6 +298,11 @@ function drawMiniGM(ctx: CanvasRenderingContext2D, cx: number, cy: number, state
 
   // ===== ROTATING HEAD GROUP =====
   ctx.save();
+  // Nod gesture: gentle vertical bob (GM_NOD_HEAD 0x23)
+  let nodOffset = 0;
+  if (state.gm_nodding) {
+    ctx.translate(0, Math.abs(Math.sin(Date.now() / 130)) * 7);
+  }
   ctx.translate(0, -32);
   ctx.rotate((state.gm_headAngle * Math.PI) / 180);
 
@@ -336,12 +344,13 @@ function drawMiniGM(ctx: CanvasRenderingContext2D, cx: number, cy: number, state
   // Live expression eyes (with blink)
   drawExpressionEyes(ctx, state.gm_expression, state.gm_customFace);
 
-  // Antenna ball
+  // Antenna ball (pulses while a tone plays)
+  const playing = !!state.gm_isPlayingSound;
   ctx.fillStyle = ACCENT;
   ctx.shadowColor = ACCENT;
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = playing ? 12 + Math.sin(Date.now() / 90) * 8 : 12;
   ctx.beginPath();
-  ctx.arc(0, -108, 6, 0, Math.PI * 2);
+  ctx.arc(0, -108, playing ? 6 + Math.sin(Date.now() / 90) * 1.5 : 6, 0, Math.PI * 2);
   ctx.fill();
   ctx.shadowBlur = 0;
   ctx.strokeStyle = '#94a3b8';
@@ -350,6 +359,21 @@ function drawMiniGM(ctx: CanvasRenderingContext2D, cx: number, cy: number, state
   ctx.moveTo(0, -104);
   ctx.lineTo(0, -80);
   ctx.stroke();
+
+  // Sound waves: expanding arcs near the antenna while a tone plays
+  if (playing) {
+    const phase = (Date.now() % 900) / 900; // 0..1
+    ctx.strokeStyle = 'rgba(56,189,248,' + (0.85 - 0.65 * (Date.now() % 600) / 600) + ')';
+    ctx.lineWidth = 2.5;
+    for (let i = 0; i < 3; i++) {
+      const r = 8 + ((Date.now() / 2 + i * 60) % 90) * 0.35;
+      ctx.globalAlpha = Math.max(0.08, 0.7 - i * 0.22);
+      ctx.beginPath();
+      ctx.arc(0, -108, r, -Math.PI / 2.6, Math.PI / 2.4);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
 
   ctx.restore(); // end head rotation
 
@@ -460,9 +484,33 @@ function drawExpressionEyes(ctx: CanvasRenderingContext2D, expr: string, customF
   ctx.shadowColor = '#38bdf8';
   ctx.shadowBlur = 15;
 
+  // Unified blinking: every living expression blinks except sleepy
+  const doBlink = expr !== 'sleepy' && expr !== '3' && blinkCycle;
+  const closedEye = (lx: number, rx: number, ly: number) => {
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(lx, ly);
+    ctx.lineTo(rx, ly);
+    ctx.stroke();
+  };
+
   if (expr === 'love' || expr === '2') {
-    drawHeart(ctx, -28, -40, 14);
-    drawHeart(ctx, 28, -40, 14);
+    if (doBlink) {
+      // blink: closed heart-eyes (flat lines)
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(-40, -38);
+      ctx.lineTo(-16, -38);
+      ctx.moveTo(16, -38);
+      ctx.lineTo(40, -38);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#fb7185'; // rose — hearts were previously invisible (dark glass color)
+      drawHeart(ctx, -28, -40, 14);
+      drawHeart(ctx, 28, -40, 14);
+    }
   } else if (expr === 'sleepy' || expr === '3') {
     ctx.lineWidth = 5;
     ctx.strokeStyle = '#38bdf8';
@@ -473,12 +521,66 @@ function drawExpressionEyes(ctx: CanvasRenderingContext2D, expr: string, customF
     ctx.lineTo(42, -35);
     ctx.stroke();
   } else if (expr === 'surprised' || expr === '1') {
-    ctx.fillStyle = '#e0f2fe';
+    if (doBlink) {
+      // blink: surprised eyes squeeze shut briefly
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(-40, -38);
+      ctx.lineTo(-16, -38);
+      ctx.moveTo(16, -38);
+      ctx.lineTo(40, -38);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#e0f2fe';
+      ctx.beginPath();
+      ctx.arc(-28, -38, 16, 0, Math.PI * 2);
+      ctx.arc(28, -38, 16, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (expr === 'cool' || expr === '4') {
+    // Sunglasses: single visor band across both eyes (mirrors the 3D ScreenFace style)
+    if (doBlink) {
+      // closed lines when blinking
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(-40, -35);
+      ctx.lineTo(-16, -35);
+      ctx.moveTo(16, -35);
+      ctx.lineTo(40, -35);
+      ctx.stroke();
+    } else {
+      // One continuous visor lens with accent outline
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = ACCENT;
+      ctx.lineWidth = 3;
+      roundRect(ctx, -52, -50, 92, 22, 10);
+      ctx.fill();
+      ctx.stroke();
+      // diagonal shine
+      ctx.fillStyle = 'rgba(255,255,255,0.28)';
+      ctx.beginPath();
+      ctx.moveTo(-38, -46);
+      ctx.lineTo(-24, -46);
+      ctx.lineTo(-34, -22);
+      ctx.lineTo(-44, -38);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (expr === 'wink' || expr === '5') {
+    // Left eye winks (closed line), right eye stays open & glowing
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.arc(-28, -38, 16, 0, Math.PI * 2);
-    ctx.arc(28, -38, 16, 0, Math.PI * 2);
+    ctx.moveTo(-40, -35);
+    ctx.lineTo(-16, -35);
+    ctx.stroke();
+    ctx.fillStyle = '#7dd3fc';
+    roundRect(ctx, 16, -50, 24, 30, 8);
     ctx.fill();
-  } else if (blinkCycle) {
+  } else if (doBlink) {
+    // happy/default with the unified blink cycle
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 4;
     ctx.beginPath();

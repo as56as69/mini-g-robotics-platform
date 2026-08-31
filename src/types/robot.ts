@@ -72,11 +72,13 @@ export interface RobotState {
   // Mini G-F State
   gf_ledColor: string;
   gf_vibrating: boolean;
+  gf_blinking?: boolean;
   // Mini G-M State
   gm_expression: string;
   gm_customFace?: number[] | null;
   gm_headAngle: number;
   gm_isPlayingSound: boolean;
+  gm_nodding?: boolean;
   // Avatar customization
   costumeSkinColor: string;
   // Mini G State
@@ -87,4 +89,10 @@ export interface RobotState {
   g_activePersona: string;
   g_isTalking: boolean;
   g_speechText: string;
+  /** Name of the connected BLE device (or virtual/simulator mode label) */
+  deviceName?: string;
+  /** Human-readable description of the last command dispatched (for the live status card) */
+  lastCommand?: string;
+  /** Timestamp of the last command — used to pulse the broadcast indicator */
+  lastCommandAt?: number;
 }

@@ -45,6 +45,20 @@ void handleCommand(uint8_t cmd, uint8_t* data, size_t len) {
       Serial.printf("[Mini G-M] Playing Tone: %d Hz for %d ms\n", freq, durationMs);
     }
   }
+  else if (cmd == 0x23 && len >= 1) {
+    // 0x23: Nod Head Vertically [count] — 90 → 75 → 105 → 90 per nod
+    uint8_t nods = data[0];
+    if (nods > 3) nods = 3;
+    Serial.printf("[Mini G-M] Nod Head x%d\n", nods);
+    for (int i = 0; i < nods; i++) {
+      neckServo.write(75);   // down
+      delay(140);
+      neckServo.write(105);  // up
+      delay(150);
+    }
+    neckServo.write(90);     // return to center
+    Serial.println("[Mini G-M] Nod gesture done");
+  }
 }
 
 class MyCallbacks: public BLECharacteristicCallbacks {

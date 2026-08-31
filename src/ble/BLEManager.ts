@@ -80,10 +80,35 @@ class BLEManager {
     this.stateListeners.forEach(cb => cb(this.currentState));
   }
 
+  /** Human-readable label for the live status card */
+  private describeCommand(cmd: number, data: number[] | string): string {
+    switch (cmd) {
+      case CMD_CODES.GF_SET_LED_RGB: {
+        const hex = typeof data === 'string' ? data : null;
+        const names: Record<string, string> = {
+          '#ef4444': 'أحمر', '#22c55e': 'أخضر', '#3b82f6': 'أزرق', '#eab308': 'أصفر',
+          '#a855f7': 'بنفسجي', '#ec4899': 'وردي', '#ffffff': 'أبيض', '#000000': 'إطفاء',
+        };
+        return hex ? `لوّن الليد (${names[hex.toLowerCase()] || hex})` : 'تغيير لون الليد';
+      }
+      case CMD_CODES.GF_TRIGGER_HAPTIC: {
+        const ms = Array.isArray(data) ? data[0] : 0;
+        return `نبضة هزاز ${ms}ms`;
+      }
+      case CMD_CODES.GF_BLINK_LED: {
+        const count = Array.isArray(data) ? data[0] : 1;
+        return `وميض الليد ×${count}`;
+      }
+      default:
+        return `أمر 0x${cmd.toString(16).toUpperCase()}`;
+    }
+  }
+
   private notifyConnectionListeners(connected: boolean, name?: string) {
     this.currentState.connected = connected;
+    if (name) this.currentState.deviceName = name;
     this.connectionListeners.forEach(cb => cb(connected, name));
-    this.notifyStateListeners({ connected });
+    this.notifyStateListeners({ connected, deviceName: name ?? this.currentState.deviceName });
   }
 
   /**
@@ -206,6 +231,11 @@ class BLEManager {
     // Dispatch to Simulator / Virtual State (keeps the original argument so
     // string forms like speech text and '#hex' are consumed correctly above)
     this.updateVirtualState(cmd, effective);
+    // Track the last command for the live status card (kid's remote panel)
+    this.notifyStateListeners({
+      lastCommand: this.describeCommand(cmd, effective),
+      lastCommandAt: Date.now(),
+    });
   }
 
   private toPacketData(data: number[] | string): number[] | null {
@@ -244,6 +274,13 @@ class BLEManager {
         setTimeout(() => this.notifyStateListeners({ gf_vibrating: false }), (data[0] || 500));
         break;
       }
+      case CMD_CODES.GF_BLINK_LED: {
+        // data[0] = blink count; each blink cycle ≈ 400ms (ON 150 / OFF 250)
+        const count = Math.max(1, Math.min(10, data[0] || 1));
+        this.notifyStateListeners({ gf_blinking: true });
+        setTimeout(() => this.notifyStateListeners({ gf_blinking: false }), count * 400);
+        break;
+      }
 
       // Mini G-M
       case CMD_CODES.GM_SET_EXPRESSION: {
@@ -266,9 +303,40 @@ class BLEManager {
       case CMD_CODES.GM_PLAY_TONE: {
         // Firmware contract: frequency is transmitted ÷10 (see mini_gm_esp32.ino),
         // so the virtual twin multiplies ×10 to keep the same pitch as the device.
+        // data[1] === 0 means an explicit STOP (mirrors the firmware's noTone branch).
+        const blocks = data[1] || 0;
+        const durationMs = blocks * 100;
+        if (durationMs === 0 || (data[0] || 0) === 0) {
+          this.stopSynthTone();
+          this.notifyStateListeners({ gm_isPlayingSound: false });
+          break;
+        }
         this.notifyStateListeners({ gm_isPlayingSound: true });
-        this.playSynthesizedTone((data[0] || 44) * 10, (data[1] || 3) * 100);
-        setTimeout(() => this.notifyStateListeners({ gm_isPlayingSound: false }), (data[1] || 3) * 100);
+        this.playSynthesizedTone((data[0] || 44) * 10, durationMs);
+        // Reset any previous completion timer so a fast-follow tone isn't
+        // cut short by the older timeout (PLAY_TONE race fix).
+        if (this.toneTimer != null) {
+          clearTimeout(this.toneTimer);
+          this.toneTimer = undefined;
+        }
+        this.toneTimer = window.setTimeout(() => {
+          this.notifyStateListeners({ gm_isPlayingSound: false });
+          this.toneTimer = null;
+        }, durationMs);
+        break;
+      }
+      case CMD_CODES.GM_NOD_HEAD: {
+        // 0x23: vertical nod gesture — data[0] = nod count (1..3), each ≈ 300ms
+        const nods = Math.max(1, Math.min(3, data[0] || 1));
+        this.notifyStateListeners({ gm_nodding: true });
+        if (this.nodTimer != null) {
+          window.clearTimeout(this.nodTimer);
+          this.nodTimer = undefined;
+        }
+        this.nodTimer = window.setTimeout(() => {
+          this.notifyStateListeners({ gm_nodding: false });
+          this.nodTimer = null;
+        }, Math.min(nods, 3) * 300);
         break;
       }
 
@@ -314,12 +382,36 @@ class BLEManager {
     }
   }
 
+  private audioCtx: AudioContext | null = null;
+  private toneOsc: OscillatorNode | null = null;
+  private toneTimer: number | null = null;
+  private nodTimer: number | undefined = undefined;
+
+  private getAudioCtx(): AudioContext | null {
+    try {
+      const Ctor = window.AudioContext || (window as any).webkitAudioContext;
+      if (!Ctor) return null;
+      if (!this.audioCtx) this.audioCtx = new Ctor();
+      // Autoplay policy: resume if suspended (first user gesture may be needed)
+      if (this.audioCtx.state === 'suspended') {
+        void this.audioCtx.resume().catch(() => { /* not permitted yet */ });
+      }
+      return this.audioCtx;
+    } catch {
+      return null;
+    }
+  }
+
   // Web Audio Synth for simulator feedback
   private playSynthesizedTone(freq: number, durationMs: number) {
     try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
+      const ctx = this.getAudioCtx();
+      if (!ctx) return;
+      // Stop any tone still ringing before starting the new one
+      if (this.toneOsc) {
+        try { this.toneOsc.stop(); } catch { /* already stopped */ }
+        this.toneOsc = null;
+      }
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
@@ -331,8 +423,21 @@ class BLEManager {
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + (durationMs / 1000));
+      this.toneOsc = osc;
     } catch (e) {
       // Audio not permitted yet
+    }
+  }
+
+  /** Explicit tone stop (matches the firmware's noTone contract for duration=0) */
+  private stopSynthTone() {
+    if (this.toneTimer != null) {
+      window.clearTimeout(this.toneTimer);
+      this.toneTimer = null;
+    }
+    if (this.toneOsc) {
+      try { this.toneOsc.stop(); } catch { /* already stopped */ }
+      this.toneOsc = null;
     }
   }
 

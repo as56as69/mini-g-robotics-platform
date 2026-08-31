@@ -14,12 +14,25 @@ const ACCENT = '#38bdf8';
  */
 export function MiniGM3D({ state }: { state: RobotState }) {
   const headRef = useRef<THREE.Group>(null);
+  const antennaBallRef = useRef<THREE.Mesh>(null);
 
-  // Smooth servo head rotation
+  // Smooth servo head rotation + vertical nod gesture (GM_NOD_HEAD 0x23)
   useFrame(() => {
     if (!headRef.current) return;
     const target = THREE.MathUtils.degToRad(state.gm_headAngle || 0);
     headRef.current.rotation.y = THREE.MathUtils.lerp(headRef.current.rotation.y, target, 0.12);
+    if (state.gm_nodding) {
+      const t = performance.now();
+      headRef.current.rotation.x = Math.sin(t / 130) * 0.18;
+    } else {
+      headRef.current.rotation.x = THREE.MathUtils.lerp(headRef.current.rotation.x, 0, 0.2);
+    }
+    // Antenna ball pulses with the tone (sound indicator)
+    const playing = !!state.gm_isPlayingSound;
+    const s = playing ? 1 + Math.abs(Math.sin(performance.now() / 120)) * 0.5 : 1;
+    if (antennaBallRef.current) {
+      antennaBallRef.current.scale.setScalar(s);
+    }
   });
 
   return (
@@ -60,11 +73,12 @@ export function MiniGM3D({ state }: { state: RobotState }) {
           <meshStandardMaterial color="#030812" roughness={0.1} metalness={0.2} />
         </mesh>
 
-        {/* Live expression screen */}
+        {/* Live expression screen (talk lip-sync + custom 8x8 pixel face) */}
         <ScreenFace
           expression={state.gm_expression}
           accent={ACCENT}
-          isTalking={false}
+          isTalking={!!state.gm_isPlayingSound}
+          customFace={state.gm_customFace ?? undefined}
           width={0.98}
           height={0.86}
           position={[0, 0.005, 0.455]}
@@ -83,7 +97,7 @@ export function MiniGM3D({ state }: { state: RobotState }) {
           <cylinderGeometry args={[0.015, 0.015, 0.22, 10]} />
           <meshStandardMaterial color="#94a3b8" metalness={0.9} roughness={0.2} />
         </mesh>
-        <mesh position={[0, 0.95, 0]}>
+        <mesh ref={antennaBallRef} position={[0, 0.95, 0]}>
           <sphereGeometry args={[0.05, 16, 16]} />
           <meshStandardMaterial color={ACCENT} emissive={ACCENT} emissiveIntensity={2.2} toneMapped={false} />
         </mesh>

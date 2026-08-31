@@ -4,12 +4,14 @@ import * as THREE from 'three';
 import { drawFace } from './ScreenFace';
 
 interface ScreenFaceProps {
-  /** Expression key from RobotState (happy/surprised/love/sleepy/cool/wink) */
+  /** Expression key from RobotState (happy/surprised/love/sleepy/cool/wink/custom) */
   expression?: string;
   /** Accent color used for glowing mouth & details (hex) */
   accent?: string;
   /** Robot currently speaking — enables lip-sync animation */
   isTalking?: boolean;
+  /** Hand-drawn 8x8 pixel face (8 bytes, one bit per pixel) from the Pixel Face Designer */
+  customFace?: number[] | null;
   /** Screen plane size in world units */
   width?: number;
   height?: number;
@@ -25,6 +27,7 @@ export function ScreenFace({
   expression = 'happy',
   accent = '#38bdf8',
   isTalking = false,
+  customFace = null,
   width = 1.0,
   height = 0.75,
   position = [0, 0, 0.28],
@@ -54,7 +57,7 @@ export function ScreenFace({
   }, [texture]);
 
   useFrame(() => {
-    drawFace(ctx, { expression, t: performance.now(), accent, isTalking });
+    drawFace(ctx, { expression, t: performance.now(), accent, isTalking, customFace });
     texture.needsUpdate = true;
   });
 

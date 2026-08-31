@@ -1,50 +1,91 @@
 import React, { useState } from 'react';
 import { RobotModelType, ROBOT_MODELS } from '../types/robot';
-import { Settings, Check } from 'lucide-react';
+import { Settings, Check, RotateCcw, AlertTriangle } from 'lucide-react';
 import { SoundFXManager } from '../ble/SoundFX';
-import { pinoutManager } from '../ble/PinoutManager';
+import { pinoutManager, MODEL_PIN_FIELDS, type PinoutMap } from '../ble/PinoutManager';
+import { PinoutSchematic } from './PinoutSchematic';
 
 interface Props {
   model: RobotModelType;
 }
 
-interface PinConfig {
-  pinLed: string;
-  pinHaptic: string;
-  pinTouch: string;
-  pinServo: string;
-  pinBuzzer: string;
-  pinMotorL: string;
-  pinMotorR: string;
-  pinArmL: string;
-  pinArmR: string;
-}
+const FIELD_LABELS: Partial<Record<keyof PinoutMap, string>> = {
+  pinLed: 'منفذ ليدات RGB (Data Pin)',
+  pinHaptic: 'منفذ ماطور الهزاز (Haptic)',
+  pinTouch: 'منفذ حساس اللمس (Touch)',
+  pinServo: 'منفذ سيرفو الرأس (Neck Servo)',
+  pinBuzzer: 'منفذ السماعة (Buzzer/Audio)',
+  pinMotorL: 'محرك العجلة اليسرى (PWM)',
+  pinMotorR: 'محرك العجلة اليمنى (PWM)',
+  pinArmL: 'ذراع يسار (Servo)',
+  pinArmR: 'ذراع يمين (Servo)',
+};
+
+const FIELD_HINTS: Partial<Record<keyof PinoutMap, string>> = {
+  pinLed: 'Data Pin',
+  pinHaptic: 'Haptic',
+  pinTouch: 'Touch',
+  pinServo: 'Neck Servo',
+  pinBuzzer: 'Buzzer/Audio',
+  pinMotorL: 'PWM',
+  pinMotorR: 'PWM',
+  pinArmL: 'Servo',
+  pinArmR: 'Servo',
+};
 
 export const PinoutConfigModal: React.FC<Props> = ({ model }) => {
   const modelInfo = ROBOT_MODELS[model];
-  const savedPins = pinoutManager.get(model);
+  const [pins, setPins] = useState<PinoutMap>(() => pinoutManager.get(model));
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [conflictPin, setConflictPin] = useState<string | null>(null);
 
-  const [pins, setPins] = useState<PinConfig>({
-    pinLed: savedPins.pinLed,
-    pinHaptic: savedPins.pinHaptic,
-    pinTouch: savedPins.pinTouch,
-    pinServo: savedPins.pinServo,
-    pinBuzzer: savedPins.pinBuzzer,
-    pinMotorL: savedPins.pinMotorL,
-    pinMotorR: savedPins.pinMotorR,
-    pinArmL: savedPins.pinArmL,
-    pinArmR: savedPins.pinArmR,
-  });
+  const fields = MODEL_PIN_FIELDS[model];
+
+  const handlePinChange = (field: keyof PinoutMap, value: string) => {
+    // Only digits, max 2 chars (0..48)
+    const clean = value.replace(/\D/g, '').slice(0, 2);
+    setPins(prev => ({ ...prev, [field]: clean }));
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    // Applied for real: the exported firmware in CodeExportModal reads these
-    // pin numbers from the pinoutManager store.
+    // Validate: every active field must be a number 0..48
+    for (const f of fields) {
+      const v = pins[f];
+      const n = Number(v);
+      if (!v || Number.isNaN(n) || n < 0 || n > 48) {
+        SoundFXManager.playClickBeep();
+        setConflictPin(null);
+        setError('كل المنافذ يجب أن تكون رقماً بين 0 و 48');
+        window.setTimeout(() => setError(null), 2600);
+        return;
+      }
+    }
+    // Conflict detection: same pin used twice on this model
+    const seen = new Map<string, number>();
+    for (const f of fields) {
+      const v = pins[f];
+      seen.set(v, (seen.get(v) || 0) + 1);
+    }
+    const dup = [...seen.entries()].find(([, count]) => count > 1);
+    if (dup) {
+      SoundFXManager.playClickBeep();
+      setConflictPin(`المنفذ ${dup[0]} مستخدَم ${dup[1]} مرات — كل منفذ لأجزاء مختلفة!`);
+      window.setTimeout(() => setConflictPin(null), 3200);
+      return;
+    }
     pinoutManager.set(model, pins);
     SoundFXManager.playClickBeep();
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleReset = () => {
+    const restored = pinoutManager.reset(model);
+    setPins({ ...restored });
+    setConflictPin(null);
+    SoundFXManager.playClickBeep();
   };
 
   return (
@@ -61,77 +102,42 @@ export const PinoutConfigModal: React.FC<Props> = ({ model }) => {
         </span>
       </div>
 
+      {/* Interactive live schematic */}
+      <PinoutSchematic model={model} />
+
       <form onSubmit={handleSave} className="flex flex-col gap-3 text-xs">
         <div className="grid grid-cols-2 gap-2">
-          {model === 'mini_gf' && (
-            <>
-              <div>
-                <label className="text-slate-400 block mb-1 text-[11px]">منفذ ليدات RGB (Data Pin):</label>
-                <input
-                  type="text"
-                  value={pins.pinLed}
-                  onChange={e => setPins({ ...pins, pinLed: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-slate-200 font-mono focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-              <div>
-                <label className="text-slate-400 block mb-1 text-[11px]">منفذ ماطور الهزاز (Haptic):</label>
-                <input
-                  type="text"
-                  value={pins.pinHaptic}
-                  onChange={e => setPins({ ...pins, pinHaptic: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-slate-200 font-mono focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-            </>
-          )}
-
-          {model === 'mini_gm' && (
-            <>
-              <div>
-                <label className="text-slate-400 block mb-1 text-[11px]">منفذ سيرفو الرأس (Neck Servo):</label>
-                <input
-                  type="text"
-                  value={pins.pinServo}
-                  onChange={e => setPins({ ...pins, pinServo: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-slate-200 font-mono focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-              <div>
-                <label className="text-slate-400 block mb-1 text-[11px]">منفذ السماعة (Buzzer/Audio):</label>
-                <input
-                  type="text"
-                  value={pins.pinBuzzer}
-                  onChange={e => setPins({ ...pins, pinBuzzer: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-slate-200 font-mono focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-            </>
-          )}
-
-          {model === 'mini_g' && (
-            <>
-              <div>
-                <label className="text-slate-400 block mb-1 text-[11px]">محرك العجلة اليسرى (PWM):</label>
-                <input
-                  type="text"
-                  value={pins.pinMotorL}
-                  onChange={e => setPins({ ...pins, pinMotorL: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-slate-200 font-mono focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-              <div>
-                <label className="text-slate-400 block mb-1 text-[11px]">محرك العجلة اليمنى (PWM):</label>
-                <input
-                  type="text"
-                  value={pins.pinMotorR}
-                  onChange={e => setPins({ ...pins, pinMotorR: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-slate-200 font-mono focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-            </>
-          )}
+          {fields.map((field) => (
+            <div key={field}>
+              <label className="text-slate-400 block mb-1 text-[11px]">
+                {FIELD_LABELS[field]} <span className="text-slate-500 font-mono">({FIELD_LABELS[field]})</span>:
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={48}
+                value={pins[field]}
+                onChange={e => handlePinChange(field, e.target.value)}
+                className={`w-full bg-slate-950 border rounded-xl px-2.5 py-1.5 text-slate-200 font-mono focus:outline-none ${
+                  conflictPin && Object.values(pins).filter(v => v === pins[field]).length > 1
+                    ? 'border-rose-500/70'
+                    : 'border-slate-800 focus:border-cyan-500'
+                }`}
+              />
+            </div>
+          ))}
         </div>
+
+        {(error || conflictPin) && (
+          <div className={`text-[11px] font-bold rounded-xl px-3 py-2 border ${
+            conflictPin
+              ? 'bg-rose-500/10 border-rose-500/40 text-rose-300'
+              : 'bg-rose-500/10 border border-rose-500/40 text-rose-300'
+          }`}>
+            {error || conflictPin}
+          </div>
+        )}
 
         <button
           type="submit"
@@ -139,6 +145,18 @@ export const PinoutConfigModal: React.FC<Props> = ({ model }) => {
         >
           {saved ? <Check className="w-3.5 h-3.5 text-white" /> : null}
           <span>{saved ? 'تم حفظ التعيين!' : 'تحديث وتطبيق المنافذ على الفريم وير'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            const restored = pinoutManager.reset(model);
+            setPins({ ...restored });
+            SoundFXManager.playClickBeep();
+          }}
+          className="w-full py-1.5 bg-slate-950 border border-slate-800 hover:bg-slate-900 text-slate-400 text-xs rounded-xl font-bold transition flex items-center justify-center gap-1"
+        >
+          <span>↩ استعادة الافتراضيات</span>
         </button>
       </form>
     </div>

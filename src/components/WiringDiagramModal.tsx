@@ -1,6 +1,8 @@
 import React from 'react';
 import { RobotModelType, ROBOT_MODELS } from '../types/robot';
-import { Cpu, Zap, Radio, Layers, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Cpu, Layers, CheckCircle2 } from 'lucide-react';
+import { pinoutManager } from '../ble/PinoutManager';
+import { PinoutSchematic } from './PinoutSchematic';
 
 interface Props {
   model: RobotModelType;
@@ -8,6 +10,7 @@ interface Props {
 
 export const WiringDiagramModal: React.FC<Props> = ({ model }) => {
   const modelInfo = ROBOT_MODELS[model];
+  const pins = pinoutManager.get(model);
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
@@ -19,11 +22,16 @@ export const WiringDiagramModal: React.FC<Props> = ({ model }) => {
           </span>
         </div>
         <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-mono font-bold">
-          Hardware Pinout V1.0
+          Hardware Pinout V1.0 — حي من إعداداتك
         </span>
       </div>
 
-      {/* Interactive Breadboard / Component Map */}
+      {/* Interactive live schematic (reads pinoutManager) */}
+      <div className="flex justify-center">
+        <PinoutSchematic model={model} />
+      </div>
+
+      {/* Component cards — live pin numbers from pinoutManager */}
       <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col gap-3">
         {model === 'mini_gf' && (
           <div className="flex flex-col gap-2">
@@ -34,17 +42,17 @@ export const WiringDiagramModal: React.FC<Props> = ({ model }) => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
               <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
                 <span className="text-pink-400 font-bold block text-[11px]">🔴 ليدات WS2812B RGB</span>
-                <p className="text-slate-400 text-[10px] mt-1">Data In ➜ <span className="text-white font-mono font-bold">GPIO 8</span></p>
+                <p className="text-slate-400 text-[10px] mt-1">Data In ➜ <span className="text-white font-mono font-bold">GPIO {pins.pinLed}</span></p>
                 <p className="text-slate-400 text-[10px]">VCC ➜ 3.3V / GND ➜ GND</p>
               </div>
               <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
                 <span className="text-amber-400 font-bold block text-[11px]">📳 ماطور الهزاز Haptic</span>
-                <p className="text-slate-400 text-[10px] mt-1">Control Pin ➜ <span className="text-white font-mono font-bold">GPIO 4</span></p>
+                <p className="text-slate-400 text-[10px] mt-1">Control Pin ➜ <span className="text-white font-mono font-bold">GPIO {pins.pinHaptic}</span></p>
                 <p className="text-slate-400 text-[10px]">عبر ترانزستور NPN S8050</p>
               </div>
               <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
                 <span className="text-emerald-400 font-bold block text-[11px]">👆 حساس اللمس Touch</span>
-                <p className="text-slate-400 text-[10px] mt-1">Touch Pad ➜ <span className="text-white font-mono font-bold">GPIO 2</span></p>
+                <p className="text-slate-400 text-[10px] mt-1">Touch Pad ➜ <span className="text-white font-mono font-bold">GPIO {pins.pinTouch}</span></p>
                 <p className="text-slate-400 text-[10px]">مباشر على لوح النحاس العلوي</p>
               </div>
             </div>
@@ -62,15 +70,16 @@ export const WiringDiagramModal: React.FC<Props> = ({ model }) => {
                 <span className="text-cyan-400 font-bold block text-[11px]">👀 شاشة العيون OLED / TFT</span>
                 <p className="text-slate-400 text-[10px] mt-1">SDA ➜ <span className="text-white font-mono font-bold">GPIO 21</span></p>
                 <p className="text-slate-400 text-[10px]">SCL ➜ <span className="text-white font-mono font-bold">GPIO 22</span></p>
+                <p className="text-slate-500 text-[10px]">ثابتة على ناقل I2C الافتراضي</p>
               </div>
               <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
                 <span className="text-purple-400 font-bold block text-[11px]">🤖 محرك سيرفو الرأس والعنق</span>
-                <p className="text-slate-400 text-[10px] mt-1">PWM Signal ➜ <span className="text-white font-mono font-bold">GPIO 18</span></p>
+                <p className="text-slate-400 text-[10px] mt-1">PWM Signal ➜ <span className="text-white font-mono font-bold">GPIO {pins.pinServo}</span></p>
                 <p className="text-slate-400 text-[10px]">SG90 Servo / 5V External</p>
               </div>
               <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
                 <span className="text-amber-400 font-bold block text-[11px]">🎵 مكبر الصوت Buzzer/DAC</span>
-                <p className="text-slate-400 text-[10px] mt-1">Audio Out ➜ <span className="text-white font-mono font-bold">GPIO 19</span></p>
+                <p className="text-slate-400 text-[10px] mt-1">Audio Out ➜ <span className="text-white font-mono font-bold">GPIO {pins.pinBuzzer}</span></p>
                 <p className="text-slate-400 text-[10px]">سماعة نغمات كرتونية تفاعلية</p>
               </div>
             </div>
@@ -86,17 +95,17 @@ export const WiringDiagramModal: React.FC<Props> = ({ model }) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs">
               <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
                 <span className="text-blue-400 font-bold block text-[11px]">🚗 محركات العجلات (L298N)</span>
-                <p className="text-slate-400 text-[10px] mt-1">Left ➜ <span className="text-white font-mono font-bold">GPIO 14</span></p>
-                <p className="text-slate-400 text-[10px]">Right ➜ <span className="text-white font-mono font-bold">GPIO 27</span></p>
+                <p className="text-slate-400 text-[10px] mt-1">Left ➜ <span className="text-white font-mono font-bold">GPIO {pins.pinMotorL}</span></p>
+                <p className="text-slate-400 text-[10px]">Right ➜ <span className="text-white font-mono font-bold">GPIO {pins.pinMotorR}</span></p>
               </div>
               <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
                 <span className="text-purple-400 font-bold block text-[11px]">🦾 مفاصل الأذرع (Servos)</span>
-                <p className="text-slate-400 text-[10px] mt-1">Left Arm ➜ <span className="text-white font-mono font-bold">GPIO 25</span></p>
-                <p className="text-slate-400 text-[10px]">Right Arm ➜ <span className="text-white font-mono font-bold">GPIO 26</span></p>
+                <p className="text-slate-400 text-[10px] mt-1">Left Arm ➜ <span className="text-white font-mono font-bold">GPIO {pins.pinArmL}</span></p>
+                <p className="text-slate-400 text-[10px]">Right Arm ➜ <span className="text-white font-mono font-bold">GPIO {pins.pinArmR}</span></p>
               </div>
               <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
                 <span className="text-pink-400 font-bold block text-[11px]">🗣️ الصوت وشاشة الوجوه</span>
-                <p className="text-slate-400 text-[10px] mt-1">I2S DAC ➜ <span className="text-white font-mono font-bold">GPIO 22/23</span></p>
+                <p className="text-slate-400 text-[10px] mt-1">I2S DAC ➜ <span className="text-white font-mono font-bold">GPIO {pins.pinBuzzer}/23</span></p>
                 <p className="text-slate-400 text-[10px]">مكبر صوت مدمج 3W</p>
               </div>
               <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
@@ -111,7 +120,7 @@ export const WiringDiagramModal: React.FC<Props> = ({ model }) => {
         <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
           <span className="flex items-center gap-1 text-emerald-400">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>جاهز للتجميع والتصنيع المحلي في الورش والمختبرات</span>
+            <span>الأرقام حية من تبويب «المنافذ» — عدّلها هناك لتنعكس هنا فوراً</span>
           </span>
           <span className="font-mono text-slate-500">Baud: 115200</span>
         </div>
@@ -119,3 +128,4 @@ export const WiringDiagramModal: React.FC<Props> = ({ model }) => {
     </div>
   );
 };
+

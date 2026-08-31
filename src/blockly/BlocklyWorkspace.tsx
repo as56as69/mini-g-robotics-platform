@@ -294,6 +294,13 @@ function getToolboxForModel(model: RobotModelType) {
     modelBlocks = `
       <category name="🎨 الألوان والضوء" colour="#F97316">
         <block type="gf_set_color"></block>
+        <block type="gf_blink"></block>
+      </category>
+      <category name="🎉 سلوكيات جاهزة" colour="#F59E0B">
+        <block type="gf_pattern"></block>
+      </category>
+      <category name="⏱️ الوقت" colour="#818CF8">
+        <block type="gf_wait"></block>
       </category>
       <category name="📳 الهزاز والمشاعر" colour="#EC4899">
         <block type="gf_vibrate"></block>
@@ -306,13 +313,18 @@ function getToolboxForModel(model: RobotModelType) {
     modelBlocks = `
       <category name="👀 عيون الشاشة" colour="#22D3EE">
         <block type="gm_set_expression"></block>
+        <block type="gm_send_pixel_face"></block>
         <block type="gm_set_custom_face"></block>
       </category>
       <category name="🤖 حركة الرأس" colour="#A78BFA">
         <block type="gm_rotate_head"></block>
+        <block type="gm_nod_head"></block>
       </category>
       <category name="🎵 الأصوات والنغمات" colour="#F59E0B">
         <block type="gm_play_sound"></block>
+      </category>
+      <category name="🎉 سلوكيات جاهزة GM" colour="#0EA5E9">
+        <block type="gm_pattern"></block>
       </category>
     `;
   } else {
@@ -351,7 +363,7 @@ function getStarterXml(model: RobotModelType) {
   if (model === 'mini_gf') {
     return `<xml><block type="gf_set_color" x="40" y="40"><field name="COLOR">#22c55e</field><next><block type="gf_vibrate"><field name="DURATION">500</field></block></next></block></xml>`;
   } else if (model === 'mini_gm') {
-    return `<xml><block type="gm_set_expression" x="40" y="40"><field name="EXPRESSION">0</field><next><block type="gm_rotate_head"><field name="ANGLE">20</field><next><block type="gm_play_sound"><field name="SOUND_PARAMS">523,3</field></block></next></block></next></block></xml>`;
+    return `<xml><block type="gm_set_expression" x="40" y="40"><field name="EXPRESSION">0</field><next><block type="gm_rotate_head"><field name="ANGLE">20</field><next><block type="gm_play_sound"><field name="MELODY">victory</field></block></next></block></next></block></xml>`;
   } else {
     return `<xml><block type="g_set_ai_persona" x="40" y="40"><field name="PERSONA">0</field><next><block type="g_move_arms"><field name="ARM_ACTION">both,90</field><next><block type="g_ai_speak"><field name="SPEECH_TEXT">أهلاً بكم يا أبطال البرمجة!</field></block></next></block></next></block></xml>`;
   }

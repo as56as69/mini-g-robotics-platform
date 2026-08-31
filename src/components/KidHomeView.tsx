@@ -5,7 +5,7 @@ import { RobotSimulator } from '../simulator/RobotSimulator';
 import { RobotState } from '../types/robot';
 import type { StudentProfile } from '../types/lms';
 import type { LessonChallenge } from '../types/lms';
-import { Flame, Star, Trophy, Sparkles, CheckCircle2, Code, Bot, Sliders, Zap, Rocket, LogOut, IdCard } from 'lucide-react';
+import { Flame, Star, Trophy, Sparkles, CheckCircle2, Code, Bot, Sliders, Zap, Rocket, LogOut, IdCard, Radio, Wifi, WifiOff } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 import { schoolApi } from '../services/schoolApi';
@@ -432,15 +432,11 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
           {/* Dynamic Feature Sub-Modals */}
           {activeTabPanel === 'remote' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <DirectControlPanel model={activeModel} />
+              <DirectControlPanel model={activeModel} state={state} />
               {activeModel === 'mini_g' ? (
                 <AIPersonaChatModal activePersona={state.g_activePersona} />
               ) : (
-                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col justify-center items-center text-center text-slate-400 text-xs shadow-lg">
-                  <Sparkles className="w-8 h-8 text-kid-accent mb-2 animate-bounce" />
-                  <p className="font-bold text-slate-200">التحكم المباشر نشط</p>
-                  <p className="text-[11px] mt-1">يتم إرسال كافة الأوامر عبر Web Bluetooth للروبوت الحقيقي والمحاكي في نفس الوقت!</p>
-                </div>
+                <LiveRobotStatusCard state={state} />
               )}
             </div>
           )}
@@ -613,6 +609,90 @@ export const KidHomeView: React.FC<Props> = ({ activeModel, state }) => {
           {toast}
         </div>
       )}
+    </div>
+  );
+};
+
+/** Live robot status card replacing the old static "التحكم المباشر نشط" note. */
+const LiveRobotStatusCard: React.FC<{ state: RobotState }> = ({ state }) => {
+  // Re-render periodically so the broadcast indicator lights up for ~1.5s after each command
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    if (!state.lastCommandAt) return;
+    const t = window.setInterval(() => forceTick(prev => prev + 1), 600);
+    return () => window.clearInterval(t);
+  }, [state.lastCommandAt]);
+
+  return (
+    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
+      {/* Connection status */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {state.connected ? (
+            <Wifi className="w-4 h-4 text-emerald-400 shrink-0" />
+          ) : (
+            <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />
+          )}
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold text-slate-200 truncate">
+              {state.connected ? (state.deviceName || 'روبوت متصل') : 'وضع المعاينة الافتراضية'}
+            </p>
+            <p className="text-[10px] text-slate-500">
+              {state.connected ? 'جهاز حقيقي مرتبط عبر Web Bluetooth' : 'المحاكي فقط — اربط الروبوت من الهيدر'}
+            </p>
+          </div>
+        </div>
+        <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border shrink-0 ${state.connected ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40' : 'bg-amber-500/15 text-amber-300 border-amber-500/40'}`}>
+          {state.connected ? 'LIVE 🟢' : 'PREVIEW 🟡'}
+        </span>
+      </div>
+
+      {/* Broadcast indicator + last command */}
+      <div className="flex items-center justify-between bg-slate-900/70 rounded-xl px-3 py-2 border border-slate-800">
+        <div className="flex items-center gap-2 min-w-0">
+          <Radio
+            className={`w-4 h-4 shrink-0 ${state.lastCommandAt && Date.now() - state.lastCommandAt < 1500 ? 'text-emerald-400 animate-pulse' : 'text-slate-600'}`}
+          />
+          <div className="flex flex-col min-w-0">
+            <span className="text-[10px] text-slate-500 font-bold">مؤشر البث:</span>
+            <span className="text-[11px] font-bold text-slate-200 truncate">
+              {state.lastCommand || 'لم يُرسل أمر بعد'}
+            </span>
+          </div>
+        </div>
+        <span className="text-[9px] font-mono text-slate-600 shrink-0">
+          {state.lastCommandAt ? new Date(state.lastCommandAt).toLocaleTimeString('ar-EG') : '—'}
+        </span>
+      </div>
+
+      {/* Model-specific live state readout */}
+      <div className="grid grid-cols-2 gap-2 text-[10px]">
+        {state.model === 'mini_gf' && (
+          <>
+            <div className="bg-slate-900 rounded-lg px-2.5 py-1.5 border border-slate-800 flex items-center gap-1.5">
+              <span>الليد:</span>
+              <span className="w-3 h-3 rounded-full border border-white/30" style={{ backgroundColor: state.gf_ledColor }} />
+              <span className="font-mono" dir="ltr">{state.gf_ledColor}</span>
+            </div>
+            <div className="bg-slate-900/70 px-2.5 py-1.5 rounded-lg border border-slate-800">
+              الهزاز: <span className={state.gf_vibrating ? 'text-pink-400 font-bold animate-pulse' : 'text-slate-400'}>{state.gf_vibrating ? 'يعمل 💓' : 'متوقف'}</span>
+            </div>
+          </>
+        )}
+        {state.model === 'mini_gm' && (
+          <div className="bg-slate-900/70 rounded-lg px-2.5 py-1.5 border border-slate-800 col-span-2 flex items-center gap-2">
+            <span>التعبير: <b className="text-cyan-300">{state.gm_expression}</b></span>
+            <span className="text-slate-600">•</span>
+            <span>الرأس: <b className="text-slate-300">{state.gm_headAngle}°</b></span>
+          </div>
+        )}
+        {state.model === 'mini_g' && (
+          <div className="bg-slate-900/70 rounded-lg px-2.5 py-1.5 border border-slate-800 col-span-2 flex items-center gap-2">
+            <Radio className="w-3.5 h-3.5 text-purple-400" />
+            <span>الشخصية: <b className="text-purple-300">{state.g_activePersona}</b> • العجلات: {state.g_wheelSpeedL}/{state.g_wheelSpeedR}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
