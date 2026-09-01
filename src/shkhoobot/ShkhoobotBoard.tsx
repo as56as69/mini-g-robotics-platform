@@ -16,7 +16,7 @@ import {
  * وحش خربشة (خطوط متداخلة + عينان تتبعان) له لوحته الخاصة.
  * وضعان للرسم (قرار المستخدم):
  *   - «شخبوط يرسم»: شخبوط يرسم شيئًا من الفئة بنفسه (خربشة).
- *   - «خربش معي»: الطفل يتتبع الخطوط المنقطة بقلمه (Canvas).
+ *   - «شخبط وياي»: الطفل يتتبع الخطوط المنقطة بقلمه (Canvas).
  * تخطيط عمود flex حقيقي (شريط / محتوى مرن) — بلا absolute inset.
  * ============================================================
  */
@@ -95,7 +95,7 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
     [drawMode]
   );
 
-  /** اختيار في وضع «خربش معي» — شخبوط ينتظر، الطفل يتتبع */
+  /** اختيار في وضع «شخبط وياي» — شخبوط ينتظر، الطفل يتتبع */
   const traceItem = useCallback((catId: string, itemId: string) => {
     const cat = SCRIBBLE_CATEGORIES.find((c) => c.id === catId);
     const item = cat?.items.find((i) => i.id === itemId);
@@ -171,7 +171,7 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
         dir="rtl"
       >
         <div ref={boardRef} className="max-w-3xl mx-auto flex flex-col gap-3">
-          {/* مبدّل الوضع: «شخبوط يرسم» ↔ «خربش معي» */}
+          {/* مبدّل الوضع: «شخبوط يرسم» ↔ «شخبط وياي» */}
           <div className="flex items-center justify-center gap-2">
             <button
               onClick={() => switchMode('watch')}
@@ -189,7 +189,7 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
               }`}
               style={{ borderColor: INK, boxShadow: paperShadow() }}
             >
-              ✏️ خربش معي
+              ✏️ شخبط وياي
             </button>
           </div>
 
@@ -210,7 +210,7 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
               </span>
             </div>
 
-            {/* الورقة البيضاء للرسمة — في وضع «خربش معي» تعرض طبقة الدليل + Canvas الطفل */}
+            {/* الورقة البيضاء للرسمة — في وضع «شخبط وياي» تعرض طبقة الدليل + Canvas الطفل */}
             <div
               className={`relative w-56 h-56 sm:w-72 sm:h-72 border-[3px] border-[#2b2a33] flex-shrink-0 overflow-hidden ${
                 drawMode === 'trace' ? 'mc-paper-wobble' : ''
