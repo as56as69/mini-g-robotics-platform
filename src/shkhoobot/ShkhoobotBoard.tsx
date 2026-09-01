@@ -13,8 +13,8 @@ import {
 /* ============================================================
  * كود ماجيك — لوحة مستر شخبوط 🌀
  * وحش خربشة (خطوط متداخلة + عينان تتبعان) له لوحته الخاصة.
- * الطفل يختار فئة جاهزة → شخبوط يرسم شيئاً منها بالخربشة.
- * كل جلسة على ورقة مختلفة (قرار التصميم).
+ * الطفل يختار فئة جاهزة → شخبوط يرسم شيئًا منها بالخربشة.
+ * تخطيط عمود flex حقيقي (شريط / محتوى مرن) — بلا absolute inset.
  * ============================================================
  */
 
@@ -74,7 +74,7 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
       setDrawing({ item, seed: Math.floor(Math.random() * 100000) });
       setDrawKey((k) => k + 1);
       SoundFXManager.playRobotChirp();
-      window.setTimeout(() => setMood('cheer'), 2200);
+      window.setTimeout(() => setMood('cheer'), 2400);
       window.setTimeout(() => setMood('idle'), 6000);
     }, 900);
   }, []);
@@ -93,9 +93,9 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
   })();
 
   return (
-    <div className="flex-1 relative overflow-hidden" dir="rtl">
+    <div className="flex-1 relative overflow-hidden flex flex-col min-h-0" dir="rtl">
       {/* شريط علوي */}
-      <div className="relative z-20 flex items-center justify-between px-3 py-2.5 bg-[#f5f0e1] border-b-2 border-[#2b2a33]/20">
+      <div className="flex-shrink-0 z-20 flex items-center justify-between px-3 py-2.5 bg-[#f5f0e1] border-b-2 border-[#2b2a33]/20">
         <span className="doodle-title font-bold text-[#2b2a33] text-sm sm:text-base">
           🌀 مستر شخبوط — وحش الخربشات
         </span>
@@ -110,30 +110,43 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
         </button>
       </div>
 
-      <div className="absolute inset-0 top-[44px] overflow-y-auto px-3 sm:px-8 py-4" style={{ background: paper.bg }} dir="rtl">
-        {/* تلميح الورقة */}
-        <p className="doodle-title text-[10px] text-[#2b2a33]/45 text-center mb-2">
-          ورقة هذه الجلسة: {paper.label} — كل جلسة لها ورقة جديدة! 📄
-        </p>
-
+      {/* محتوى اللوحة — عمود flex بتمرير، ارتفاع محسوب من flex */}
+      <div
+        className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-8 py-4"
+        style={{ background: paper.bg }}
+        dir="rtl"
+      >
         <div ref={boardRef} className="max-w-3xl mx-auto flex flex-col gap-3">
           {/* مسرح شخبوط + الرسمة */}
-          <div className="relative flex items-center justify-center gap-4 flex-wrap">
-            {/* مستر شخبوط — حاوية بارتفاع ثابت حتى يظهر الجسد دائمًا */}
-            <div className="relative w-40 sm:w-48 h-52 sm:h-60 flex items-center justify-center">
-              <ScribbleBlob seed={seed} mood={mood === 'think' ? 'think' : 'idle'} lookX={look.x} lookY={look.y} className="w-full h-full" />
-              <span className="character-badge absolute -top-2 left-1/2 -translate-x-1/2 text-xs font-bold text-[#2b2a33] whitespace-nowrap">
+          <div className="flex items-center justify-center gap-4 flex-wrap">
+            {/* مستر شخبوط — SVG بخط width/height صريحين دائمًا */}
+            <div className="relative w-40 h-52 sm:w-48 sm:h-60 flex items-center justify-center flex-shrink-0">
+              <ScribbleBlob
+                seed={seed}
+                mood={mood === 'think' ? 'think' : 'idle'}
+                lookX={look.x}
+                lookY={look.y}
+                className="mc-wiggle"
+                style={{ width: '100%', height: '100%' }}
+              />
+              <span className="character-badge absolute top-1 left-1/2 -translate-x-1/2 text-xs font-bold text-[#2b2a33] whitespace-nowrap z-10">
                 مستر شخبوط
               </span>
             </div>
 
             {/* الورقة البيضاء للرسمة */}
             <div
-              className="relative w-48 h-48 sm:w-56 sm:h-56 border-[3px] border-[#2b2a33]"
+              className="relative w-48 h-48 sm:w-56 sm:h-56 border-[3px] border-[#2b2a33] flex-shrink-0"
               style={{ background: PAPER.white, borderRadius: '18px 26px 16px 24px', boxShadow: paperShadow(true) }}
             >
               {drawing ? (
-                <ScribbleDrawing key={drawKey} item={drawing.item} seed={drawing.seed} live className="w-full h-full p-2" />
+                <ScribbleDrawing
+                  key={drawKey}
+                  item={drawing.item}
+                  seed={drawing.seed}
+                  live
+                  className="w-full h-full p-2"
+                />
               ) : (
                 <p className="doodle-title absolute inset-0 flex items-center justify-center text-[#2b2a33]/35 text-xs text-center px-4">
                   ورقة الرسم — اختر فئة وأشياءً 👇
@@ -143,7 +156,10 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
           </div>
 
           {/* فقاعة الحالة */}
-          <div className="mc-wiggle mx-auto px-4 py-2 bg-[#fff5f5] border-[2.5px] border-[#2b2a33] w-fit" style={{ borderRadius: '14px 20px 12px 18px', boxShadow: paperShadow() }}>
+          <div
+            className="mx-auto px-4 py-2 bg-[#fff5f5] border-[2.5px] border-[#2b2a33] w-fit"
+            style={{ borderRadius: '14px 20px 12px 18px', boxShadow: paperShadow() }}
+          >
             <p className="doodle-title text-[#2b2a33] text-xs sm:text-sm font-bold">{message}</p>
           </div>
 
@@ -151,7 +167,9 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
           <div className="flex flex-col gap-2 mt-1">
             {SCRIBBLE_CATEGORIES.map((cat) => (
               <div key={cat.id} className="flex items-center gap-2 flex-wrap justify-center">
-                <span className="doodle-title text-xs font-bold text-[#2b2a33]/70 w-20 text-left">{cat.icon} {cat.labelAr}</span>
+                <span className="doodle-title text-xs font-bold text-[#2b2a33]/70 w-20 text-left shrink-0">
+                  {cat.icon} {cat.labelAr}
+                </span>
                 {cat.items.map((item) => (
                   <button
                     key={item.id}
@@ -168,7 +186,7 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
           </div>
 
           {/* زر إعادة شكل شخبوط */}
-          <div className="text-center mt-1">
+          <div className="text-center mt-1 pb-2">
             <button
               onClick={() => {
                 SoundFXManager.playPaperRustle();

@@ -3,21 +3,21 @@ import { SoundFXManager } from '../ble/SoundFX';
 
 /* ============================================================
  * كود ماجيك — نواة «لعبة ورقي» (Doodle Jump بالورق)
- * معمارية صارمة: React يرسم الهيكل مرة واحدة، وحلقة rAF
- * تحرّك عناصر DOM مباشرة بـ transform (صفر setState أثناء
- * اللعب). نظام الإحداثيات: y يزيد للأعلى، الكاميرا camY.
- * المنصات: داخل طبقة عالم بإحداثيات عالم — الطبقة كلها
- * تنزلق بـ translateY(camY) وورقي فوقها بإحداثياته.
+ * نظام إحداثيات بسيط ومضمون: كل شيء بإحداثيات شاشة مباشرة.
+ *   screenY(worldY) = GAME_H - (worldY - camY)
+ * - البطل: feetY عالمي → top = screenY(feetY) - WARAKI_H
+ * - المنصات: top = screenY(p.y)
+ * React يرسم الهيكل مرة؛ حلقة rAF تحدّث style.top مباشرة
+ * (صفر setState أثناء اللعب). القفز من أسفل إلى أعلى.
  * ============================================================
  */
 
 export const GAME_W = 360;
 export const GAME_H = 560;
-/** أبعاد سبيريت ورقي داخل الطبقة */
 export const WARAKI_W = 70;
-export const WARAKI_H = Math.round((WARAKI_W * 130) / 90);
+export const WARAKI_H = Math.round((WARAKI_W * 130) / 90); // ≈ 101
 
-/** فيزياء اللعبة — وحدات بكسل/ثانية (نظام y يزيد للأعلى) */
+/** فيزياء اللعبة — وحدات بكسل/ثانية (y يزيد للأعلى) */
 const GRAVITY = 1450;
 const JUMP_V = 780; // أقصى ارتفاع ≈ 209px
 const HORIZ_SPEED = 260;
@@ -34,20 +34,15 @@ export type Platform = {
   obstacle: boolean;
 };
 
-interface PlatformNode extends Platform {
-  /** عنصر DOM الخاص بالمنصة — الرسم عبره مباشرة */
-  el: HTMLDivElement | null;
-}
-
 let pid = 0;
 
-function makePlatform(y: number): Platform {
+function makePlatform(y: number, allowObstacle = true): Platform {
   return {
     id: pid++,
     x: 12 + Math.random() * (GAME_W - PLATFORM_W - 24),
     y,
     w: PLATFORM_W,
-    obstacle: Math.random() < OBSTACLE_CHANCE,
+    obstacle: allowObstacle && Math.random() < OBSTACLE_CHANCE,
   };
 }
 
@@ -56,29 +51,28 @@ export function useWarakiJumpEngine() {
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(() => Number(localStorage.getItem('mg_waraki_jump_best') || 0));
 
-  /** نسخة React من المنصات للرسم الأولي — الحلقة تضيف للخريطة مباشرة */
+  /** منصات React (للرسم الأولي فقط) */
   const [platforms, setPlatforms] = useState<Platform[]>([]);
 
   const world = useRef({
     warakiX: GAME_W / 2,
-    warakiY: 40,
+    /** ارتفاع قدم ورقي فوق خط الأرض (يزيد للأعلى) */
+    feetY: 40,
     vy: 0,
     camY: 0,
     playing: false,
     touchX: null as number | null,
     last: 0,
-    platforms: [] as PlatformNode[],
+    platforms: [] as Platform[],
   });
 
-  const layerRef = useRef<HTMLDivElement | null>(null);
   const heroRef = useRef<HTMLDivElement | null>(null);
-  /** عناصر DOM للمنصات — الحلقة تُخفي ما خرج عن الشاشة */
   const platformEls = useRef(new Map<number, HTMLElement>());
 
   const reset = useCallback(() => {
     const w = world.current;
     w.warakiX = GAME_W / 2;
-    w.warakiY = 40;
+    w.feetY = 40;
     w.vy = 0;
     w.camY = 0;
     w.playing = true;
@@ -86,14 +80,13 @@ export function useWarakiJumpEngine() {
     w.last = 0;
 
     pid = 0;
-    const list: PlatformNode[] = [];
-    list.push({ id: pid++, x: GAME_W / 2 - PLATFORM_W / 2, y: 40, w: PLATFORM_W, obstacle: false, el: null });
+    const list: Platform[] = [{ id: pid++, x: GAME_W / 2 - PLATFORM_W / 2, y: 40, w: PLATFORM_W, obstacle: false }];
     let y = 40;
-    while (y < GAME_H * 3.2) {
+    while (y < GAME_H * 3.4) {
       y += PLATFORM_GAP_MIN + Math.random() * (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN);
-      list.push({ ...makePlatform(y), el: null });
+      list.push(makePlatform(y));
     }
-    world.current.platforms = list;
+    w.platforms = list;
     setPlatforms(list);
     setScore(0);
     setStatus('playing');
@@ -111,13 +104,12 @@ export function useWarakiJumpEngine() {
     world.current.touchX = x;
   }, []);
 
-  /** ربط عنصر DOM لمنصة — تُستدعى من ref في المكون */
   const registerPlatform = useCallback((id: number, el: HTMLDivElement | null) => {
     if (el) platformEls.current.set(id, el);
     else platformEls.current.delete(id);
   }, []);
 
-  // ===== حلقة اللعب + الرسم (DOM مباشر — صفر setState أثناء اللعب) =====
+  // ===== حلقة اللعب — منطق + رسم مباشر عبر style.top (صفر setState) =====
   useEffect(() => {
     reset();
     let raf = 0;
@@ -127,64 +119,88 @@ export function useWarakiJumpEngine() {
       w.last = t;
 
       if (w.playing) {
+        // حركة أفقية نحو الإصبع
         if (w.touchX !== null) {
           const dx = w.touchX - w.warakiX;
           w.warakiX += Math.sign(dx) * Math.min(Math.abs(dx), HORIZ_SPEED * dt);
-          w.warakiX = Math.max(14, Math.min(GAME_W - 14, w.warakiX));
+          w.warakiX = Math.max(24, Math.min(GAME_W - 14, w.warakiX));
         }
+        // جاذبية (y يزيد للأعلى): vy موجبة = صعود
         w.vy -= GRAVITY * dt;
-        const prevFeet = w.warakiY;
-        w.warakiY += w.vy * dt;
+        const prevFeet = w.feetY;
+        w.feetY += w.vy * dt;
 
+        // هبوط عبر سطح منصة (vy سالبة = هابط)
         if (w.vy < 0) {
           for (const p of w.platforms) {
             if (
-              w.warakiX > p.x - 8 &&
+              w.warakiX > p.x - 6 &&
               w.warakiX < p.x + p.w + 8 &&
               prevFeet >= p.y &&
-              w.warakiY <= p.y
+              w.feetY <= p.y
             ) {
-              w.warakiY = p.y;
+              w.feetY = p.y;
               w.vy = 0;
               break;
             }
           }
         }
 
-        const targetCam = w.warakiY - GAME_H * 0.62;
+        // الكاميرا لأعلى فقط
+        const targetCam = w.feetY - GAME_H * 0.62;
         if (targetCam > w.camY) w.camY = targetCam;
 
-        // توليد منصات جديدة (تحديث React نادر — مرة كل ~منصة)
+        // توليد منصات فوق الكاميرا + إزالة البعيدة (تحديث React نادر)
         const highest = w.platforms.reduce((m, p) => Math.max(m, p.y), 0);
         if (highest < w.camY + GAME_H * 1.6) {
-          w.platforms.push({ ...makePlatform(highest + PLATFORM_GAP_MIN + Math.random() * (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN)), el: null });
-          setPlatforms([...w.platforms]);
+          const newList = [...w.platforms];
+          let y = highest;
+          while (y < w.camY + GAME_H * 2.2) {
+            y += PLATFORM_GAP_MIN + Math.random() * (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN);
+            newList.push(makePlatform(y));
+          }
+          // إزالة البعيدة أسفل الشاشة (خريطة DOM تُنظَّف تلقائيًا)
+          const cutoff = w.camY - 200;
+          w.platforms = newList.filter((p) => p.y > w.camY - 200 || p.id === newList[0]?.id);
+          if (w.platforms.length !== newList.length) {
+            w.platforms.unshift(newList[0]);
+          }
+          setPlatforms(w.platforms);
         }
 
-        // خسارة
-        if (w.warakiY < w.camY - WARAKI_H - 40) {
+        // تصادم العوائق — المكعب في منتصف المنصة: هبوط/وقوف فوقه = خسارة
+        if (w.vy === 0) {
+          for (const p of w.platforms) {
+            if (p.obstacle && w.feetY === p.y) {
+              const obstacleX = p.x + p.w / 2;
+              if (Math.abs(w.warakiX - obstacleX) < 24) {
+                w.playing = false;
+                setStatus('lost');
+              }
+            }
+          }
+        }
+
+        // خسارة — سقط تحت أسفل الشاشة
+        if (w.feetY < w.camY - WARAKI_H) {
           w.playing = false;
-          setScore(Math.floor(w.camY / 10));
           setStatus('lost');
         }
       }
 
-      // ===== الرسم المباشر =====
-      const layer = layerRef.current;
-      if (layer) {
-        layer.style.transform = `translateY(${w.camY}px)`;
-      }
+      // ===== الرسم المباشر: كل شيء بإحداثيات شاشة =====
+      // البطل: قدمه عند feetY — رأسه فوقها
       if (heroRef.current) {
-        // داخل الطبقة المزاحة: y الشاشة = -(warakiY) + camY (نظام y-up)
-        heroRef.current.style.transform = `translate(${w.warakiX - WARAKI_W / 2}px, ${-(w.warakiY - w.camY)}px)`;
+        heroRef.current.style.top = `${GAME_H - (w.feetY - w.camY) - WARAKI_H}px`;
+        heroRef.current.style.left = `${w.warakiX - WARAKI_W / 2}px`;
       }
-      // إظهار/إخفاء المنصات حسب موقعها من الكاميرا
+      // المنصات
       platformEls.current.forEach((el, id) => {
         const p = w.platforms.find((q) => q.id === id);
         if (!p) return;
-        const screenY = GAME_H - (p.y - w.camY);
-        el.style.top = `${screenY}px`;
-        el.style.visibility = screenY > -60 && screenY < GAME_H + 80 ? 'visible' : 'hidden';
+        const sy = GAME_H - (p.y - w.camY);
+        el.style.top = `${sy}px`;
+        el.style.visibility = sy > -80 && sy < GAME_H + 100 ? 'visible' : 'hidden';
       });
 
       raf = requestAnimationFrame(step);
@@ -193,9 +209,10 @@ export function useWarakiJumpEngine() {
     return () => cancelAnimationFrame(raf);
   }, [reset]);
 
+  /** أفضل نتيجة + إعادة تلقائية عند الخسارة */
   useEffect(() => {
     if (status === 'lost') {
-      const final = Math.floor(world.current.camY / 10);
+      const final = Math.max(0, Math.floor(world.current.camY / 10));
       setScore(final);
       if (final > best) {
         setBest(final);
@@ -205,7 +222,8 @@ export function useWarakiJumpEngine() {
       return () => clearTimeout(t);
     }
     return undefined;
-  }, [status, reset]);
+  }, [status, best, reset]);
 
-  return { status, score, best, platforms, layerRef, heroRef, registerPlatform, jump, setTouchX, reset };
+  return { status, score, best, platforms, heroRef, registerPlatform, jump, setTouchX, reset };
 }
+

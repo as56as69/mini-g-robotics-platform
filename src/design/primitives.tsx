@@ -124,7 +124,8 @@ export const ScribbleBlob: React.FC<{
   lookX?: number;
   lookY?: number;
   className?: string;
-}> = ({ seed, r = 60, mood = 'idle', lookX = 0, lookY = 0, className = '' }) => {
+  style?: React.CSSProperties;
+}> = ({ seed, r = 60, mood = 'idle', lookX = 0, lookY = 0, className = '', style }) => {
   const paths = React.useMemo(() => {
     const rnd = seededRandom(seed);
     const out: string[] = [];
@@ -143,7 +144,13 @@ export const ScribbleBlob: React.FC<{
   }, [seed, r]);
 
   return (
-    <svg viewBox="-80 -80 160 160" className={className} style={{ overflow: 'visible', display: 'block' }} aria-label="مستر شخبوط">
+    <svg
+      viewBox="-80 -80 160 160"
+      className={className}
+      style={{ overflow: 'visible', display: 'block', width: '100%', height: '100%', ...style }}
+      aria-label="مستر شخبوط"
+      preserveAspectRatio="xMidYMid meet"
+    >
       <g className={mood === 'think' ? 'mc-wiggle-anim' : undefined}>
         {paths.map((d, i) => (
           <path

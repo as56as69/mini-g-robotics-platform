@@ -19,7 +19,7 @@ interface Props {
 }
 
 export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
-  const { status, score, best, platforms, layerRef, heroRef, registerPlatform, jump, setTouchX, reset } =
+  const { status, score, best, platforms, heroRef, registerPlatform, jump, setTouchX, reset } =
     useWarakiJumpEngine();
   const stageRef = useRef<HTMLDivElement>(null);
   const [hintGone, setHintGone] = useState(false);
@@ -92,10 +92,14 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
           {/* خلفية ساكنة */}
           <ScribbleWorldBackdrop />
 
-          {/* طبقة العالم المنزلقة (تُحرَّك بـ transform من المحرك) */}
-          <div ref={layerRef} className="absolute inset-0" style={{ willChange: 'transform' }}>
-            {/* ورقي البطل — داخل الطبقة: المترجم يحرّكه بإحداثيات عالم */}
-            <div ref={heroRef} className="absolute top-0 left-0" style={{ width: WARAKI_W, height: WARAKI_H, zIndex: 10, willChange: 'transform' }}>
+          {/* المنصات + البطل — بإحداثيات شاشة، المحرك يحدّث top مباشرة */}
+          <div className="absolute inset-0">
+            {/* ورقي البطل — القدم عند feetY */}
+            <div
+              ref={heroRef}
+              className="absolute"
+              style={{ width: WARAKI_W, height: WARAKI_H, zIndex: 10, willChange: 'top, left' }}
+            >
               <PaperSprite className="mc-wiggle" />
             </div>
 
@@ -107,7 +111,7 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
                   registerPlatform(p.id, el);
                 }}
                 className="absolute"
-                style={{ left: `${(p.x / GAME_W) * 100}%`, width: `${(p.w / GAME_W) * 100}%` }}
+                style={{ left: `${(p.x / GAME_W) * 100}%`, width: `${(p.w / GAME_W) * 100}%`, top: GAME_H - p.y }}
               >
                 <div className="mc-paper-wobble">
                   <PaperPlatform w={p.w} />
