@@ -202,6 +202,11 @@ html[data-mode="kid_home"] body {
   background-color: #0F172A;
 }
 
+html[data-mode="doodle"] body {
+  background-color: #fdfbf4;
+  color: #2b2a33;
+}
+
 .app-viewport-wrapper {
   background-color: var(--app-bg, #0F172A);
 }
@@ -222,8 +227,624 @@ body::before {
     linear-gradient(90deg, rgba(37, 99, 235, 0.05) 1px, transparent 1px);
   background-size: 40px 40px;
 }
-html[data-mode="kid_home"] body::before {
+/* ===== Visual identity: per-mode theming ===== */
+html[data-mode="kid_home"] {
+  --app-bg: #0F172A;
+  --app-radius: 16px;
+  --brand-primary: #6C5CE7;
+  --brand-accent: #00CEC9;
+  --brand-glow: #FF7675;
+}
+
+html[data-mode="school_lms"] {
+  --app-bg: #090D16;
+  --app-radius: 8px;
+  --brand-primary: #2563EB;
+  --brand-accent: #10B981;
+  --brand-glow: #64748B;
+}
+
+/* ===== Doodle "كود ماجيك" — sketchbook identity (paper + crayon) ===== */
+html[data-mode="doodle"] {
+  --app-bg: #fdfbf4;
+  --paper: #fdfbf4;
+  --paper-line: #dfe6ee;
+  --paper-margin: #f4a9a8;
+  --ink: #2b2a33;
+  --crayon-red: #ff6b6b;
+  --crayon-yellow: #ffd93d;
+  --crayon-green: #6bcb77;
+  --crayon-blue: #4d96ff;
+  --crayon-pink: #ff6b9d;
+  --brand-primary: #4d96ff;
+  --brand-accent: #6bcb77;
+  --brand-glow: #ffd93d;
+}
+
+html[data-mode="doodle"] body {
+  background-color: #fdfbf4;
+}
+
+html[data-mode="doodle"] .app-viewport-wrapper {
+  background-color: var(--app-bg, #fdfbf4);
+  background-image:
+    linear-gradient(rgba(75, 125, 180, 0.08) 1px, transparent 1px);
+  background-size: 100% 34px;
+}
+
+/* ===== Paper types for the magic notebook («تغيير نوع الورق») =====
+   Applied to .doodle-notebook; textures use light native CSS only. */
+.doodle-paper-dotted {
+  background-color: #fdfbf7 !important;
+  background-image: radial-gradient(rgba(75, 125, 180, 0.22) 1.5px, transparent 1.5px) !important;
+  background-size: 20px 20px !important;
+}
+.doodle-paper-lined {
+  background-color: #faf8f5 !important;
+  background-image: repeating-linear-gradient(transparent, transparent 27px, rgba(75, 125, 180, 0.18) 27px, rgba(75, 125, 180, 0.18) 28px) !important;
+}
+.doodle-paper-grid {
+  background-color: #faf8f5 !important;
+  background-image:
+    linear-gradient(to right, rgba(75, 125, 180, 0.14) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(75, 125, 180, 0.14) 1px, transparent 1px) !important;
+  background-size: 20px 20px !important;
+}
+.doodle-paper-kraft {
+  background-color: #d7ccc8 !important;
+  background-image: radial-gradient(rgba(62, 39, 35, 0.05) 1px, transparent 0) !important;
+  background-size: 8px 8px !important;
+}
+/* Kraft mode shifts ink for readability on the brown sheet */
+.doodle-paper-kraft,
+.doodle-paper-kraft button,
+.doodle-paper-kraft p,
+.doodle-paper-kraft span,
+.doodle-paper-kraft h1,
+.doodle-paper-kraft h2,
+.doodle-paper-kraft h3 {
+  color: #3e2723;
+}
+.doodle-paper-plain {
+  background-color: #fefefe !important;
+  background-image: none !important;
+}
+/* Ruled notebook: blue lines every 24px + red margin line on the right (RTL) */
+.doodle-paper-notebook {
+  background-color: #fdfbf7 !important;
+  background-image:
+    linear-gradient(90deg, transparent 0, transparent calc(100% - 59px), #ff9999 calc(100% - 59px), #ff9999 calc(100% - 61px), transparent calc(100% - 61px)),
+    linear-gradient(rgba(75, 125, 180, 0.28) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 100% 24px !important;
+}
+/* Dark kraft: rougher, browner cousin of the kraft sheet */
+.doodle-paper-darkkraft {
+  background-color: #c4ab80 !important;
+  background-image: radial-gradient(#b09568 1px, transparent 0) !important;
+  background-size: 12px 12px !important;
+}
+.doodle-paper-darkkraft,
+.doodle-paper-darkkraft button,
+.doodle-paper-darkkraft p,
+.doodle-paper-darkkraft span,
+.doodle-paper-darkkraft h1,
+.doodle-paper-darkkraft h2,
+.doodle-paper-darkkraft h3 {
+  color: #3e2723;
+}
+
+/* Paper selector strip — crayon cut-paper buttons (doodle only) */
+.paper-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: 20px;
+  border: 1.5px dashed rgba(43, 42, 51, 0.35);
+  width: fit-content;
+  margin-inline: auto;
+}
+.paper-btn {
+  border: 1.5px solid rgba(43, 42, 51, 0.3);
+  background: #fff;
+  padding: 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #2b2a33;
+  transition: all 0.2s;
+  font-family: 'Cairo Play', 'Cairo', cursive, sans-serif;
+}
+.paper-btn:hover {
+  transform: translateY(-1px) rotate(-1deg);
+  box-shadow: 2px 3px 0 rgba(43, 42, 51, 0.2);
+}
+.paper-btn.active {
+  border-color: #4d96ff;
+  background: #eff6ff;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(77, 150, 255, 0.25);
+}
+
+/* Doodle identity: hand-written title font (Cairo Play) + crayon helpers */
+.doodle-title {
+  font-family: 'Cairo Play', 'Cairo', cursive, sans-serif;
+}
+
+/* Cairo Play across the doodle notebook — scoped to doodle mode ONLY so
+   kid_home / school_lms keep their Cairo/Tajawal identity untouched. */
+html[data-mode="doodle"] button,
+html[data-mode="doodle"] p,
+html[data-mode="doodle"] span,
+html[data-mode="doodle"] h1,
+html[data-mode="doodle"] h2,
+html[data-mode="doodle"] h3,
+html[data-mode="doodle"] label,
+html[data-mode="doodle"] input,
+html[data-mode="doodle"] .doodle-notebook {
+  font-family: 'Cairo Play', 'Cairo', cursive, sans-serif;
+}
+
+html[data-mode="doodle"] .doodle-title,
+html[data-mode="doodle"] button {
+  font-weight: 700;
+}
+
+.crayon-underline {
+  background: linear-gradient(transparent 62%, rgba(255, 107, 107, 0.35) 46%, rgba(255, 107, 107, 0.4) 92%, transparent 92%);
+  border-radius: 2px;
+}
+
+/* Wiggly SVG filter targets */
+.doodle-wiggly {
+  filter: url(#doodleWiggle);
+}
+
+/* Torn/cut paper block pieces */
+.doodle-cut {
+  position: relative;
+  border: 2.5px solid #2b2a33;
+  border-radius: 14px 22px 12px 20px / 18px 12px 20px 12px;
+  box-shadow: 3px 4px 0 rgba(43, 42, 51, 0.22);
+}
+
+.doodle-tape {
+  position: absolute;
+  width: 74px;
+  height: 22px;
+  background: rgba(255, 217, 61, 0.6);
+  border-left: 2px dashed rgba(255, 255, 255, 0.7);
+  border-right: 1px dashed rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  transform: rotate(-4deg);
+}
+
+/* Gentle wiggly breathing animation for the paper monster */
+@keyframes doodleBreathe {
+  0%, 100% { transform: translateY(0) rotate(-0.5deg); }
+  50%      { transform: translateY(-4px) rotate(0.8deg); }
+}
+.doodle-monster {
+  animation: doodleBreathe 3.2s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+
+/* Waraki v2 — crayon character idle wiggle (inner SVG layer; card keeps
+   breathing via .doodle-monster, dance via .doodle-monster-excited) */
+/* Waraki v2 — crayon character idle wiggle (inner SVG layer; card keeps
+   breathing via .doodle-monster, dance via .doodle-monster-excited) */
+.waraki-svg {
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.15));
+  animation: warakiWiggle 1.4s ease-in-out infinite alternate;
+  transform-origin: 50% 90%;
+}
+/* Waraki melds with his medium: soft transitions between paper themes */
+.waraki-transition {
+  transition: fill 600ms ease, stroke 600ms ease;
+}
+/* Pencil medium — slightly desaturated, graphite feel */
+.waraki-svg.waraki-pencil {
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.12)) saturate(0.55) contrast(1.08);
+}
+/* ===== Waraki Adventures («مغامرات ورقي») ===== */
+/* Stage: warm notebook paper + faint school-blue ruling lines */
+.adventure-stage {
+  background-color: #fffef9 !important;
+  background-image:
+    linear-gradient(rgba(75, 125, 180, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, transparent calc(100% - 46px), rgba(255, 138, 138, 0.35) calc(100% - 59px), rgba(255, 138, 138, 0.0) calc(100% - 57px)) !important;
+  background-size: 100% 24px, 100% 100% !important;
+}
+/* Sketchy pencil frame — hand-drawn dashed border that softly trembles */
+.adventure-frame {
+  border: 3px dashed rgba(74, 74, 74, 0.75);
+  border-radius: 16px 24px 14px 22px / 20px 14px 24px 16px;
+  box-shadow: 5px 6px 0 rgba(209, 213, 219, 0.9), 0 0 0 1px rgba(43, 42, 51, 0.08);
+  animation: adventureFrameWobble 5s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+@keyframes adventureFrameWobble {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(0.15deg) scale(1.001); }
+  50% { transform: rotate(-0.3deg); }
+  75% { transform: rotate(0.15deg); }
+}
+/* Abbas — living pencil sketch (user spec, calmed): breathes gently in the
+   notebook instead of trembling; stacks with the paper wiggle filter */
+@keyframes abbassSketchWobble {
+  0% { transform: rotate(0deg) translate(0, 0); }
+  25% { transform: rotate(-1deg) translate(-1px, 1px); }
+  50% { transform: rotate(1.5deg) translate(1px, -1px); }
+  75% { transform: rotate(-0.5deg) translate(0, 1px); }
+  100% { transform: rotate(0deg) translate(0, 0); }
+}
+.abbass-doodle {
+  animation: abbassSketchWobble 2.4s ease-in-out infinite;
+  filter: drop-shadow(2px 3px 0 rgba(43, 42, 51, 0.18));
+}
+/* Scrap villain — relentless crawl toward waraki */
+@keyframes monsterCrawl {
+  0%, 100% { transform: translateX(-50%) rotate(-3deg) translateY(0); }
+  50% { transform: translateX(calc(-50% + 3px)) rotate(3deg) translateY(-2px); }
+}
+.monster-crawl {
+  animation: monsterCrawl 0.7s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+/* Jump arc — waraki leaps over obstacles (single + double jump) */
+@keyframes warakiJumpArc {
+  0% { transform: translateX(-50%) translateY(0) rotate(0deg); }
+  45% { transform: translateX(-50%) translateY(-34px) rotate(-6deg); }
+  100% { transform: translateX(-50%) translateY(0) rotate(0deg); }
+}
+.waraki-jumping,
+.waraki-jump-arc {
+  animation: warakiJumpArc 0.62s ease-in-out !important;
+}
+/* Double jump — higher + a spark trail */
+.waraki-jump-2 {
+  animation: warakiJumpArc2 0.7s ease-in-out !important;
+}
+@keyframes warakiJumpArc2 {
+  0% { transform: translateX(-50%) translateY(0) rotate(0deg); }
+  40% { transform: translate(-50%, -46px) rotate(-6deg) scale(1.06); }
+  100% { transform: translate(-50%, 0) rotate(0deg) scale(1); }
+}
+/* Fight strike — quick lunge flash */
+@keyframes fightStrike {
+  0% { transform: translateX(-50%) rotate(0deg); }
+  30% { transform: translate(calc(-50% - 14px), -4px) rotate(-8deg); }
+  100% { transform: translateX(-50%) rotate(0deg); }
+}
+.fight-strike {
+  animation: fightStrike 0.45s ease-out;
+}
+.monster-crawl {
+  animation: monsterCrawl 0.7s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+/* Comic victory — the scrap villain tears apart: body + 3 flying scraps */
+@keyframes paperScatter {
+  0% { opacity: 1; transform: translateX(-50%) rotate(0deg) scale(1); }
+  35% { transform: translate(-50%, -18px) rotate(14deg) scale(1.08); opacity: 1; }
+  100% {
+    transform: translate(calc(-50% + 90px), 60px) rotate(80deg) scale(0.2);
+    opacity: 0;
+  }
+}
+.monster-shatter {
+  animation: paperScatter 1.1s ease-out forwards;
+  pointer-events: none;
+}
+/* flying paper bits after the scatter */
+@keyframes scrapFly1 {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.3); }
+  30% { opacity: 1; }
+  100% { transform: translate(95px, -46px) rotate(150deg) scale(1); opacity: 0; }
+}
+@keyframes scrapFly2 {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.2); }
+  30% { opacity: 1; }
+  100% { transform: translate(60px, 40px) rotate(-120deg) scale(0.3); opacity: 0; }
+}
+@keyframes scrapFly3 {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.35); }
+  30% { opacity: 1; }
+  100% { transform: translate(-55px, 55px) rotate(120deg) scale(0.25); opacity: 0; }
+}
+.monster-scrap-1 { animation: scrapFly1 1s ease-out forwards; }
+.monster-scrap-2 { animation: scrapFly2 1s ease-out 0.15s forwards; opacity: 0; }
+.monster-scrap-3 { animation: scrapFly3 1s ease-out 0.3s forwards; opacity: 0; }
+/* Threat bubble above the crawling monster */
+@keyframes threatPulse {
+  0%, 82%, 100% { opacity: 0; transform: translateY(4px) scale(0.7); }
+  12%, 22% { opacity: 1; transform: translateY(-2px) scale(1.05); }
+}
+.monster-threat {
+  animation: threatPulse 3s ease-in-out infinite;
+}
+/* Abbas — living pencil sketch (user spec, calmed): breathes gently in the
+   notebook instead of trembling; stacks with the paper wiggle filter */
+@keyframes abbassSketchWobble {
+  0% { transform: rotate(0deg) translate(0, 0); }
+  25% { transform: rotate(-1deg) translate(-1px, 1px); }
+  50% { transform: rotate(1.5deg) translate(1px, -1px); }
+  75% { transform: rotate(-0.5deg) translate(0, 1px); }
+  100% { transform: rotate(0deg) translate(0, 0); }
+}
+.abbass-doodle {
+  animation: abbassSketchWobble 2.4s ease-in-out infinite;
+  filter: drop-shadow(2px 3px 0 rgba(43, 42, 51, 0.18));
+}
+/* Sketch character sticker — hand-drawn label with wobbly edges (user spec,
+   radius form) + Cairo Play (Comic Sans dropped: no Arabic support) */
+.character-badge {
+  background-color: #ffffff;
+  border: 3px solid #2b2a33;
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  box-shadow: 3px 3px 0 rgba(43, 42, 51, 0.85);
+  padding: 4px 12px;
+  transform: rotate(-1.5deg);
+  font-family: 'Cairo Play', 'Cairo', cursive, sans-serif;
+  display: inline-block;
+}
+.character-badge:active {
+  transform: translate(2px, 2px) rotate(-1.5deg);
+  box-shadow: 0 0 0 rgba(43, 42, 51, 0.85);
+}
+/* Sticker-like buttons — unified identity + press-sink effect */
+.doodle-button {
+  border: 2.5px solid #2b2a33;
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  box-shadow: 3px 3px 0 rgba(43, 42, 51, 0.8);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  font-family: 'Cairo Play', 'Cairo', cursive, sans-serif;
+}
+.doodle-button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 rgba(43, 42, 51, 0.8);
+}
+@keyframes warakiStageWalk {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-4px) rotate(2deg); }
+}
+.waraki-stage-walk {
+  animation: warakiStageWalk 0.46s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+/* Celebration jump (win overlay emoji) */
+@keyframes warakiStageJump {
+  0%, 100% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(-12px) scale(1.15); }
+}
+.waraki-stage-jump {
+  display: inline-block;
+  animation: warakiStageJump 0.6s ease-in-out infinite;
+}
+/* Narration bubble pop-in */
+@keyframes warakiNarrPop {
+  0% { transform: translateY(10px) scale(0.92) rotate(-1deg); opacity: 0; }
+  60% { transform: translateY(-2px) scale(1.03) rotate(0.4deg); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+/* Active command card — crayon glow on the step currently executing */
+@keyframes warakiCardGlow {
+  0%, 100% { box-shadow: 3px 4px 0 rgba(43,42,51,0.2), 0 0 0 0 rgba(255, 107, 107, 0.5); }
+  50% { box-shadow: 3px 4px 0 rgba(43,42,51,0.2), 0 0 0 4px rgba(255, 107, 107, 0.4); }
+}
+.waraki-card-active {
+  transform: scale(1.08) rotate(-1.5deg);
+  animation: warakiCardGlow 0.65s ease-in-out infinite alternate;
+}
+@keyframes warakiWiggle {
+  0%   { transform: scale(1) rotate(-1deg); }
+  100% { transform: scale(1.02) rotate(1deg); }
+}
+/* Periodic blink — closed for a tiny sliver of a 4s cycle */
+@keyframes warakiBlink {
+  0%, 94%, 100% { transform: scaleY(1); }
+  97% { transform: scaleY(0.08); }
+}
+.waraki-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: warakiBlink 4s ease-in-out infinite;
+}
+
+/* Gentle wobble for cut paper blocks */
+@keyframes doodleSwing {
+  0%, 100% { transform: rotate(-1.2deg); }
+  50% { transform: rotate(1.2deg); }
+}
+.doodle-wobble {
+  animation: doodleWobble 3.4s ease-in-out infinite;
+}
+@keyframes doodleWobble {
+  0%, 100% { transform: rotate(-1.2deg); }
+  50% { transform: rotate(1.2deg); }
+}
+html[data-mode="doodle"] body::before {
   display: none;
+}
+
+/* Excited dance for the paper monster while code runs */
+@keyframes doodleDance {
+  0% { transform: translateY(0) rotate(-2deg) scale(1); }
+  25% { transform: translateY(-8px) rotate(3deg) scale(1.05); }
+  50% { transform: translateY(0) rotate(-3deg) scale(1); }
+  75% { transform: translateY(-6px) rotate(2deg) scale(1.04); }
+  100% { transform: translateY(0) rotate(-2deg) scale(1); }
+}
+.doodle-monster-excited {
+  animation: doodleDance 0.5s ease-in-out infinite !important;
+  border-color: #ff6b6b !important;
+}
+
+/* ===== Waraki moods (v3) — reaction states driven by the mg-waraki bus ===== */
+/* Wind-shake: paper trembling in the wind (vibrate block) */
+@keyframes warakiShake {
+  0%, 100% { transform: rotate(0deg) translateX(0); }
+  20% { transform: rotate(-3deg) translateX(-3px); }
+  40% { transform: rotate(3deg) translateX(3px); }
+  40% { transform: rotate(-2.4deg) translateX(-2px); }
+  60% { transform: rotate(2deg) translateX(2px); }
+  60% { transform: rotate(-1.2deg) translateX(-1px); }
+  80% { transform: rotate(1.4deg) translateX(1px); }
+}
+.waraki-svg[data-mood="shake"] {
+  animation: warakiShake 0.35s ease-in-out 2 !important;
+}
+/* Celebrate: joyful jump + tilt (success) */
+@keyframes warakiBounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-14px) rotate(-3deg) scale(1.06); }
+  55% { transform: translateY(0) scale(0.98, 0.94); }
+  70% { transform: translateY(-6px) scale(0.99, 1.03); }
+  85% { transform: translateY(0) scale(1, 0.98); }
+}
+.waraki-svg[data-mood="celebrate"] {
+  animation: warakiBounce 0.7s ease-in-out 2 !important;
+}
+/* Confused: crown tilts (transform-origin at the pin) */
+.waraki-crown-tilt {
+  transform-box: fill-box;
+  transform-origin: 100px 26px;
+  animation: warakiCrownTilt 0.8s ease-in-out infinite alternate;
+}
+@keyframes warakiCrownTilt {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-9deg); }
+}
+/* Paper question mark pop for confused mood */
+@keyframes warakiQPop {
+  0% { transform: translateY(6px) scale(0.4); opacity: 0; }
+  35% { transform: translateY(0) scale(1.15); opacity: 1; }
+  55% { transform: translateY(-2px) scale(1.05); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.waraki-qmark {
+  animation: warakiQPop 0.5s ease-out both;
+}
+/* Idea lamp glow while the program runs */
+.waraki-lamp-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: warakiLampGlow 0.55s ease-in-out infinite alternate;
+}
+@keyframes warakiLampGlow {
+  0%, 100% { opacity: 0.35; transform: scale(0.9); }
+  50% { opacity: 0.85; transform: scale(1.25); }
+}
+/* Wind-shake: paper trembling in the wind (vibrate block) */
+.waraki-shake {
+  animation: warakiShake 0.35s ease-in-out 2 !important;
+}
+.waraki-svg[data-mood="shake"] {
+  animation: warakiShake 0.35s ease-in-out 2 !important;
+}
+@keyframes warakiShake {
+  0%, 100% { transform: rotate(0deg) translateX(0); }
+  20% { transform: rotate(-3deg) translateX(-3px); }
+  40% { transform: rotate(3deg) translateX(3px); }
+  60% { transform: rotate(-2deg) translateX(-2px); }
+  80% { transform: rotate(1.5deg) translateX(1.5px); }
+}
+/* Celebration stars flying around the head */
+.waraki-star {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: starFly 0.9s ease-in-out infinite alternate;
+}
+.waraki-star-2 { animation-delay: 0.25s; }
+.waraki-star-3 { animation-delay: 0.5s; }
+@keyframes starFly {
+  0% { transform: translateY(2px) scale(0.7) rotate(-12deg); opacity: 0.65; }
+  100% { transform: translateY(-8px) scale(1.15) rotate(14deg); opacity: 1; }
+}
+/* Brush-wipe colour transition layer (body fill transitions via inline style) */
+.waraki-svg[data-mood="color"] {
+  filter: url(#doodleWiggle) drop-shadow(2px 2px 0 rgba(0,0,0,0.15)) drop-shadow(0 0 8px rgba(255, 217, 61, 0.55));
+}
+
+/* ===== Doodle Blockly workspace overrides (scoped to doodle mode) ===== */
+html[data-mode="doodle"] .blocklyToolboxDiv {
+  background-color: #f5f0e1 !important;
+  border-right: 2px dashed rgba(43, 42, 51, 0.25);
+}
+html[data-mode="doodle"] .blocklyTreeLabel {
+  font-family: 'Cairo Play', 'Cairo', cursive, sans-serif !important;
+  fill: #2b2a33 !important;
+}
+html[data-mode="doodle"] .blocklyTreeRow {
+  border-radius: 12px;
+  margin: 2px 4px;
+}
+html[data-mode="doodle"] .blocklyTreeSelected {
+  background-color: rgba(255, 217, 61, 0.45) !important;
+  box-shadow: 0 0 0 2px #ffd93d;
+}
+html[data-mode="doodle"] .blocklyFlyoutBackground {
+  fill: #f5f0e1 !important;
+  stroke: #2b2a33;
+  stroke-width: 1px;
+}
+html[data-mode="doodle"] .blocklyText,
+html[data-mode="doodle"] .blocklyDropdownText,
+html[data-mode="doodle"] .blocklyEditableText > text {
+  font-family: 'Cairo Play', 'Cairo', cursive, sans-serif !important;
+  fill: #2b2a33 !important;
+}
+html[data-mode="doodle"] .blocklySvg text {
+  font-family: 'Cairo Play', 'Cairo', cursive, sans-serif !important;
+}
+html[data-mode="doodle"] .blocklyMainBackground {
+  fill: url(#none) #fdfbf4 !important;
+}
+html[data-mode="doodle"] .blocklyGrid line {
+  stroke: rgba(75, 125, 180, 0.35);
+  stroke-width: 0.5;
+}
+html[data-mode="doodle"] .blocklyToolboxCategory {
+  color: #2b2a33;
+}
+html[data-mode="doodle"] .blocklyScrollbarHandle {
+  fill: #d4cfc2;
+}
+html[data-mode="doodle"] .scrollbar-hidden,
+html[data-mode="doodle"] .blocklyScrollbarBackground {
+  opacity: 0;
+}
+
+/* Pencil-drawn dashed insertion marker (drag guide) — doodle only */
+html[data-mode="doodle"] .blocklyHighlightedConnectionPath {
+  stroke: #6b7280 !important;
+  stroke-width: 3px !important;
+  stroke-dasharray: 8 6 !important;
+  stroke-linecap: round;
+}
+
+/* Crayon glow + hand-drawn shadow on the block currently executing */
+@keyframes doodleExecDash {
+  to { stroke-dashoffset: -30; }
+}
+.blockly-executing > .blocklyPath {
+  stroke: #ff6b6b !important;
+  stroke-width: 3.5px !important;
+  stroke-dasharray: 10 5;
+  animation: doodleExecDash 0.9s linear infinite, doodleExecGlow 0.9s ease-in-out infinite;
+}
+@keyframes doodleExecGlow {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(255, 107, 107, 0.55)); }
+  50% { filter: drop-shadow(0 0 10px rgba(255, 107, 107, 0.95)); }
+}
+
+/* Program-title ink caption above the doodle block canvas */
+.doodle-program-caption {
+  font-family: 'Cairo Play', 'Cairo', cursive, sans-serif;
+  color: rgba(43, 42, 51, 0.75);
 }
 
 /* ===== BLE "alive" pulsing glow for the connected state ===== */

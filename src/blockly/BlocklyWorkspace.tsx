@@ -6,14 +6,17 @@ import { initCustomBlockly } from './generators/liveGenerator';
 import { bleService } from '../ble/BLEManager';
 import { BLEProtocol } from '../ble/Protocol';
 import { SoundFXManager } from '../ble/SoundFX';
+import { doodlePaperTheme } from './doodleTheme';
+import { emitWaraki } from '../services/warakiBus';
 import { Play, RotateCcw, Sparkles, Save, DownloadCloud, Check, Maximize2, Minimize2 } from 'lucide-react';
 
 interface Props {
   model: RobotModelType;
+  doodle?: boolean;
   onCodeRun?: () => void;
 }
 
-export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
+export const BlocklyWorkspace: React.FC<Props> = ({ model, doodle = false, onCodeRun }) => {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const [savedNotify, setSavedNotify] = useState(false);
@@ -58,12 +61,12 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
         zoom: {
           controls: true,
           wheel: true,
-          startScale: 0.8,
+          startScale: doodle ? 0.95 : 0.8,
           maxScale: 2.0,
           minScale: 0.4,
           scaleSpeed: 1.1,
         },
-        theme: Blockly.Theme.defineTheme('modernDark', {
+        theme: doodle ? doodlePaperTheme : Blockly.Theme.defineTheme('modernDark', {
           name: 'modernDark',
           base: Blockly.Themes.Classic,
           componentStyles: {
@@ -125,8 +128,22 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
     };
     window.addEventListener('resize', handleResize);
 
+    // Waraki: react to block drag starts (doodle notebook eye-tracking)
+    const dragListener = (e: Blockly.Events.Abstract) => {
+      if (!doodleRef.current) return;
+      if (e.type === Blockly.Events.BLOCK_DRAG && (e as Blockly.Events.BlockDrag).isStart) {
+        emitWaraki({ type: 'drag' });
+      }
+    };
+    if (workspaceRef.current) {
+      workspaceRef.current.addChangeListener(dragListener);
+    }
+
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (workspaceRef.current) {
+        workspaceRef.current.removeChangeListener(dragListener);
+      }
       closeOpenPopups();
       if (workspaceRef.current) {
         workspaceRef.current.dispose();
@@ -150,7 +167,7 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
   }, [isExpanded]);
 
   useEffect(() => {
-    (window as any).__BLE_DISPATCH__ = async (cmd: number, param: any) => {
+    (window as any).__BLE_DISPATCH__ = async (cmd: number, param: any, blockId?: string) => {
       let dataBytes: number[] = [];
       if (typeof param === 'string' && param.startsWith('#')) {
         dataBytes = BLEProtocol.hexToRgb(param);
@@ -159,14 +176,75 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
       } else if (typeof param === 'number') {
         dataBytes = [param];
       }
+      if (doodleRef.current) {
+        await highlightBlockStep(blockId, doodleSpeedRef.current);
+        // Feed Waraki: lamp on for any dispatch + colour/vibrate reactions
+        if (cmd === 0x10 && typeof param === 'string' && param.startsWith('#')) {
+          emitWaraki({ type: 'color', color: param });
+        } else if (cmd === 0x11) {
+          emitWaraki({ type: 'vibrate' });
+        } else {
+          emitWaraki({ type: 'run-start' });
+        }
+      }
       await bleService.sendCommand(cmd, dataBytes);
+      if (doodleRef.current) unhighlightBlock(blockId);
     };
   }, []);
+
+  // Doodle step-runner: pace + highlight refs (kept fresh via effects below).
+  const doodleSpeedRef = useRef<number>(700);
+  const doodleRef = useRef<boolean>(doodle);
+  useEffect(() => {
+    doodleRef.current = doodle;
+  }, [doodle]);
+
+  const highlightBlock = (blockId: string | undefined) => {
+    if (!blockId || !workspaceRef.current) return;
+    const block = workspaceRef.current.getBlockById(blockId);
+    if (block) block.addClass('blockly-executing');
+  };
+
+  const unhighlightBlock = (blockId: string | undefined) => {
+    if (!blockId || !workspaceRef.current) return;
+    const block = workspaceRef.current.getBlockById(blockId);
+    if (block) block.removeClass('blockly-executing');
+  };
+
+  const highlightBlockStep = async (blockId: string | undefined, holdMs: number) => {
+    if (!blockId) return;
+    highlightBlock(blockId);
+    await new Promise((r) => setTimeout(r, holdMs));
+  };
+
+  // Step-pacing hook the generated code awaits between steps (doodle mode only).
+  useEffect(() => {
+    (window as any).__BLE_STEP_WAIT__ = async (ms: number, blockId?: string) => {
+      const speed = doodleRef.current ? doodleSpeedRef.current : 0;
+      if (doodleRef.current) {
+        await highlightWait(blockId, Math.min(ms, speed));
+      } else {
+        await new Promise((r) => setTimeout(r, ms));
+      }
+    };
+  }, []);
+
+  const highlightWait = async (blockId: string | undefined, holdMs: number) => {
+    if (!blockId) {
+      await new Promise((r) => setTimeout(r, holdMs));
+      return;
+    }
+    highlightBlock(blockId);
+    await new Promise((r) => setTimeout(r, holdMs));
+    unhighlightBlock(blockId);
+    await new Promise((r) => setTimeout(r, holdMs * 0.25));
+  };
 
   const handleRunCode = async () => {
     if (!workspaceRef.current) return;
     closeOpenPopups();
     SoundFXManager.playRobotChirp();
+    if (doodle) SoundFXManager.playPaperRustle();
     const code = javascriptGenerator.workspaceToCode(workspaceRef.current);
     // Expose the student's actual generated program for the AI Code Reviewer
     (window as any).__LAST_STUDENT_CODE__ = code;
@@ -178,10 +256,26 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
         ${code}
       })()`);
       await asyncFn();
+      if (doodle) emitWaraki({ type: 'success' });
     } catch (e) {
       console.error('Execution error:', e);
+      if (doodle) emitWaraki({ type: 'error' });
+    } finally {
+      // Safety: clear any leftover highlight if execution threw mid-way
+      if (workspaceRef.current) {
+        for (const b of workspaceRef.current.getAllBlocks(false)) {
+          b.removeClass('blockly-executing');
+        }
+      }
     }
   };
+
+  const [speed, setSpeed] = useState<'slow' | 'normal'>('slow');
+
+  // Keep the speed ref in sync so the execution bridge always sees the latest value.
+  useEffect(() => {
+    doodleSpeedRef.current = speed === 'slow' ? 700 : 150;
+  }, [speed]);
 
   const handleSaveProject = () => {
     if (!workspaceRef.current) return;
@@ -217,21 +311,48 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
   };
 
   return (
-    <div className={`relative z-10 isolate w-full max-w-full min-w-0 flex flex-col bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl transition-all duration-300 ${
-      isExpanded ? 'h-[750px]' : 'h-[480px]'
-    }`}>
+    <div className={`relative z-10 isolate w-full max-w-full min-w-0 flex flex-col rounded-2xl overflow-hidden border shadow-2xl transition-all duration-300 ${
+        doodle
+          ? 'bg-[#fdfbf4] border-[#2b2a33]/40'
+          : 'bg-slate-900 border-slate-700'
+      } ${isExpanded ? 'h-[750px]' : 'h-[480px]'}`}>
       {/* Workspace Action Bar */}
-      <div className="h-14 bg-slate-800/95 backdrop-blur px-3 md:px-4 flex items-center justify-between border-b border-slate-700 flex-wrap gap-2 flex-shrink-0 z-30">
+      <div className={`h-14 px-3 md:px-4 flex items-center justify-between border-b flex-wrap gap-2 flex-shrink-0 z-30 ${
+          doodle
+            ? 'bg-[#f5f0e1]/95 border-[#2b2a33]/20'
+            : 'bg-slate-800/95 border-slate-700'
+        }`}>
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-kid-yellow animate-pulse" />
-          <span className="font-bold text-slate-200 text-xs md:text-sm">استوديو البرمجة التفاعلي</span>
+          <Sparkles className={`w-5 h-5 animate-pulse ${doodle ? 'text-[#ff6b6b]' : 'text-kid-yellow'}`} />
+          <span className={`font-bold text-xs md:text-sm ${doodle ? 'text-[#2b2a33] doodle-title' : 'text-slate-200'}`}>
+            {doodle ? 'لوحة السحر الورقية 🪄' : 'استوديو البرمجة التفاعلي'}
+          </span>
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Doodle speed toggle: 🐢 slow (700ms/step) / 🐇 normal (150ms/step) */}
+          {doodle && (
+            <div className="flex items-center rounded-xl border-2 border-[#2b2a33]/40 overflow-hidden text-xs font-bold">
+              <button
+                onClick={() => setSpeed('slow')}
+                className={`px-2 py-1.5 transition ${speed === 'slow' ? 'bg-[#4d96ff] text-white' : 'bg-[#ffecc2] text-[#2b2a33] hover:bg-[#ffd93d]'}`}
+                title="تنفيذ بطيء — لمعان أطول لكل بلوك"
+              >
+                🐢
+              </button>
+              <button
+                onClick={() => setSpeed('normal')}
+                className={`px-2 py-1.5 ${speed === 'normal' ? 'bg-[#6bcb77] text-white' : 'bg-[#ffecc2] text-[#2b2a33] hover:bg-[#ffd93d]'}`}
+                title="سرعة عادية"
+              >
+                🐇
+              </button>
+            </div>
+          )}
           {/* Toggle Expand Height */}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 transition"
+            className={`p-1.5 rounded-xl transition ${doodle ? 'bg-[#ffecc2] hover:bg-[#ffd93d] text-[#2b2a33]' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'}`}
             title={isExpanded ? 'تصغير المساحة' : 'تكبير مساحة البرمجة'}
           >
             {isExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -241,8 +362,12 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
           <button
             onClick={handleSaveProject}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition active:scale-95 ${
-              savedNotify ? 'bg-emerald-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'
-            }`}
+                savedNotify
+                  ? 'bg-emerald-500 text-white'
+                  : doodle
+                    ? 'bg-[#ffecc2] hover:bg-[#ffd93d] text-[#2b2a33]'
+                    : 'bg-slate-700 hover:bg-slate-600 text-slate-200'
+              }`}
             title="حفظ المشروع بالجهاز"
           >
             {savedNotify ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
@@ -252,7 +377,9 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
           {/* Export File */}
           <button
             onClick={handleExportXML}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold transition active:scale-95"
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition active:scale-95 ${
+                doodle ? 'bg-[#ffecc2] hover:bg-[#ffd93d] text-[#2b2a33]' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'
+              }`}
             title="تنزيل ملف المشروع XML"
           >
             <DownloadCloud className="w-3.5 h-3.5" />
@@ -262,7 +389,9 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
           {/* Reset */}
           <button
             onClick={handleResetWorkspace}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-semibold transition active:scale-95"
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition active:scale-95 ${
+                doodle ? 'bg-[#ffecc2] hover:bg-[#ffd93d] text-[#2b2a33]' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+              }`}
             title="إعادة تعيين مساحة العمل"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -272,16 +401,22 @@ export const BlocklyWorkspace: React.FC<Props> = ({ model, onCodeRun }) => {
           {/* Play Live */}
           <button
             onClick={handleRunCode}
-            className="hero-glow flex items-center gap-2 px-4 py-1.5 rounded-xl bg-gradient-to-r from-kid-glow via-orange-500 to-amber-500 hover:brightness-110 text-white font-bold text-xs md:text-sm shadow-lg shadow-kid-glow/50 transition transform active:scale-95"
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-xl text-white font-bold text-xs md:text-sm shadow-lg transition transform active:scale-95 ${
+                doodle
+                  ? 'bg-gradient-to-r from-[#ff6b6b] to-[#ff9f43] hover:brightness-110'
+                  : 'hero-glow bg-gradient-to-r from-kid-glow via-orange-500 to-amber-500 hover:brightness-110 shadow-kid-glow/50'
+              }`}
           >
             <Play className="w-3.5 h-3.5 fill-current" />
-            <span>تشغيل الكود 🚀</span>
+            <span>{doodle ? 'شغّل ورقي 🎨' : 'تشغيل الكود 🚀'}</span>
           </button>
         </div>
       </div>
 
       {/* Blockly Canvas Container - Explicit Flex-1 with min-height */}
-      <div className="relative w-full max-w-full min-w-0 flex-1 min-h-[380px] bg-slate-950 overflow-hidden isolate">
+      <div className={`relative w-full max-w-full min-w-0 flex-1 min-h-[380px] overflow-hidden isolate ${
+          doodle ? 'bg-[#fdfbf4]' : 'bg-slate-950'
+        }`}>
         <div ref={blocklyDiv} className="absolute inset-0 w-full h-full" />
       </div>
     </div>

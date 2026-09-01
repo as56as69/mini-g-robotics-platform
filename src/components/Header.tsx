@@ -1,6 +1,6 @@
 import React from 'react';
 import { RobotModelType, ROBOT_MODELS, AppMode } from '../types/robot';
-import { Bluetooth, BluetoothConnected, School, Home, ChevronDown, Award, BatteryCharging, Maximize, Minimize, Sparkles, ShieldCheck } from 'lucide-react';
+import { Bluetooth, BluetoothConnected, School, Home, ChevronDown, Award, BatteryCharging, Maximize, Minimize, Sparkles, ShieldCheck, Pencil } from 'lucide-react';
 
 interface Props {
   activeModel: RobotModelType;
@@ -33,6 +33,7 @@ export const Header: React.FC<Props> = ({
   }, []);
 
   const isSchool = appMode === 'school_lms';
+  const isDoodle = appMode === 'doodle';
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -44,26 +45,34 @@ export const Header: React.FC<Props> = ({
 
   return (
     <header className={`min-h-14 sm:h-16 px-2 sm:px-6 py-1.5 sm:py-0 flex items-center justify-between relative z-20 mb-3 sm:mb-4 flex-wrap gap-2 transition-colors duration-500 border-b ${
-      isSchool 
-        ? 'bg-slate-950/95 border-slate-800 shadow-xl shadow-slate-950/50' 
+      isDoodle
+        ? 'bg-[#fdfbf4] border-[#2b2a33]/20 shadow-[0_2px_0_rgba(43,42,51,0.08)]'
+        : isSchool
+        ? 'bg-slate-950/95 border-slate-800 shadow-xl shadow-slate-950/50'
         : 'bg-slate-900/95 border-purple-900/40 shadow-xl shadow-purple-950/20'
     }`}>
       {/* Brand & Model Selector */}
       <div className="flex items-center gap-2 sm:gap-4">
         <div className="flex items-center gap-2">
-          <span className={`text-xl sm:text-2xl transition-transform ${!isSchool ? 'animate-bounce' : ''}`}>
-            {isSchool ? '🏛️' : '🤖'}
+          <span className={`text-xl sm:text-2xl transition-transform ${!isSchool && !isDoodle ? 'animate-bounce' : ''} ${isDoodle ? 'doodle-monster' : ''}`}>
+            {isDoodle ? '✏️' : isSchool ? '🏛️' : '🤖'}
           </span>
           <div className="hidden md:block">
             <div className="flex items-center gap-1.5">
               <h1 className={`text-sm sm:text-base font-black ${
-                isSchool 
-                  ? 'text-white tracking-wide font-mono' 
+                isDoodle
+                  ? 'text-[#2b2a33] doodle-title text-lg'
+                  : isSchool
+                  ? 'text-white tracking-wide font-mono'
                   : 'bg-gradient-to-r from-kid-primary via-kid-accent to-kid-glow bg-clip-text text-transparent'
               }`}>
-                {isSchool ? 'منظومة ميني جي الأكاديمية' : 'مغامرات ميني جي للروبوتكس'}
+                {isDoodle ? 'كود ماجيك ✏️' : isSchool ? 'منظومة ميني جي الأكاديمية' : 'مغامرات ميني جي للروبوتكس'}
               </h1>
-              {isSchool ? (
+              {isDoodle ? (
+                <span className="text-[9px] font-bold bg-[#ffd93d]/30 text-[#2b2a33] border border-[#2b2a33]/30 px-1.5 py-0.2 rounded-md doodle-title">
+                  دفتر الكود السحري
+                </span>
+              ) : isSchool ? (
                 <span className="text-[9px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded-md">
                   STEM ACADEMY
                 </span>
@@ -71,8 +80,8 @@ export const Header: React.FC<Props> = ({
                 <Sparkles className="w-3.5 h-3.5 text-kid-yellow animate-spin" />
               )}
             </div>
-            <p className="text-[9px] sm:text-[10px] text-slate-400 font-medium">
-              {isSchool ? 'Mini G Institutional Robotics & STEM Control Hub' : 'Creative Kids Coding & Robotics Lab'}
+            <p className={`text-[9px] sm:text-[10px] font-medium ${isDoodle ? 'text-[#2b2a33]/60' : 'text-slate-400'}`}>
+              {isDoodle ? 'دفتر الرسم السحري لتعلم البرمجة — Doodle Code Magic' : isSchool ? 'Mini G Institutional Robotics & STEM Control Hub' : 'Creative Kids Coding & Robotics Lab'}
             </p>
           </div>
         </div>
@@ -159,6 +168,20 @@ export const Header: React.FC<Props> = ({
           <School className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-300" />
           <span className="hidden sm:inline">النسخة المدرسية والأكاديمية 🏛️</span>
           <span className="sm:hidden">المدرسة</span>
+        </button>
+
+        <button
+          onClick={() => onToggleMode('doodle')}
+          className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs transition ${
+            appMode === 'doodle'
+              ? 'bg-[#fdfbf4] text-[#2b2a33] border-2 border-[#2b2a33] shadow-[2px_3px_0_rgba(43,42,51,0.25)] rotate-[-1deg] doodle-cut'
+              : 'text-amber-300/70 hover:text-amber-200'
+          }`}
+          title="دفتر الكود السحري — للأصغر سناً"
+        >
+          <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+          <span className="hidden sm:inline doodle-title">كود ماجيك ✏️</span>
+          <span className="sm:hidden">دفتر</span>
         </button>
       </div>
 

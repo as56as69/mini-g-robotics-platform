@@ -56,7 +56,7 @@ export const ROBOT_MODELS: Record<RobotModelType, RobotModelInfo> = {
   }
 };
 
-export type AppMode = 'kid_home' | 'school_lms';
+export type AppMode = 'kid_home' | 'school_lms' | 'doodle';
 
 export interface CommandPacket {
   robotType: RobotModelType;
