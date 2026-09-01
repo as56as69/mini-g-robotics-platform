@@ -41,6 +41,10 @@ export function useAdventureEngine(
   onWin?: () => void
 ) {
   const { stage, monster } = chapter;
+  // If the fight button exists the monster MUST be defeated before reaching
+  // Abbas (chapter 4). Without a fight action (chapter 2's chasing scrap) the
+  // monster is just a timed hazard — reaching Abbas ends the chapter either way.
+  const monsterMandatory = chapter.availableActions.includes('fight');
 
   const [state, setState] = useState<EngineState>({
     warakiX: stage.warakiStart,
@@ -150,9 +154,10 @@ export function useAdventureEngine(
           setState((s) => ({ ...s, jumping: false }));
           x = next;
 
-          // win only when the whole path is clear — if a monster exists it
-          // MUST be defeated first (fight is mandatory, even for a jumper)
-          if (next <= stage.abbasAt + 2 && !alive) {
+          // win only when the whole path is clear — a fightable monster must
+          // be defeated first; a non-fightable (chasing) monster does not block
+          // the win (reaching Abbas is the goal)
+          if (next <= stage.abbasAt + 2 && (!monsterMandatory || !alive)) {
             setState((s) => ({ ...s, warakiX: next, monsterX: mx, activeIndex: i, status: 'won', message: null }));
             win(i);
             return;
@@ -190,8 +195,10 @@ export function useAdventureEngine(
           await new Promise((r) => setTimeout(r, cmd.action === 'run' ? 185 : 240));
           x = target;
 
-          // the monster BLOCKS the path — walking into it loses; fight is mandatory
-          if (alive && Math.abs(mx! - target) <= TOUCH_DISTANCE) {
+          // a fightable monster BLOCKS the path — walking into it loses.
+          // (Without a fight button the chasing monster catching Waraki is the
+          // only loss, handled by its own "grab" checks.)
+          if (monsterMandatory && alive && Math.abs(mx! - target) <= TOUCH_DISTANCE) {
             setState({
               warakiX: target,
               monsterX: mx,
@@ -202,8 +209,9 @@ export function useAdventureEngine(
             return;
           }
 
-          // reached abbas — only reachable when the monster is gone too
-          if (target <= stage.abbasAt + 2 && !alive) {
+          // reached abbas — win unless a fightable monster still guards him.
+          // Without a fight button (chapter 2) reaching Abbas always wins.
+          if (target <= stage.abbasAt + 2 && (!monsterMandatory || !alive)) {
             setState((s) => ({ ...s, warakiX: target, monsterX: mx, activeIndex: i, status: 'won', message: null }));
             win(i);
             return;
