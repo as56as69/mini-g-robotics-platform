@@ -768,6 +768,18 @@ html[data-mode="doodle"] body::before {
 .waraki-svg[data-mood="color"] {
   filter: url(#doodleWiggle) drop-shadow(2px 2px 0 rgba(0,0,0,0.15)) drop-shadow(0 0 8px rgba(255, 217, 61, 0.55));
 }
+/* Pencil-hatch ground shadows (SVG <g> groups) — must stay open strokes */
+.adventure-hatch {
+  fill: none;
+}
+/* Waraki's doodle eyes — pupil gently follows the mood */
+.waraki-pupil {
+  transition: transform 0.2s ease;
+}
+html[data-mode="doodle"] .doodle-blockly-frame {
+  border-radius: 16px;
+  background: #fdfbf4;
+}
 
 /* ===== Doodle Blockly workspace overrides (scoped to doodle mode) ===== */
 html[data-mode="doodle"] .blocklyToolboxDiv {

@@ -62,7 +62,12 @@ const ChapterStage: React.FC<{
   const [narrIdx, setNarrIdx] = useState(0);
   const [commands, setCommands] = useState<AdventureCommand[]>([]);
   const { state, reset, run } = useAdventureEngine(chapter, () => {
-    try { localStorage.setItem(`mg_waraki_${chapter.id}_done`, '1'); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(`mg_waraki_${chapter.id}_done`, '1');
+      if (chapter.id === 'ch3-shelves') {
+        localStorage.setItem('mg_waraki_double_jump_unlocked', '1');
+      }
+    } catch { /* ignore */ }
   });
   const [showReward, setShowReward] = useState(false);
   // Reward appears 1.2s AFTER the win so the kid watches the monster scatter
@@ -306,7 +311,7 @@ const ChapterStage: React.FC<{
               The dashed fight ring shows the strike range (5 units) */}
           {monsterPct !== null && (
             <div
-              className={`absolute bottom-[calc(24%+4px)] w-24 sm:w-28 select-none ${state.status === 'running' && !state.monsterShattered ? 'monster-crawl' : ''} ${state.status === 'won' && state.monsterShattered ? 'monster-shatter' : ''}`}
+              className={`absolute bottom-[calc(24%+4px)] w-24 sm:w-28 select-none ${state.status === 'running' && !state.monsterShattered ? 'monster-crawl' : ''} ${state.monsterShattered ? 'monster-shatter' : ''}`}
               style={{ left: `${monsterPct}%`, transform: 'translateX(-50%)' }}
             >
               {/* fight range ring — dashed circle showing where the strike lands */}

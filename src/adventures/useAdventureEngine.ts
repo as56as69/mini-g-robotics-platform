@@ -55,6 +55,13 @@ export function useAdventureEngine(
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  // Called exactly once per win — notifies the caller (progress persistence).
+  const winRef = useRef(onWin);
+  winRef.current = onWin;
+  const win = (activeIndex: number) => {
+    winRef.current?.();
+  };
+
   const reset = useCallback(() => {
     setState({
       warakiX: stage.warakiStart,
@@ -73,7 +80,10 @@ export function useAdventureEngine(
       if (stateRef.current.status === 'running') return;
 
       let x = stage.warakiStart;
+      // Monster position stays set after defeat so the shatter animation
+      // remains visible; `alive` (not `mx === undefined`) is the gate.
       let mx = monster?.start;
+      let alive = monster !== undefined;
       setState({
         warakiX: x,
         monsterX: mx,
@@ -92,8 +102,8 @@ export function useAdventureEngine(
 
         // ===== STOP — dangerous pause: the monster keeps crawling =====
         if (cmd.action === 'stop') {
-          if (monster && mx !== undefined) {
-            mx = mx + (x > mx ? monster.speed * 1.6 : -monster.speed);
+          if (alive) {
+            mx = mx! + (x > mx! ? monster!.speed * 1.6 : -monster!.speed);
             if (Math.abs(mx - x) <= TOUCH_DISTANCE) {
               setState({ warakiX: x, monsterX: mx, activeIndex: i, status: 'lost', message: 'قبض عليّ! كود أسرع يا عباس! 😱' });
               return;
@@ -106,11 +116,11 @@ export function useAdventureEngine(
 
         // ===== FIGHT — strike lands only within FIGHT_RANGE =====
         if (cmd.action === 'fight') {
-          if (mx !== undefined && Math.abs(mx - x) <= FIGHT_RANGE) {
+          if (alive && Math.abs(mx! - x) <= FIGHT_RANGE) {
             setState((s) => ({ ...s, striking: true }));
             await new Promise((r) => setTimeout(r, 450)); // lunge flash
             setState((s) => ({ ...s, monsterShattered: true, striking: false }));
-            mx = undefined;
+            alive = false; // defeated — mx stays set so the scatter plays
             await new Promise((r) => setTimeout(r, 800));
             continue;
           }
@@ -118,7 +128,7 @@ export function useAdventureEngine(
             ...s,
             striking: false,
             status: 'lost',
-            message: mx !== undefined
+            message: alive
               ? 'بعيد جداً! اقترب من الوحش حتى تلمس حلقة القتال ثم اقاتل! ⚔️'
               : 'لا وحش هنا… لا حاجة للقتال!',
           }));
@@ -131,8 +141,8 @@ export function useAdventureEngine(
           const next = Math.max(stage.abbasAt, Math.min(stage.length, x - arcUnits));
 
           // monster crawls during the jump too
-          if (monster && mx !== undefined) {
-            mx = mx + (mx < x ? monster.speed : -monster.speed);
+          if (alive) {
+            mx = mx! + (mx! < x ? monster!.speed : -monster!.speed);
           }
 
           setState((s) => ({ ...s, warakiX: next, monsterX: mx, status: 'running', jumping: true }));
@@ -140,12 +150,15 @@ export function useAdventureEngine(
           setState((s) => ({ ...s, jumping: false }));
           x = next;
 
-          if (next <= stage.abbasAt + 2) {
-            setState({ warakiX: next, monsterX: mx, activeIndex: i, status: 'won', message: null, monsterShattered: !!monster });
+          // win only when the whole path is clear — if a monster exists it
+          // MUST be defeated first (fight is mandatory, even for a jumper)
+          if (next <= stage.abbasAt + 2 && !alive) {
+            setState((s) => ({ ...s, warakiX: next, monsterX: mx, activeIndex: i, status: 'won', message: null }));
+            win(i);
             return;
           }
           // the monster can still grab a low-flying hero at the edges
-          if (mx !== undefined && Math.abs(mx - next) <= TOUCH_DISTANCE) {
+          if (alive && Math.abs(mx! - next) <= TOUCH_DISTANCE) {
             setState({ warakiX: next, monsterX: mx, activeIndex: i, status: 'lost', message: 'قبض عليّ! كود أسرع يا عباس! 😱' });
             return;
           }
@@ -158,8 +171,8 @@ export function useAdventureEngine(
           const target = Math.max(stage.abbasAt, Math.min(stage.length, x - units));
 
           // monster crawls first — it moves as waraki moves
-          if (monster && mx !== undefined) {
-            mx = mx + (mx < x ? monster.speed : -monster.speed);
+          if (alive) {
+            mx = mx! + (mx! < x ? monster!.speed : -monster!.speed);
           }
 
           // CRASH: landing on OR crossing an obstacle without a jump
@@ -178,7 +191,7 @@ export function useAdventureEngine(
           x = target;
 
           // the monster BLOCKS the path — walking into it loses; fight is mandatory
-          if (mx !== undefined && Math.abs(mx - target) <= TOUCH_DISTANCE) {
+          if (alive && Math.abs(mx! - target) <= TOUCH_DISTANCE) {
             setState({
               warakiX: target,
               monsterX: mx,
@@ -189,9 +202,10 @@ export function useAdventureEngine(
             return;
           }
 
-          // reached abbas — only reachable when the path is genuinely clear
-          if (target <= stage.abbasAt + 2) {
-            setState({ warakiX: target, monsterX: mx, activeIndex: i, status: 'won', message: null, monsterShattered: !!monster });
+          // reached abbas — only reachable when the monster is gone too
+          if (target <= stage.abbasAt + 2 && !alive) {
+            setState((s) => ({ ...s, warakiX: target, monsterX: mx, activeIndex: i, status: 'won', message: null }));
+            win(i);
             return;
           }
         }
