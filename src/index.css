@@ -783,7 +783,7 @@ html[data-mode="doodle"] .doodle-blockly-frame {
 
 /* ============================================================
  * كود ماجيك — الهوية المشتركة (لعبة ورقي + مستر شخبوط)
- * فلاتر/حركات مستقلة جديدة — لا تلمس doodleWiggle/adventureWiggle
+ * حركات CSS خالصة — بلا فلاتر SVG على عناصر متحركة
  * ============================================================ */
 
 /* بؤبؤ شخبوط — يتبع المؤشر/الإصبع */
@@ -791,25 +791,42 @@ html[data-mode="doodle"] .doodle-blockly-frame {
   transition: transform 0.18s ease;
 }
 
-/* اهتزاز خفيف لجسد شخبوط أثناء التفكير */
-@keyframes shkhoobotSpin {
+/* اهتزاز خربشاتي بديل الفلاتر — آمن على كل المحركات */
+@keyframes mcWiggleAnim {
   0% { transform: rotate(0deg); }
   25% { transform: rotate(2.4deg); }
   50% { transform: rotate(0deg); }
   75% { transform: rotate(-2.4deg); }
   100% { transform: rotate(0deg); }
 }
-.shkhoobot-spin {
-  animation: shkhoobotSpin 5s ease-in-out infinite;
+@keyframes mcWobbleSoft {
+  0%, 100% { transform: rotate(0deg); }
+  33% { transform: rotate(0.7deg) translate(-0.5px, 0.5px); }
+  66% { transform: rotate(-0.7deg) translate(0.5px, -0.5px); }
+}
+.mc-wiggle {
+  animation: mcWobbleSoft 3.2s ease-in-out infinite;
   transform-origin: 50% 50%;
 }
+.mc-wiggle-anim {
+  animation: mcWiggleAnim 2s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+@keyframes mcSunWobble {
+  0%, 100% { transform: translate(70px, 64px) rotate(0deg); }
+  50% { transform: translate(70px, 64px) rotate(2.4deg); }
+}
+.mc-sun-wobble {
+  animation: mcSunWobble 6s ease-in-out infinite;
+  transform-origin: 70px 64px;
+}
 
-/* ظهور القلم تدريجيًا — رسم شخبوط خطًا بخط (stroke-dashoffset).
-   الطبقات تتتابع: كل مسار يظهر بعد الذي قبله (halo ثم base) */
+/* ظهور القلم تدريجيًا — pathLength=1 + dashoffset (مضمون عبر كل المحركات).
+   --reveal: 0 مخفي → 1 ظاهر؛ التأخير لكل مسار عبر style من React */
 .scribble-live {
-  stroke-dasharray: var(--slen, 600);
-  stroke-dashoffset: var(--slen, 600);
-  animation: scribbleDraw 0.9s ease-out forwards;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: scribbleDraw 0.85s ease-out forwards;
 }
 @keyframes scribbleDraw {
   to { stroke-dashoffset: 0; }
@@ -824,16 +841,6 @@ html[data-mode="doodle"] .doodle-blockly-frame {
 .mc-paper-wobble {
   animation: mcPaperWobble 2.6s ease-in-out infinite;
   transform-origin: 50% 50%;
-}
-
-/* قفزة ورقي داخل اللعبة (سريعة، تناسب اللمس) */
-@keyframes mcWarakiJump {
-  0% { transform: translateY(0) rotate(0deg) scale(1, 1); }
-  35% { transform: translateY(-14px) rotate(-5deg) scale(0.94, 1.1); }
-  100% { transform: translateY(0) rotate(0deg) scale(1, 1); }
-}
-.mc-waraki-jump {
-  animation: mcWarakiJump 0.42s ease-out;
 }
 
 /* وميض النتيجة (ارتفاع جديد) */

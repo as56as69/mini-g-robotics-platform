@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Home, RefreshCw } from 'lucide-react';
-import { ScribbleBlob, WiggleSVG } from '../design/primitives';
+import { ScribbleBlob } from '../design/primitives';
 import { PAPER, paperShadow } from '../design/tokens';
 import { SoundFXManager } from '../ble/SoundFX';
 import {
@@ -39,18 +39,24 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
     setSeed(Math.floor(Math.random() * 100000));
   }, []);
 
-  /** العينان تتبعان المؤشر/الإصبع — مراقب شامل يبقى رغم إعادة التركيب */
+  /** العينان تتبعان المؤشر/الإصبع — مراقب شامل مُهدّأ (كل ~80ms) */
   useEffect(() => {
+    let pending = false;
     const onMove = (e: PointerEvent) => {
-      const el = boardRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const dx = ((e.clientX - r.left) / r.width - 0.5) * 2;
-      const dy = ((e.clientY - r.top) / r.height - 0.35) * 0.6;
-      setLook({
-        x: Math.max(-1, Math.min(1, dx * 2)),
-        y: Math.max(-1, Math.min(1, dy * 2)),
-      });
+      if (pending) return;
+      pending = true;
+      window.setTimeout(() => {
+        pending = false;
+        const el = boardRef.current;
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const dx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+        const dy = ((e.clientY - r.top) / r.height - 0.35) * 0.6;
+        setLook({
+          x: Math.max(-1, Math.min(1, dx * 2)),
+          y: Math.max(-1, Math.min(1, dy * 2)),
+        });
+      }, 80);
     };
     window.addEventListener('pointermove', onMove);
     return () => window.removeEventListener('pointermove', onMove);
@@ -88,7 +94,6 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
 
   return (
     <div className="flex-1 relative overflow-hidden" dir="rtl">
-      <WiggleSVG />
       {/* شريط علوي */}
       <div className="relative z-20 flex items-center justify-between px-3 py-2.5 bg-[#f5f0e1] border-b-2 border-[#2b2a33]/20">
         <span className="doodle-title font-bold text-[#2b2a33] text-sm sm:text-base">
@@ -138,7 +143,7 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
           </div>
 
           {/* فقاعة الحالة */}
-          <div className="doodle-wiggly mx-auto px-4 py-2 bg-[#fff5f5] border-[2.5px] border-[#2b2a33]" style={{ borderRadius: '14px 20px 12px 18px', boxShadow: paperShadow() }}>
+          <div className="mc-wiggle mx-auto px-4 py-2 bg-[#fff5f5] border-[2.5px] border-[#2b2a33] w-fit" style={{ borderRadius: '14px 20px 12px 18px', boxShadow: paperShadow() }}>
             <p className="doodle-title text-[#2b2a33] text-xs sm:text-sm font-bold">{message}</p>
           </div>
 

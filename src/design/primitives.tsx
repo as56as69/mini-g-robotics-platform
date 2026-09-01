@@ -1,31 +1,14 @@
 import React, { useMemo } from 'react';
-import { INK, PAPER, ACCENT, WIGGLE } from './tokens';
+import { INK, PAPER, ACCENT } from './tokens';
 
 /* ============================================================
  * كود ماجيك — مجسمات الهوية الورقية المشتركة (Paper Primitives)
  * أجزاء SVG قابلة لإعادة الاستخدام بين: لعبة ورقي 🦘،
- * مستر شخبوط 🌀، ومغامرات ورقي 📖. كلها بحبر INK وبفلتر
- * الاهتزاز المستقل الجديد (لا يلمس الفلاتر القديمة).
+ * مستر شخبوط 🌀، ومغامرات ورقي 📖.
+ * قاعدة تقنية صارمة: لا مراجع فلاتر عبر-المستند إطلاقًا
+ * (url(#id) على عناصر متحركة يُفرغ الرسم في بعض المحركات) —
+ * الاهتزاز عبر كلاسات CSS في index.css بدلًا من SVG filters.
  * ============================================================ */
-
-/** فلتر الاهتزاز المستقل للميزات الجديدة (معرّف فريد لكل مضيف) */
-export const WiggleSVG: React.FC<{ id?: string }> = ({ id = 'mcWiggle' }) => (
-  <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden>
-    <filter id={id}>
-      <feTurbulence
-        type="fractalNoise"
-        baseFrequency={WIGGLE.baseFrequency}
-        numOctaves={WIGGLE.numOctaves}
-        seed="23"
-        result="noise"
-      />
-      <feDisplacementMap in="SourceGraphic" in2="noise" scale={WIGGLE.scale} />
-    </filter>
-  </svg>
-);
-
-/** مرجع الفلتر المشترك (يُمرَّر في style) */
-export const wiggleFilter = (id = 'mcWiggle'): string => `url(#${id})`;
 
 /** مولّد أرقام شبه عشوائي ببذرة — نفس البذرة = نفس الخربشة */
 export function seededRandom(seed: number): () => number {
@@ -53,8 +36,8 @@ export const PaperSprite: React.FC<{
   return (
     <svg
       viewBox="0 0 90 130"
-      className={`w-full h-auto ${className}`}
-      style={{ filter: wiggleFilter(), transform: squash, transition: 'transform 0.15s ease-out' }}
+      className={`mc-wiggle ${className}`}
+      style={{ transform: squash, transition: 'transform 0.15s ease-out', overflow: 'visible' }}
       aria-label="ورقي"
     >
       {/* جسم الورق الممزق */}
@@ -100,20 +83,18 @@ export const PaperPlatform: React.FC<{
     <svg
       viewBox={`0 0 ${w} ${h + 6}`}
       className={className}
-      style={{ overflow: 'visible' }}
+      style={{ overflow: 'visible', display: 'block', width: '100%', height: 'auto' }}
       aria-hidden
     >
-      <g style={{ filter: wiggleFilter() }}>
-        <path
-          d={`M4 6 L${w - 6} 4 L${w - 2} ${h - 2} L8 ${h} Z`}
-          fill={PAPER.kraft}
-          stroke={INK}
-          strokeWidth="2.6"
-          strokeLinejoin="round"
-        />
-        <path d={`M10 14 l${w * 0.25} -2 M14 24 l${w * 0.18} -1`} stroke={INK} strokeWidth="1.6" opacity="0.4" strokeLinecap="round" />
-        {moving && <path d={`M${w * 0.35} 12 q6 -8 12 0 q6 8 12 0`} fill="none" stroke={INK} strokeWidth="2" strokeLinecap="round" opacity="0.7" />}
-      </g>
+      <path
+        d={`M4 6 L${w - 6} 4 L${w - 2} ${h - 2} L8 ${h} Z`}
+        fill={PAPER.kraft}
+        stroke={INK}
+        strokeWidth="2.6"
+        strokeLinejoin="round"
+      />
+      <path d={`M10 11 l${w * 0.25} -2 M14 17 l${w * 0.18} -1`} stroke={INK} strokeWidth="1.6" opacity="0.4" strokeLinecap="round" />
+      {moving && <path d={`M${w * 0.35} 12 q6 -8 12 0 q6 8 12 0`} fill="none" stroke={INK} strokeWidth="2" strokeLinecap="round" opacity="0.7" />}
     </svg>
   );
 };
@@ -123,11 +104,9 @@ export const PaperPlatform: React.FC<{
  * ----------------------------------------------------------- */
 export const PaperObstacle: React.FC<{ className?: string }> = ({ className = '' }) => (
   <svg viewBox="0 0 60 56" className={className} style={{ overflow: 'visible' }} aria-hidden>
-    <g style={{ filter: wiggleFilter() }}>
-      <path d="M10 20 L18 6 L50 8 L44 24 Z" fill={ACCENT.blue} stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
-      <path d="M18 8 L18 34 L44 36 L44 8" fill={PAPER.white} stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
-      <path d="M18 34 L10 22 L10 46 L18 52 L44 54 L44 36" fill={ACCENT.red} opacity="0.85" stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
-    </g>
+    <path d="M10 20 L18 6 L50 8 L44 24 Z" fill={ACCENT.blue} stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+    <path d="M18 8 L18 34 L44 36 L44 8" fill={PAPER.white} stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+    <path d="M18 34 L10 22 L10 46 L18 52 L44 54 L44 36" fill={ACCENT.red} opacity="0.85" stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
   </svg>
 );
 
@@ -146,7 +125,7 @@ export const ScribbleBlob: React.FC<{
   lookY?: number;
   className?: string;
 }> = ({ seed, r = 60, mood = 'idle', lookX = 0, lookY = 0, className = '' }) => {
-  const paths = useMemo(() => {
+  const paths = React.useMemo(() => {
     const rnd = seededRandom(seed);
     const out: string[] = [];
     for (let k = 0; k < 7; k++) {
@@ -163,11 +142,9 @@ export const ScribbleBlob: React.FC<{
     return out;
   }, [seed, r]);
 
-  const spin = mood === 'think' ? 'shkhoobot-spin 5s linear infinite' : undefined;
-
   return (
-    <svg viewBox="-80 -80 160 160" className={className} style={{ overflow: 'visible' }} aria-label="مستر شخبوط">
-      <g style={{ filter: wiggleFilter(), animation: spin }}>
+    <svg viewBox="-80 -80 160 160" className={className} style={{ overflow: 'visible', display: 'block' }} aria-label="مستر شخبوط">
+      <g className={mood === 'think' ? 'mc-wiggle-anim' : undefined}>
         {paths.map((d, i) => (
           <path
             key={i}
@@ -179,10 +156,10 @@ export const ScribbleBlob: React.FC<{
             opacity={i === 0 ? 0.9 : 0.75}
           />
         ))}
-        {/* عينان تتبعان — تُحرَّك عبر CSS var من اللوحة */}
+        {/* عينان تتبعان */}
         <circle cx="-16" cy="-8" r="12" fill="#fff" stroke={INK} strokeWidth="2.6" />
         <circle cx="18" cy="-10" r="11" fill="#fff" stroke={INK} strokeWidth="2.6" />
-        <g className="shkhoobot-pupil shkhoobot-track" style={{ transform: `translate(${lookX * 4}px, ${lookY * 3}px)` }}>
+        <g className="shkhoobot-pupil" style={{ transform: `translate(${lookX * 4}px, ${lookY * 3}px)` }}>
           <circle cx="-16" cy="-8" r="4.4" fill={INK} />
           <circle cx="18" cy="-10" r="4.4" fill={INK} />
         </g>
@@ -194,13 +171,14 @@ export const ScribbleBlob: React.FC<{
 };
 
 /* ------------------------------------------------------------
- * خلفية العالم الخربشاتي — شمس + غيوم + أرض (المسرح المشترك)
+ * خلفية العالم الخربشاتي — شمس + غيوم (المسرح المشترك)
+ * ساكنة تمامًا (بلا فلتر) — CSS wobble فقط على الشمس
  * ----------------------------------------------------------- */
 export const ScribbleWorldBackdrop: React.FC<{ className?: string }> = ({ className = '' }) => (
   <svg viewBox="0 0 560 320" preserveAspectRatio="xMidYMid slice" className={`absolute inset-0 w-full h-full ${className}`} aria-hidden>
-    <g style={{ filter: wiggleFilter() }} stroke={INK} fill="none" strokeLinecap="round">
+    <g stroke={INK} fill="none" strokeLinecap="round">
       {/* الشمس */}
-      <g transform="translate(70,64)">
+      <g className="mc-sun-wobble" transform="translate(70,64)">
         <circle r="26" fill={ACCENT.yellow} stroke={INK} strokeWidth="3" />
         <path d="M0 -40 L0 -50 M38 -10 l9 3 M28 -28 l8 -7 M-30 -14 l-9 -7 M32 12 l10 3 M-32 10 l-10 2 M-20 30 l-8 4 M20 -32 l6 -8" stroke={INK} strokeWidth="3" strokeLinecap="round" />
       </g>

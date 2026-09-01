@@ -6,6 +6,7 @@ import { listenWaraki, WarakiEvent } from '../services/warakiBus';
 import { WarakiAdventuresView } from '../adventures/WarakiAdventuresView';
 import { WarakiJumpGame } from '../games/WarakiJumpGame';
 import { ShkhoobotBoard } from '../shkhoobot/ShkhoobotBoard';
+import { FeatureErrorBoundary } from '../design/FeatureErrorBoundary';
 
 interface Props {}
 
@@ -399,13 +400,19 @@ export const DoodleModeView: React.FC<Props> = () => {
     <div className="flex-1 relative overflow-hidden" dir="rtl">
       {/* ===== Full-page features (opened from Magic Code) ===== */}
       {showAdventures && (
-        <WarakiAdventuresView onBack={() => setShowAdventures(false)} />
+        <FeatureErrorBoundary onBack={() => setShowAdventures(false)}>
+          <WarakiAdventuresView onBack={() => setShowAdventures(false)} />
+        </FeatureErrorBoundary>
       )}
       {showJumpGame && (
-        <WarakiJumpGame onBack={() => setShowJumpGame(false)} />
+        <FeatureErrorBoundary onBack={() => setShowJumpGame(false)}>
+          <WarakiJumpGame onBack={() => setShowJumpGame(false)} />
+        </FeatureErrorBoundary>
       )}
       {showShkhoobot && (
-        <ShkhoobotBoard onBack={() => setShowShkhoobot(false)} />
+        <FeatureErrorBoundary onBack={() => setShowShkhoobot(false)}>
+          <ShkhoobotBoard onBack={() => setShowShkhoobot(false)} />
+        </FeatureErrorBoundary>
       )}
 
       {!showAdventures && !showJumpGame && !showShkhoobot && (

@@ -335,3 +335,28 @@
 
 ## ✅ التحقق
 - `npx tsc --noEmit` ✅ · `npm run build` ✅ · الخوادم أُعيد تشغيلها.
+
+## 🐛 إصلاح جذري: الصفحتان الفارغتان — لعبة ورقي + مستر شخبوط (2026-09-01)
+
+**الملاحظة الحاسمة من المستخدم**: الشريط العلوي وزر الرجوع يظهران والمحتوى لا يظهر → لا يوجد انهيار JS؛ المشكلة في **رسم SVG المفلتر**.
+
+### الأسباب الجذرية (مؤكدة)
+1. **فلاتر SVG عبر-المستند**: كل محتوى الصفحتين كان داخل SVG بإشارة `url(#mcWiggle)` — عند فشل تقييم الفلتر (feTurbulence+feDisplacementMap على مجموعات متحركة) المتصفح **لا يرسم العنصر نهائيًا** = فراغ كامل. كذلك `doodle-wiggly` كان يشير إلى `#doodleWiggle` غير موجود في شجرة الصفحات الجديدة.
+2. **محرك اللعبة**: setScore + forceRender كل إطار (60 setState/ث) مع عشرات SVG المفلترة = استنزاف حاد يجمّد الرسم.
+3. `ScribbleDrawing`: dashoffset على `<g>` لا يعمل — يجب لكل مسار + fragment بلا key.
+
+### الحل الجذري المُنفَّذ
+| الملف | التغيير |
+|---|---|
+| `design/FeatureErrorBoundary.tsx` (جديد) | حاجز أخطاء يعرض نص الخطأ على الشاشة بدل الفراغ + زر رجوع آمن — يغلّف الصفحات الثلاث في DoodleModeView |
+| `design/primitives.tsx` | إعادة كتابة كاملة: **حذف WiggleSVG وكل url(#mcWiggle)** — اهتزاز CSS خالص (`mc-wiggle`, `mc-sun-wobble`)، SVGs ذاتية الاحتواء بعرض/ارتفاع واضحين |
+| `index.css` | `mcWiggleAnim/mcWobbleSoft/mcSunWobble` (CSS خالص) + `scribble-live` بـ **pathLength=1 + dashoffset** (مضمون عبر كل المحركات) |
+| `useWarakiJumpEngine.ts` (إعادة كتابة) | **صفر setState أثناء اللعب**: الحلقة تحرّك طبقة العالم `transform` + البطل + مواضع المنصات عبر DOM مباشرة؛ React state فقط للحالة/النتيجة؛ توليد المنصات تحديث نادر |
+| `WarakiJumpGame.tsx` (إعادة كتابة) | عمود flex حقيقي (شريط/مسرح flex-1/تذييل) بدل top-[44px] المزمعة؛ مسرح بـ `aspect-ratio` + `maxHeight:100%`؛ البطل داخل الطبقة المنزلقة؛ زر «إعادة المحاولة» يدوي |
+| `ScribbleRenderer.tsx` | `pathLength={1}` + `dasharray:1` + تأخير متدرج لكل مسار — القلم يرسم فعليًا؛ إزالة Fragment بلا key |
+| `ShkhoobotBoard.tsx` | إزالة WiggleSVG الميت؛ فقاعة بـ `mc-wiggle` بدل `doodle-wiggly`؛ تهدئة تتبع العيون (كل ~80ms) |
+| `DoodleModeView.tsx` | الصفحات الثلاث مغلّفة بـ `FeatureErrorBoundary` (أي خطأ مستقبلي يظهر نصه على الشاشة بدل الفراغ) |
+
+### ✅ التحقق
+- `npx tsc --noEmit` ✅ 0 أخطاء · `npm run build` ✅ · `mgdev.sh` أُعيد التشغيل.
+- لا مراجع فلاتر متبقية في اللعبة/شخبوط (grep = 0) — كل الاهتزاز CSS.

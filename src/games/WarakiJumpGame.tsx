@@ -1,15 +1,16 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Home } from 'lucide-react';
-import { useWarakiJumpEngine, GAME_W, GAME_H, Platform } from './useWarakiJumpEngine';
-import { PaperSprite, PaperPlatform, PaperObstacle, ScribbleWorldBackdrop, WiggleSVG } from '../design/primitives';
+import { useWarakiJumpEngine, GAME_W, GAME_H, WARAKI_W, WARAKI_H, Platform } from './useWarakiJumpEngine';
+import { PaperSprite, PaperPlatform, PaperObstacle, ScribbleWorldBackdrop } from '../design/primitives';
 import { INK, PAPER, paperShadow } from '../design/tokens';
 import { SoundFXManager } from '../ble/SoundFX';
 
 /* ============================================================
  * كود ماجيك — لعبة ورقي 🕹️ (هدية حسن لعباس بعد الموسم الأول)
- * قفز إلى الأعلى بنمط Doodle Jump — لمسة واحدة = قفزة،
- * سحب الإصبع أفقياً = حركة. كل الرسوم من الهوية الورقية
- * (tokens + primitives) — نفس عالم المغامرات تمامًا.
+ * قفز إلى الأعلى بنمط Doodle Jump — لمسة = قفزة، سحب = حركة.
+ * معمارية: React يرسم الهيكل مرة واحدة؛ حلقة rAF تُحرّك
+ * طبقة العالم + البطل + المنصات مباشرة عبر DOM (60fps حقيقية).
+ * لا فلاتر SVG إطلاقًا — اهتزاز CSS خالص من الهوية.
  * ============================================================
  */
 
@@ -18,12 +19,12 @@ interface Props {
 }
 
 export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
-  const { status, score, state, jump, setTouchX, reset } = useWarakiJumpEngine();
+  const { status, score, best, platforms, layerRef, heroRef, registerPlatform, jump, setTouchX, reset } =
+    useWarakiJumpEngine();
   const stageRef = useRef<HTMLDivElement>(null);
+  const [hintGone, setHintGone] = useState(false);
 
-  const best = Number(localStorage.getItem('mg_waraki_jump_best') || 0);
-
-  /** تحويل لمسة الشاشة إلى إحداثيات لعبة أفقية */
+  /** لمسة → إحداثي أفقي داخل اللعبة */
   const pointToGameX = useCallback((clientX: number) => {
     const rect = stageRef.current?.getBoundingClientRect();
     if (!rect) return null;
@@ -34,9 +35,10 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
     (e: React.PointerEvent) => {
       const x = pointToGameX(e.clientX);
       if (x === null) return;
+      setHintGone(true);
       jump();
       setTouchX(x);
-      stageRef.current?.setPointerCapture(e.pointerId);
+      try { stageRef.current?.setPointerCapture(e.pointerId); } catch { /* noop */ }
     },
     [jump, setTouchX, pointToGameX]
   );
@@ -51,13 +53,10 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
 
   const onPointerUp = useCallback(() => setTouchX(null), []);
 
-  const pose = state.vy > 60 ? 'jump' : state.vy < -160 ? 'fall' : 'idle';
-
   return (
-    <div className="flex-1 relative overflow-hidden" dir="rtl">
-      <WiggleSVG />
+    <div className="flex-1 relative overflow-hidden flex flex-col" dir="rtl">
       {/* شريط علوي */}
-      <div className="relative z-20 flex items-center justify-between px-3 py-2.5 bg-[#f5f0e1] border-b-2 border-[#2b2a33]/20">
+      <div className="flex-shrink-0 flex items-center justify-between px-3 py-2.5 bg-[#f5f0e1] border-b-2 border-[#2b2a33]/20">
         <span className="doodle-title font-bold text-[#2b2a33] text-sm sm:text-base">
           🕹️ لعبة ورقي — هدية حسن 🎁
         </span>
@@ -72,72 +71,65 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
         </button>
       </div>
 
-      {/* مسرح اللعبة */}
-      <div className="absolute inset-0 top-[44px] bottom-[26px] flex items-center justify-center p-2">
+      {/* مسرح اللعبة — عمود flex حقيقي، بلا مواضع مزمّعة */}
+      <div className="flex-1 min-h-0 flex items-center justify-center p-2">
         <div
           ref={stageRef}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
-          className="relative touch-none select-none overflow-hidden border-[3px] rounded-[22px_30px_24px_36px]"
+          className="relative touch-none select-none overflow-hidden border-[3px] rounded-[22px_30px_24px_36px] w-full"
           style={{
-            width: 'min(96vw, 360px)',
-            height: 'min(100% - 8px, 560px)',
+            maxWidth: GAME_W,
+            maxHeight: '100%',
+            aspectRatio: `${GAME_W} / ${GAME_H}`,
             background: PAPER.white,
             borderColor: INK,
             boxShadow: paperShadow(true),
           }}
         >
-          {/* خلفية العالم */}
+          {/* خلفية ساكنة */}
           <ScribbleWorldBackdrop />
 
-          {/* المنصات — y عالمي يزيد للأعلى، الكاميرا camY */}
-          {state.platforms.map((p: Platform) => {
-            const screenY = GAME_H - (p.y - state.camY);
-            return (
+          {/* طبقة العالم المنزلقة (تُحرَّك بـ transform من المحرك) */}
+          <div ref={layerRef} className="absolute inset-0" style={{ willChange: 'transform' }}>
+            {/* ورقي البطل — داخل الطبقة: المترجم يحرّكه بإحداثيات عالم */}
+            <div ref={heroRef} className="absolute top-0 left-0" style={{ width: WARAKI_W, height: WARAKI_H, zIndex: 10, willChange: 'transform' }}>
+              <PaperSprite className="mc-wiggle" />
+            </div>
+
+            {/* المنصات — top يضبطه المحرك كل إطار مباشرة */}
+            {platforms.map((p) => (
               <div
                 key={p.id}
-                className="absolute mc-paper-wobble"
-                style={{
-                  left: `${(p.x / GAME_W) * 100}%`,
-                  top: `${screenY}px`,
-                  width: `${(p.w / GAME_W) * 100}%`,
+                ref={(el) => {
+                  registerPlatform(p.id, el);
                 }}
+                className="absolute"
+                style={{ left: `${(p.x / GAME_W) * 100}%`, width: `${(p.w / GAME_W) * 100}%` }}
               >
-                <PaperPlatform w={p.w} />
-                {p.obstacle && (
-                  <PaperObstacle className="absolute -top-8 left-1/2 -translate-x-1/2 w-10 h-9" />
-                )}
+                <div className="mc-paper-wobble">
+                  <PaperPlatform w={p.w} />
+                  {p.obstacle && <PaperObstacle className="absolute -top-8 left-1/2 -translate-x-1/2 w-10 h-9" />}
+                </div>
               </div>
-            );
-          })}
-
-          {/* ورقي البطل — القدم على warakiY */}
-          <div
-            className={`absolute ${state.jumpFlash > 0 ? 'mc-waraki-jump' : ''}`}
-            style={{
-              left: `${(state.warakiX / GAME_W) * 100}%`,
-              top: `${state.warakiScreenY - state.warakiH}px`,
-              width: '70px',
-              transform: 'translateX(-50%)',
-              zIndex: 10,
-              pointerEvents: 'none',
-            }}
-          >
-            <PaperSprite lookX={0} lookY={pose === 'fall' ? 0.4 : pose === 'jump' ? -0.6 : 0} pose={pose} />
+            ))}
           </div>
 
           {/* شارة النتيجة */}
-          <div className="absolute top-2 right-2 z-20 doodle-title text-sm font-bold px-3 py-1 bg-[#ffecc2] border-2 border-[#2b2a33]/50" style={{ borderRadius: '12px 16px 12px 18px', color: INK }}>
-            🪜 {score} {score > best && score > 0 ? '🏆' : ''}
+          <div
+            className="absolute top-2 right-2 z-20 doodle-title text-sm font-bold px-3 py-1 bg-[#ffecc2] border-2 border-[#2b2a33]/50"
+            style={{ borderRadius: '12px 16px 12px 18px', color: INK }}
+          >
+            🪜 {score} {score >= best && score > 0 ? '🏆' : ''}
           </div>
 
           {/* شاشة الخسارة */}
           {status === 'lost' && (
             <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#2b2a33]/10">
               <div
-                className="doodle-wiggly bg-[#fffef7] border-[3px] px-7 py-5 text-center mx-4"
+                className="bg-[#fffef7] border-[3px] px-7 py-5 text-center mx-4"
                 style={{ borderColor: INK, boxShadow: paperShadow(true), borderRadius: '20px 28px 18px 26px' }}
               >
                 <p className="doodle-title text-lg font-bold mb-1" style={{ color: INK }}>
@@ -146,22 +138,30 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
                 <p className="doodle-title text-sm mb-2" style={{ color: INK }}>
                   الارتفاع: {score} {score >= best && score > 0 ? '— رقم قياسي! 🏆' : `— الأفضل: ${best}`}
                 </p>
-                <p className="doodle-title text-[10px] text-[#2b2a33]/50">جارٍ إعادة المحاولة…</p>
+                <button
+                  onClick={() => {
+                    SoundFXManager.playPaperRustle();
+                    reset();
+                  }}
+                  className="doodle-title text-sm font-bold px-5 py-2 bg-[#6bcb77] text-white border-2 border-[#2b2a33] rounded-xl active:scale-95"
+                >
+                  إعادة المحاولة! 🔄
+                </button>
               </div>
             </div>
           )}
 
           {/* تعليمات اللعب قبل أول قفزة */}
-          {score === 0 && status === 'playing' && (
-            <p className="absolute bottom-3 left-1/2 -translate-x-1/2 doodle-title text-[11px] text-[#2b2a33]/50 z-10 text-center px-3">
-              المس الشاشة = قفزة 🦘 · اسحب إصبعك يمينًا/يسارًا للحركة
+          {!hintGone && status === 'playing' && (
+            <p className="absolute bottom-3 left-1/2 -translate-x-1/2 doodle-title text-[11px] text-[#2b2a33]/50 z-10 text-center px-3 whitespace-nowrap">
+              المس الشاشة = قفزة 🦘 · اسحب يمينًا/يسارًا للحركة
             </p>
           )}
         </div>
       </div>
 
-      {/* تذييل الهوية */}
-      <div className="absolute bottom-1.5 inset-x-0 text-center z-20 pointer-events-none">
+      {/* تذييل */}
+      <div className="flex-shrink-0 text-center py-1 pointer-events-none">
         <span className="doodle-title text-[10px] text-[#2b2a33]/40">ورقي يقفز بلمسة إصبعك — بلا بلوكات، لعب حرّ! 🎈</span>
       </div>
     </div>
