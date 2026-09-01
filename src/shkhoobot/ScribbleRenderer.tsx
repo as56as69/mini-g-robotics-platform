@@ -238,7 +238,7 @@ export function pickRandomPaper(): (typeof SESSION_PAPERS)[number] {
   return SESSION_PAPERS[Math.floor(Math.random() * SESSION_PAPERS.length)];
 }
 
-/** مكوّن الرسمة — يعرض مسارات الخربشة مع ظهور تدريجي */
+/** مكوّن الرسمة — يعرض مسارات الخربشة مع ظهور تدريجي (قلم يرسم) */
 export const ScribbleDrawing: React.FC<{
   item: ScribbleItem;
   seed: number;
@@ -247,22 +247,66 @@ export const ScribbleDrawing: React.FC<{
 }> = ({ item, seed, live = false, className = '' }) => {
   const { base, halo } = useMemo(() => buildScribble(item, seed), [item, seed]);
   const accent = ACCENT[item.accent];
+  let order = 0; // تأخير متدرّج لكل مسار — القلم يرسم بالترتيب
   return (
     <svg viewBox="0 0 200 200" className={className} aria-label={item.labelAr}>
-      <g className={live ? 'scribble-live' : ''} style={{ filter: 'url(#mcWiggle)' }}>
-        {halo.map((d, i) => (
-          <path key={`h${i}`} d={d} fill="none" stroke={INK} strokeWidth="1.6" strokeLinecap="round" opacity={0.28} />
-        ))}
-        {base.map((d, i) =>
-          d.startsWith('circle:') ? (
-            (() => {
-              const [cx, cy, r] = d.slice(7).split(',').map(Number);
-              return <circle key={`c${i}`} cx={cx} cy={cy} r={r} fill="none" stroke={INK} strokeWidth="2.6" />;
-            })()
-          ) : (
-            <path key={`b${i}`} d={d} fill={i === 0 ? `${accent}22` : 'none'} stroke={INK} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          )
-        )}
+      <g style={{ filter: 'url(#mcWiggle)' }}>
+        {halo.map((d, i) => {
+          const delay = (order++) * 0.12;
+          return (
+            <path
+              key={`h${i}`}
+              d={d}
+              fill="none"
+              stroke={INK}
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              opacity={live ? 0.28 : 0}
+              className={live ? 'scribble-live' : ''}
+              style={{ animationDelay: `${delay}s`, '--slen': 900 } as React.CSSProperties}
+            />
+          );
+        })}
+        {base.map((d, i) => {
+          if (d.startsWith('circle:')) {
+            const parts = d.split(' ');
+            return (
+              <>
+                {parts.map((seg, j) => {
+                  const [cx, cy, r] = seg.slice(7).split(',').map(Number);
+                  const delay = (order++) * 0.12;
+                  return (
+                    <circle
+                      key={`c${i}-${j}`}
+                      cx={cx}
+                      cy={cy}
+                      r={r}
+                      fill="none"
+                      stroke={INK}
+                      strokeWidth="2.6"
+                      className={live ? 'scribble-live' : ''}
+                      style={{ animationDelay: `${delay}s`, '--slen': 300 } as React.CSSProperties}
+                    />
+                  );
+                })}
+              </>
+            );
+          }
+          const delay = (order++) * 0.12;
+          return (
+            <path
+              key={`b${i}`}
+              d={d}
+              fill={i === 0 ? `${accent}22` : 'none'}
+              stroke={INK}
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={live ? 'scribble-live' : ''}
+              style={{ animationDelay: `${delay + 0.6}s`, '--slen': 1400 } as React.CSSProperties}
+            />
+          );
+        })}
       </g>
     </svg>
   );

@@ -1,7 +1,7 @@
 import React, { useCallback, useRef } from 'react';
 import { Home } from 'lucide-react';
 import { useWarakiJumpEngine, GAME_W, GAME_H, Platform } from './useWarakiJumpEngine';
-import { PaperSprite, PaperPlatform, PaperObstacle, ScribbleWorldBackdrop } from '../design/primitives';
+import { PaperSprite, PaperPlatform, PaperObstacle, ScribbleWorldBackdrop, WiggleSVG } from '../design/primitives';
 import { INK, PAPER, paperShadow } from '../design/tokens';
 import { SoundFXManager } from '../ble/SoundFX';
 
@@ -23,42 +23,39 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
 
   const best = Number(localStorage.getItem('mg_waraki_jump_best') || 0);
 
-  /** تحويل إحداثيات اللمس إلى إحداثيات اللعبة */
-  const pointToGame = useCallback((clientX: number, clientY: number) => {
+  /** تحويل لمسة الشاشة إلى إحداثيات لعبة أفقية */
+  const pointToGameX = useCallback((clientX: number) => {
     const rect = stageRef.current?.getBoundingClientRect();
     if (!rect) return null;
-    return {
-      x: ((clientX - rect.left) / rect.width) * GAME_W,
-      y: clientY,
-    };
+    return ((clientX - rect.left) / rect.width) * GAME_W;
   }, []);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      const p = pointToGame(e.clientX, e.clientY);
-      if (!p) return;
-      SoundFXManager.playClickBeep();
+      const x = pointToGameX(e.clientX);
+      if (x === null) return;
       jump();
-      setTouchX(p.x);
+      setTouchX(x);
       stageRef.current?.setPointerCapture(e.pointerId);
     },
-    [jump, setTouchX]
+    [jump, setTouchX, pointToGameX]
   );
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
-      const p = pointToGame(e.clientX, e.clientY);
-      if (p) setTouchX(p.x);
+      const x = pointToGameX(e.clientX);
+      if (x !== null) setTouchX(x);
     },
-    [pointToGame, setTouchX]
+    [pointToGameX, setTouchX]
   );
 
   const onPointerUp = useCallback(() => setTouchX(null), []);
 
-  const pose = state.vy < -60 ? 'jump' : state.vy > 160 ? 'fall' : 'idle';
+  const pose = state.vy > 60 ? 'jump' : state.vy < -160 ? 'fall' : 'idle';
 
   return (
     <div className="flex-1 relative overflow-hidden" dir="rtl">
+      <WiggleSVG />
       {/* شريط علوي */}
       <div className="relative z-20 flex items-center justify-between px-3 py-2.5 bg-[#f5f0e1] border-b-2 border-[#2b2a33]/20">
         <span className="doodle-title font-bold text-[#2b2a33] text-sm sm:text-base">
@@ -76,7 +73,7 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
       </div>
 
       {/* مسرح اللعبة */}
-      <div className="absolute inset-0 top-[44px] flex items-center justify-center p-2">
+      <div className="absolute inset-0 top-[44px] bottom-[26px] flex items-center justify-center p-2">
         <div
           ref={stageRef}
           onPointerDown={onPointerDown}
@@ -85,8 +82,8 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
           onPointerCancel={onPointerUp}
           className="relative touch-none select-none overflow-hidden border-[3px] rounded-[22px_30px_24px_36px]"
           style={{
-            width: 'min(96vw, ' + GAME_W + 'px)',
-            height: 'min(88vh, ' + GAME_H + 'px)',
+            width: 'min(96vw, 360px)',
+            height: 'min(100% - 8px, 560px)',
             background: PAPER.white,
             borderColor: INK,
             boxShadow: paperShadow(true),
@@ -95,9 +92,9 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
           {/* خلفية العالم */}
           <ScribbleWorldBackdrop />
 
-          {/* المنصات */}
+          {/* المنصات — y عالمي يزيد للأعلى، الكاميرا camY */}
           {state.platforms.map((p: Platform) => {
-            const screenY = GAME_H - (p.y - state.warakiY);
+            const screenY = GAME_H - (p.y - state.camY);
             return (
               <div
                 key={p.id}
@@ -110,20 +107,22 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
               >
                 <PaperPlatform w={p.w} />
                 {p.obstacle && (
-                  <PaperObstacle className="absolute -top-9 left-1/2 -translate-x-1/2 w-11 h-10" />
+                  <PaperObstacle className="absolute -top-8 left-1/2 -translate-x-1/2 w-10 h-9" />
                 )}
               </div>
             );
           })}
 
-          {/* ورقي البطل */}
+          {/* ورقي البطل — القدم على warakiY */}
           <div
-            className={`absolute w-[70px] ${state.jumpFlash > 0 ? 'mc-waraki-jump' : ''}`}
+            className={`absolute ${state.jumpFlash > 0 ? 'mc-waraki-jump' : ''}`}
             style={{
               left: `${(state.warakiX / GAME_W) * 100}%`,
-              top: `${GAME_H - state.warakiY + state.camY - 74}px`,
+              top: `${state.warakiScreenY - state.warakiH}px`,
+              width: '70px',
               transform: 'translateX(-50%)',
               zIndex: 10,
+              pointerEvents: 'none',
             }}
           >
             <PaperSprite lookX={0} lookY={pose === 'fall' ? 0.4 : pose === 'jump' ? -0.6 : 0} pose={pose} />
@@ -152,7 +151,7 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
             </div>
           )}
 
-          {/* تعليمات اللعب (تظهر في الأعلى فقط قبل أول قفزة) */}
+          {/* تعليمات اللعب قبل أول قفزة */}
           {score === 0 && status === 'playing' && (
             <p className="absolute bottom-3 left-1/2 -translate-x-1/2 doodle-title text-[11px] text-[#2b2a33]/50 z-10 text-center px-3">
               المس الشاشة = قفزة 🦘 · اسحب إصبعك يمينًا/يسارًا للحركة

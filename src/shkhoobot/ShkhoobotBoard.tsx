@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Home, RefreshCw } from 'lucide-react';
-import { ScribbleBlob } from '../design/primitives';
+import { ScribbleBlob, WiggleSVG } from '../design/primitives';
 import { PAPER, paperShadow } from '../design/tokens';
 import { SoundFXManager } from '../ble/SoundFX';
 import {
@@ -30,8 +30,8 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
   const [drawing, setDrawing] = useState<{ item: ScribbleItem; seed: number } | null>(null);
   const [paper, setPaper] = useState(() => pickRandomPaper());
   const [drawKey, setDrawKey] = useState(0);
-  const boardRef = useRef<HTMLDivElement>(null);
   const [look, setLook] = useState({ x: 0, y: 0 });
+  const boardRef = useRef<HTMLDivElement>(null);
 
   /** ورقة جديدة لكل جلسة (عند كل فتح للوحة) */
   useEffect(() => {
@@ -39,38 +39,39 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
     setSeed(Math.floor(Math.random() * 100000));
   }, []);
 
-  /** العينان تتبعان المؤشر/الإصبع */
+  /** العينان تتبعان المؤشر/الإصبع — مراقب شامل يبقى رغم إعادة التركيب */
   useEffect(() => {
-    const el = boardRef.current;
-    if (!el) return;
     const onMove = (e: PointerEvent) => {
+      const el = boardRef.current;
+      if (!el) return;
       const r = el.getBoundingClientRect();
       const dx = ((e.clientX - r.left) / r.width - 0.5) * 2;
       const dy = ((e.clientY - r.top) / r.height - 0.35) * 0.6;
-      setLook({ x: Math.max(-1, Math.min(1, dx * 2)), y: Math.max(-1, Math.min(1, dy * 2)) });
+      setLook({
+        x: Math.max(-1, Math.min(1, dx * 2)),
+        y: Math.max(-1, Math.min(1, dy * 2)),
+      });
     };
-    el.addEventListener('pointermove', onMove);
-    return () => el.removeEventListener('pointermove', onMove);
+    window.addEventListener('pointermove', onMove);
+    return () => window.removeEventListener('pointermove', onMove);
   }, []);
 
   /** التفكير ثم الرسم */
-  const drawItem = useCallback(
-    (catId: string, itemId: string) => {
-      const cat = SCRIBBLE_CATEGORIES.find((c) => c.id === catId);
-      const item = cat?.items.find((i) => i.id === itemId);
-      if (!item || mood === 'draw') return;
-      SoundFXManager.playPaperRustle();
-      setMood('think');
-      window.setTimeout(() => {
-        setMood('draw');
-        setDrawing({ item, seed: Math.floor(Math.random() * 100000) });
-        setDrawKey((k) => k + 1);
-        SoundFXManager.playRobotChirp();
-        window.setTimeout(() => setMood('cheer'), 2200);
-      }, 900);
-    },
-    [mood]
-  );
+  const drawItem = useCallback((catId: string, itemId: string) => {
+    const cat = SCRIBBLE_CATEGORIES.find((c) => c.id === catId);
+    const item = cat?.items.find((i) => i.id === itemId);
+    if (!item) return;
+    SoundFXManager.playPaperRustle();
+    setMood('think');
+    window.setTimeout(() => {
+      setMood('draw');
+      setDrawing({ item, seed: Math.floor(Math.random() * 100000) });
+      setDrawKey((k) => k + 1);
+      SoundFXManager.playRobotChirp();
+      window.setTimeout(() => setMood('cheer'), 2200);
+      window.setTimeout(() => setMood('idle'), 6000);
+    }, 900);
+  }, []);
 
   const message = (() => {
     switch (mood) {
@@ -87,6 +88,7 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
 
   return (
     <div className="flex-1 relative overflow-hidden" dir="rtl">
+      <WiggleSVG />
       {/* شريط علوي */}
       <div className="relative z-20 flex items-center justify-between px-3 py-2.5 bg-[#f5f0e1] border-b-2 border-[#2b2a33]/20">
         <span className="doodle-title font-bold text-[#2b2a33] text-sm sm:text-base">
@@ -103,7 +105,7 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
         </button>
       </div>
 
-      <div className="absolute inset-0 top-[44px] overflow-y-auto doodle-notebook doodle-paper-kraft px-3 sm:px-8 py-4" style={{ background: paper.bg }} dir="rtl">
+      <div className="absolute inset-0 top-[44px] overflow-y-auto px-3 sm:px-8 py-4" style={{ background: paper.bg }} dir="rtl">
         {/* تلميح الورقة */}
         <p className="doodle-title text-[10px] text-[#2b2a33]/45 text-center mb-2">
           ورقة هذه الجلسة: {paper.label} — كل جلسة لها ورقة جديدة! 📄
@@ -112,10 +114,10 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
         <div ref={boardRef} className="max-w-3xl mx-auto flex flex-col gap-3">
           {/* مسرح شخبوط + الرسمة */}
           <div className="relative flex items-center justify-center gap-4 flex-wrap">
-            {/* مستر شخبوط */}
-            <div className="relative w-40 sm:w-48" style={{ transform: `translate(${look.x * 3}px, ${look.y * 2}px)` }}>
-              <ScribbleBlob seed={seed} mood={mood === 'think' ? 'think' : 'idle'} lookX={look.x} lookY={look.y} />
-              <span className="character-badge absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-[#2b2a33] whitespace-nowrap">
+            {/* مستر شخبوط — حاوية بارتفاع ثابت حتى يظهر الجسد دائمًا */}
+            <div className="relative w-40 sm:w-48 h-52 sm:h-60 flex items-center justify-center">
+              <ScribbleBlob seed={seed} mood={mood === 'think' ? 'think' : 'idle'} lookX={look.x} lookY={look.y} className="w-full h-full" />
+              <span className="character-badge absolute -top-2 left-1/2 -translate-x-1/2 text-xs font-bold text-[#2b2a33] whitespace-nowrap">
                 مستر شخبوط
               </span>
             </div>
