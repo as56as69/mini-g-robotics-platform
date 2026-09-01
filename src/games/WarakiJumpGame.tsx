@@ -1,16 +1,29 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Home } from 'lucide-react';
-import { useWarakiJumpEngine, GAME_W, GAME_H, WARAKI_W, WARAKI_H, Platform } from './useWarakiJumpEngine';
-import { PaperSprite, PaperPlatform, PaperObstacle, ScribbleWorldBackdrop } from '../design/primitives';
-import { INK, PAPER, paperShadow } from '../design/tokens';
-import { SoundFXManager } from '../ble/SoundFX';
+import { useWarakiJumpEngine, GAME_W, GAME_H, WARAKI_W, WARAKI_H } from './useWarakiJumpEngine';
+import {
+  PaperSprite,
+  PaperPlatform,
+  PaperObstacle,
+  PaperOrb,
+  PaperBalloon,
+  ScribbleWorldBackdrop,
+} from '../design/primitives';
+import { INK, paperShadow } from '../design/tokens';
 
 /* ============================================================
  * كود ماجيك — لعبة ورقي 🕹️ (هدية حسن لعباس بعد الموسم الأول)
- * قفز إلى الأعلى بنمط Doodle Jump — لمسة = قفزة، سحب = حركة.
- * معمارية: React يرسم الهيكل مرة واحدة؛ حلقة rAF تُحرّك
- * طبقة العالم + البطل + المنصات مباشرة عبر DOM (60fps حقيقية).
- * لا فلاتر SVG إطلاقًا — اهتزاز CSS خالص من الهوية.
+ *
+ * النمط النهائي (قرارات المستخدم): قفز ذاتي بلا خسارة.
+ * - ورقي يقفز بحد ذاته فور لمس أي منصة — لا تحتاج لمسًا للقفز.
+ * - تتحكم بالاتجاه فقط: لمس واسحب يمينًا/يسارًا (استجابة فورية).
+ * - بلا خسارة إطلاقًا: عند ملامسة الحافة السفلية تظهر بالونة
+ *   ترفعه لأقرب منصة — الكرات لا تُسقِط ولا شيء يُصفَّر.
+ * - المكعبات تتحطم عند اللمس = بونص +2 كرة (بلا أي خطر).
+ * - الكرات اللونية نظام التقدم الوحيد: كل 10 ←  ثيم خلفية جديد
+ *   (ورق + لون وموضع الشمس + غيوم بأماكن جديدة).
+ * معمارية: React يرسم الهيكل؛ حلقة rAF تُحرّك DOM مباشرة (60fps).
+ * لا فلاتر SVG إطلاقًا — اهتزاز/شامبانو CSS خالص من الهوية.
  * ============================================================
  */
 
@@ -19,28 +32,42 @@ interface Props {
 }
 
 export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
-  const { status, score, best, platforms, heroRef, registerPlatform, jump, setTouchX, reset } =
-    useWarakiJumpEngine();
-  const stageRef = useRef<HTMLDivElement>(null);
-  const [hintGone, setHintGone] = useState(false);
+  const {
+    orbCount,
+    themeIndex,
+    rescuing,
+    counterKey,
+    platforms,
+    orbs,
+    heroRef,
+    balloonRef,
+    registerPlatform,
+    registerOrb,
+    setTouchX,
+    reset,
+  } = useWarakiJumpEngine();
 
-  /** لمسة → إحداثي أفقي داخل اللعبة */
+  const stageRef = useRef<HTMLDivElement>(null);
+
+  /** لمسة/سحب → إحداثي أفقي داخل اللعبة (مع مراعاة التحجيم) */
   const pointToGameX = useCallback((clientX: number) => {
     const rect = stageRef.current?.getBoundingClientRect();
     if (!rect) return null;
-    return ((clientX - rect.left) / rect.width) * GAME_W;
+    const scale = rect.width / GAME_W;
+    const x = (clientX - rect.left) / scale;
+    return Math.max(0, Math.min(GAME_W, x));
   }, []);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
       const x = pointToGameX(e.clientX);
       if (x === null) return;
-      setHintGone(true);
-      jump();
       setTouchX(x);
-      try { stageRef.current?.setPointerCapture(e.pointerId); } catch { /* noop */ }
+      try {
+        stageRef.current?.setPointerCapture(e.pointerId);
+      } catch { /* noop */ }
     },
-    [jump, setTouchX, pointToGameX]
+    [pointToGameX, setTouchX]
   );
 
   const onPointerMove = useCallback(
@@ -52,6 +79,11 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
   );
 
   const onPointerUp = useCallback(() => setTouchX(null), []);
+  const onPointerCancel = useCallback(() => setTouchX(null), []);
+
+  // ألوان الكرات (نفس تسلسل pritives) للشارة
+  const orbProgress = orbCount % 10;
+  const themeFlashKey = Math.floor(orbCount / 10);
 
   return (
     <div className="flex-1 relative overflow-hidden flex flex-col" dir="rtl">
@@ -62,7 +94,6 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
         </span>
         <button
           onClick={() => {
-            SoundFXManager.playPaperRustle();
             onBack();
           }}
           className="doodle-title flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-[#ffecc2] border-2 border-[#2b2a33]/40 rounded-xl text-[#2b2a33] hover:bg-[#ffd93d] transition active:scale-95"
@@ -78,21 +109,20 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
+          onPointerCancel={onPointerCancel}
           className="relative touch-none select-none overflow-hidden border-[3px] rounded-[22px_30px_24px_36px] w-full"
           style={{
             maxWidth: GAME_W,
             maxHeight: '100%',
             aspectRatio: `${GAME_W} / ${GAME_H}`,
-            background: PAPER.white,
             borderColor: INK,
             boxShadow: paperShadow(true),
           }}
         >
-          {/* خلفية ساكنة */}
-          <ScribbleWorldBackdrop />
+          {/* الخلفية — ثيم يتبدل كل 10 كرات */}
+          <ScribbleWorldBackdrop variant={themeIndex} />
 
-          {/* المنصات + البطل — بإحداثيات شاشة، المحرك يحدّث top مباشرة */}
+          {/* المنصات + البطل + الكرات + البالونة — إحداثيات شاشة، المحرك يحدّث top مباشرة */}
           <div className="absolute inset-0">
             {/* ورقي البطل — القدم عند feetY */}
             <div
@@ -103,7 +133,7 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
               <PaperSprite className="mc-wiggle" />
             </div>
 
-            {/* المنصات — top يضبطه المحرك كل إطار مباشرة */}
+            {/* المنصات — top يضبطه المحرك كل إطار؛ المكعب يتحطم عند اللمس */}
             {platforms.map((p) => (
               <div
                 key={p.id}
@@ -113,60 +143,78 @@ export const WarakiJumpGame: React.FC<Props> = ({ onBack }) => {
                 className="absolute"
                 style={{ left: `${(p.x / GAME_W) * 100}%`, width: `${(p.w / GAME_W) * 100}%`, top: GAME_H - p.y }}
               >
-                <div className="mc-paper-wobble">
+                <div className="mc-paper-wobble relative">
                   <PaperPlatform w={p.w} />
-                  {p.obstacle && <PaperObstacle className="absolute -top-8 left-1/2 -translate-x-1/2 w-10 h-9" />}
+                  {p.cube && !p.cubeTaken && (
+                    <span data-cube className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-8">
+                      <PaperObstacle className="w-full h-full" />
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
-          </div>
 
-          {/* شارة النتيجة */}
-          <div
-            className="absolute top-2 right-2 z-20 doodle-title text-sm font-bold px-3 py-1 bg-[#ffecc2] border-2 border-[#2b2a33]/50"
-            style={{ borderRadius: '12px 16px 12px 18px', color: INK }}
-          >
-            🪜 {score} {score >= best && score > 0 ? '🏆' : ''}
-          </div>
-
-          {/* شاشة الخسارة */}
-          {status === 'lost' && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#2b2a33]/10">
+            {/* الكرات اللونية — نظام التقدم الوحيد */}
+            {orbs.map((o) => (
               <div
-                className="bg-[#fffef7] border-[3px] px-7 py-5 text-center mx-4"
-                style={{ borderColor: INK, boxShadow: paperShadow(true), borderRadius: '20px 28px 18px 26px' }}
+                key={o.id}
+                ref={(el) => {
+                  registerOrb(o.id, el);
+                }}
+                className="absolute -translate-x-1/2"
+                style={{ zIndex: 8 }}
+                data-topset
               >
-                <p className="doodle-title text-lg font-bold mb-1" style={{ color: INK }}>
-                  أوبس! سقط ورقي… 📄
-                </p>
-                <p className="doodle-title text-sm mb-2" style={{ color: INK }}>
-                  الارتفاع: {score} {score >= best && score > 0 ? '— رقم قياسي! 🏆' : `— الأفضل: ${best}`}
-                </p>
-                <button
-                  onClick={() => {
-                    SoundFXManager.playPaperRustle();
-                    reset();
-                  }}
-                  className="doodle-title text-sm font-bold px-5 py-2 bg-[#6bcb77] text-white border-2 border-[#2b2a33] rounded-xl active:scale-95"
-                >
-                  إعادة المحاولة! 🔄
-                </button>
+                <PaperOrb colorIdx={o.colorIdx} className={`mc-orb-float ${o.colorIdx % 2 ? 'mc-orb-float2' : ''}`} />
               </div>
-            </div>
-          )}
+            ))}
 
-          {/* تعليمات اللعب قبل أول قفزة */}
-          {!hintGone && status === 'playing' && (
-            <p className="absolute bottom-3 left-1/2 -translate-x-1/2 doodle-title text-[11px] text-[#2b2a33]/50 z-10 text-center px-3 whitespace-nowrap">
-              المس الشاشة = قفزة 🦘 · اسحب يمينًا/يسارًا للحركة
-            </p>
-          )}
+            {/* بالونة الإنقاذ — تظهر فقط عند دفع ورقي لحافة الشاشة */}
+            <div
+              ref={balloonRef}
+              className="absolute z-[9] pointer-events-none"
+              style={{ left: '50%', bottom: -40, width: 70, height: 120, marginLeft: -35, opacity: 0, willChange: 'opacity' }}
+            >
+              <PaperBalloon className="mc-balloon-lift mc-wiggle-anim" />
+            </div>
+          </div>
+
+          {/* شارة تقدم الكرات 🎨 — نظام التقدم الوحيد */}
+          <div
+            key={counterKey}
+            className="absolute top-2 left-1/2 -translate-x-1/2 z-20 doodle-title text-sm font-bold px-3 py-1 bg-[#fffef7] border-2"
+            style={{ borderColor: INK, borderRadius: '12px 16px 12px 18px', color: INK, boxShadow: paperShadow(false) }}
+          >
+            <span className="mc-score-pop inline-block">🎨 {orbCount}</span>
+            <span className="text-[#2b2a33]/40"> / 10</span>
+            <span className="inline-flex gap-0.5 mr-1 align-middle">
+              {Array.from({ length: orbProgress > 0 ? Math.min(orbProgress, 5) : 0 }).map((_, i) => (
+                <span key={i} className="inline-block w-2 h-2 rounded-full border-[1.5px] border-[#2b2a33]/50" style={{ background: ['#ffd93d', '#4fc3f7', '#6bcf6b', '#ff8fb0', '#ff7f50'][i % 5] }} />
+              ))}
+            </span>
+          </div>
+
+          {/* تنبيه تبديل الثيم — كل 10 كرات */}
+          <div key={themeFlashKey} className="points absolute top-12 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+            {themeFlashKey > 0 ? <span className="mc-theme-fade doodle-title font-bold text-sm" style={{ color: INK }}>ثيم جديد! 🎨</span> : null}
+          </div>
+
+          {/* طبقة بالونة الإنقاذ تعتيم خفيف للنص */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none text-center">
+            {rescuing && (
+              <span className="mc-theme-fade doodle-title text-xs font-bold" style={{ color: '#b03a48' }}>
+                البالونة تحملك للأعلى! 🎈
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       {/* تذييل */}
       <div className="flex-shrink-0 text-center py-1 pointer-events-none">
-        <span className="doodle-title text-[10px] text-[#2b2a33]/40">ورقي يقفز بلمسة إصبعك — بلا بلوكات، لعب حرّ! 🎈</span>
+        <span className="doodle-title text-[10px] text-[#2b2a33]/40">
+          ورقي يقفز ذاتيًا — اسحب فقط للاتجاه، اجمع الكرات، وكل 10 كرات ثيم جديد! 🎈
+        </span>
       </div>
     </div>
   );

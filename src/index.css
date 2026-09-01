@@ -853,6 +853,46 @@ html[data-mode="doodle"] .doodle-blockly-frame {
   animation: mcScorePop 0.4s ease-out;
 }
 
+/* ===== لعبة ورقي — تعويم الكرات اللونية (نظام التقدم) ===== */
+@keyframes mcOrbFloat {
+  0%, 100% { transform: translateY(-2px); }
+  50% { transform: translateY(4px); }
+}
+.mc-orb-float { animation: mcOrbFloat 1.6s ease-in-out infinite; }
+.mc-orb-float2 { animation-duration: 2.1s; animation-delay: -0.6s; }
+
+/* وميض الكرة عند الالتقاط + إخفاء ناعم */
+@keyframes mcOrbPop {
+  0% { transform: scale(1); opacity: 1; }
+  45% { transform: scale(1.6) rotate(-8deg); opacity: 1; }
+  100% { transform: scale(0); opacity: 0; }
+}
+.mc-orb-pop { animation: mcOrbPop 0.36s ease-out forwards; }
+
+/* اهتزاز / ارتفاع البالونة الحاملة لورقي أثناء الإنقاذ */
+@keyframes mcBalloonLift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.mc-balloon-lift { animation: mcBalloonLift 0.9s ease-in-out infinite; }
+
+/* فقاعة تبديل الثيم (كل 10 كرات) */
+@keyframes mcThemeFade {
+  0% { opacity: 0; transform: translateY(6px) scale(0.9); }
+  25% { opacity: 1; transform: translateY(0) scale(1.05); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+.mc-theme-fade { animation: mcThemeFade 2.4s ease-out forwards; }
+
+/* تحطم المكعب عند اللمس (+2 كرة بونص) */
+@keyframes mcCubeShatter {
+  0% { transform: scale(1) rotate(0); opacity: 1; }
+  40% { transform: scale(1.25) rotate(-14deg); opacity: 1; }
+  100% { transform: scale(0.1) rotate(20deg); opacity: 0; }
+}
+.cube-shatter { animation: mcCubeShatter 0.34s ease-out forwards; }
+
 /* ===== Doodle Blockly workspace overrides (scoped to doodle mode) ===== */
 html[data-mode="doodle"] .blocklyToolboxDiv {
   background-color: #f5f0e1 !important;

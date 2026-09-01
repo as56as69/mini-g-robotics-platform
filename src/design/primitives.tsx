@@ -181,17 +181,75 @@ export const ScribbleBlob: React.FC<{
  * خلفية العالم الخربشاتي — شمس + غيوم (المسرح المشترك)
  * ساكنة تمامًا (بلا فلتر) — CSS wobble فقط على الشمس
  * ----------------------------------------------------------- */
-export const ScribbleWorldBackdrop: React.FC<{ className?: string }> = ({ className = '' }) => (
-  <svg viewBox="0 0 560 320" preserveAspectRatio="xMidYMid slice" className={`absolute inset-0 w-full h-full ${className}`} aria-hidden>
-    <g stroke={INK} fill="none" strokeLinecap="round">
-      {/* الشمس */}
-      <g className="mc-sun-wobble" transform="translate(70,64)">
-        <circle r="26" fill={ACCENT.yellow} stroke={INK} strokeWidth="3" />
-        <path d="M0 -40 L0 -50 M38 -10 l9 3 M28 -28 l8 -7 M-30 -14 l-9 -7 M32 12 l10 3 M-32 10 l-10 2 M-20 30 l-8 4 M20 -32 l6 -8" stroke={INK} strokeWidth="3" strokeLinecap="round" />
-      </g>
-      {/* غيوم */}
-      <path d="M120 70 q10 -22 34 -16 q8 -18 30 -10 q20 -8 26 10 q20 2 12 18 q-40 8 -100 4 q-8 -6 0 -8 Z" fill="#fff" stroke={INK} strokeWidth="2.6" opacity="0.9" />
-      <path d="M420 44 q8 -16 26 -12 q10 -14 26 -4 q16 -4 18 12 q14 4 6 14 q-28 6 -52 2 q-10 -4 -4 -10 q-8 -2 0 -6 Z" fill="#fff" stroke={INK} strokeWidth="2.4" />
-    </g>
+/* ------------------------------------------------------------
+ * كرة لونية خربشاتية — نقاط لعبة ورقي (نظام التقدم الوحيد)
+ * ----------------------------------------------------------- */
+export const PaperOrb: React.FC<{
+  colorIdx: number;
+  className?: string;
+}> = ({ colorIdx = 0, className = '' }) => {
+  const colors = [ACCENT.yellow, ACCENT.blue, ACCENT.green, ACCENT.pink, ACCENT.red, ACCENT.orange];
+  const c = colors[colorIdx % colors.length];
+  return (
+    <svg viewBox="0 0 22 22" className={className} style={{ overflow: 'visible', display: 'block', width: 22, height: 22 }} aria-hidden>
+      <circle cx="11" cy="11" r="8.5" fill={colors[colorIdx % colors.length]} stroke={INK} strokeWidth="2" opacity="0.92" />
+      <path d="M7 8 q2 -3 5 -2" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" opacity="0.85" />
+      <circle cx="14.5" cy="8" r="1.1" fill="#fff" opacity="0.85" />
+    </svg>
+  );
+};
+
+/* ------------------------------------------------------------
+ * بالونة إنقاذ — ورقية بحبل خربشة (تمسك ورقي من تاجه)
+ * ----------------------------------------------------------- */
+export const PaperBalloon: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <svg viewBox="0 0 70 120" className={className} style={{ overflow: 'visible' }} aria-label="بالونة الإنقاذ">
+    {/* حبل خربشة */}
+    <path d="M35 62 q-8 16 2 26 q8 10 0 34" fill="none" stroke={INK} strokeWidth="2.2" strokeLinecap="round" opacity="0.8" />
+    {/* البالونة */}
+    <path d="M35 4 C14 4 6 20 8 34 C10 48 24 52 35 52 C46 52 62 48 62 34 C64 20 56 4 35 4 Z" fill={ACCENT.pink} stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+    <path d="M22 14 q-7 8 -7 18" fill="none" stroke={INK} strokeWidth="2" strokeLinecap="round" opacity="0.4" />
+    {/* عقدة + ربطة */}
+    <path d="M30 52 L32 60 L40 60 L38 52 Z" fill={ACCENT.yellow} stroke={INK} strokeWidth="2.2" strokeLinejoin="round" />
   </svg>
 );
+
+/* ------------------------------------------------------------
+ * خلفية العالم الخربشاتي — 4 ثيمات (كل 10 كرات تتقدم واحدًا)
+ * كل ثيم: لون ورق + لون الشمس وموضعها + غيوم بأماكن مختلفة
+ * ----------------------------------------------------------- */
+export const BACKDROP_THEMES = [
+  { paper: '#fffef7', sun: ACCENT.yellow, sunX: 70, sunY: 64, clouds: [120, 420], ground: '#eef7ef' },
+  { paper: '#fdfbf4', sun: ACCENT.orange, sunX: 470, sunY: 60, clouds: [90, 330], ground: '#fdf6e3' },
+  { paper: '#fdf6e3', sun: ACCENT.red, sunX: 460, sunY: 84, clouds: [170, 470], ground: '#fdeee3' },
+  { paper: '#eafaf0', sun: ACCENT.blue, sunX: 300, sunY: 52, clouds: [60, 260, 430], ground: '#e8f6fd' },
+] as const;
+
+export const ScribbleWorldBackdrop: React.FC<{ variant?: number; className?: string }> = ({ variant = 0, className = '' }) => {
+  const t = BACKDROP_THEMES[variant % BACKDROP_THEMES.length];
+  return (
+    <svg viewBox="0 0 560 320" preserveAspectRatio="xMidYMid slice" className={`absolute inset-0 w-full h-full ${className}`} aria-hidden>
+      <rect x="0" y="0" width="560" height="320" fill={t.paper} />
+      <g stroke={INK} fill="none" strokeLinecap="round">
+        {/* الشمس — لون وموضع من الثيم */}
+        <g className="mc-sun-wobble" transform={`translate(${t.sunX},${t.sunY})`}>
+          <circle r="26" fill={t.sun} stroke={INK} strokeWidth="3" />
+          <path d="M0 -40 L0 -50 M38 -10 l9 3 M28 -28 l8 -7 M-30 -14 l-9 -7 M32 12 l10 3 M-32 10 l-10 2 M-20 30 l-8 4 M20 -32 l6 -8" stroke={INK} strokeWidth="3" strokeLinecap="round" />
+        </g>
+        {/* غيوم بأماكن الثيم */}
+        {t.clouds.map((cx, i) => (
+          <path
+            key={i}
+            d={`M${cx} ${i % 2 ? 70 : 46} q10 -22 34 -16 q8 -18 30 -10 q20 -8 26 10 q20 2 12 18 q-40 8 -100 4 q-8 -6 0 -8 Z`}
+            fill="#fff"
+            stroke={INK}
+            strokeWidth="2.5"
+            opacity="0.92"
+          />
+        ))}
+        {/* أرض خربشة أسفل الخلفية */}
+        <path d={`M0 300 q70 -8 140 0 q70 8 140 0 q70 -8 140 0 q70 8 140 0 L560 320 L0 320 Z`} fill={t.ground} stroke={INK} strokeWidth="2.4" opacity="0.55" />
+      </g>
+    </svg>
+  );
+};

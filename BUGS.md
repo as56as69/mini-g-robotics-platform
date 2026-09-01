@@ -379,3 +379,28 @@
 ### ✅ التحقق
 - `npx tsc --noEmit` ✅ · `npm run build` ✅ · `mgdev.sh` أعاد التشغيل.
 - محاكاة فيزياء 100 ثانية: البطل يبقى داخل الشاشة طوال اللعب، والنتيجة تصعد.
+
+## 🎯 إصلاح جذري ثالث (القرار النهائي للمستخدم): لعبة ورقي — قفز ذاتي بلا خسارة (2026-09-01)
+
+**قرار المستخدم القاطع**: ورقي **يقفز ذاتيًا** (بلا لمسة للقفز)، اللاعب يتحكم **بالاتجاه فقط**، **بلا خسارة إطلاقًا** (بالونة إنقاذ بدل خسارة)، الكرات اللونية **نظام التقدم الوحيد** (كل 10 = ثيم جديد: ورق + لون وموضع شمس + غيوم)، المكعبات **تتحطم عند اللمس = بونص +2 كرة** (بلا خطر).
+
+### محرك جديد — useWarakiJumpEngine (إعادة كتابة كاملة)
+- **قفز ذاتي**: لحظة لمس أي منصة → `vy = JUMP_V` فورًا؛ `JUMP_V=820 / GRAVITY=1450` → ذروة ≈232px تتجاوز كل المكعبات.
+- **تحكم الاتجاه فقط**: `HORIZ_SPEED=340`، `setTouchX` بلمس/سحب؛ عرض لمسة القفز مقتصر على التوجيه.
+- **إنقاذ بالونة (بلا خسارة)**: عند `feetY < camY − WARAKI_H×0.55` → `rescuing=true` وترتفع `LIFT_SPEED≈240` لأقرب منصة فوق `camY+30`.
+- **كرات (تقدم وحيد)**: فوق المنصات + كرات عائمة في الفجوات؛ التقاط بنصف قطر 28px ← `collectOrb(+1)`؛ `setOrbCount` نادر (على الالتقاط فقط) لا لكل إطار.
+- **مكعب**: لمسه `cubeTaken=true` + طبقة `cube-shatter` + `playPaperTorn` + `collectOrb(+2)` — صار بونصًا بلا خطر.
+- **ثيم**: `themeIndex = floor(orbCount/10)%4` يمرر إلى `ScribbleWorldBackdrop variant`.
+- **توليد**: منصات/كرات تُولَّد فوق `camY+GAME_H×2.2`؛ إزالة `lost/best/localStorage/score`.
+
+### العرض — WarakiJumpGame
+- `PaperOrb` (6 ألوان بترتيب ACCENT) + `PaperFloat` تعويم CSS، `PaperBalloon` إنقاذ، خلفية `variant`.
+- شارة كرات `🎨 n/10` مع نقاط حتى 5، فقاعة «ثيم جديد! 🎨»، طبقة «البالونة تحملك للأعلى!🎈».
+- حذف شاشة الخسارة بالكامل (لا `status==='lost'`).
+
+### الأصول — primitives.tssx + index.css
+- أضيفت `PaperOrb` `PaperBalloon` `BACKDROP_THEMES` وعُدّلت `ScribbleWorldBackdrop` لتستقبل `variant` (4 ثيمات: ورق + شمس + غيوم).
+- index.css: `mc-orb-float/-float2`, `mc-orb-pop`, `mc-balloon-lift`, `mc-theme-fade`, `cube-shatter`.
+
+### ✅ التحقق
+- `npx tsc --noEmit` ✅ · `npm run build` ✅ · `mgdev.sh` أعاد التشغيل.
