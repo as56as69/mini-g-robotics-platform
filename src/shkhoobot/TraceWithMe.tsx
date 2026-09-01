@@ -33,9 +33,10 @@ const HIT_RADIUS = 12;
 const DONE_RATIO = 0.8;
 
 /* ------------------------------------------------------------
- * DrawingCanvas — مكوّن منفصل مemoized لا يُعاد رسمه أثناء اللمس
- * جميع الحالة تُدار بـ refs (لا setState → لا re-render → لا مسح).
- * اكتمال التتبع يُحسب من عدد النقاط المستهلكة / الإجمالي عبر refs.
+ * DrawingCanvas — مكوّن منفصل مemoized لا يُعاد رسمه أثناء اللمس.
+ * جميع الحالة تُدار بـ refs، والماوس/اللمس عبر معالجات DOM صريحة
+ * (addEventListener) تُربط مرة واحدة عند التركيب — فلا يتأثر بسكّة
+ * React أبدًا، ولا تُمسح لوحة البكسلات (backing store) مهما حدث.
  * ----------------------------------------------------------- */
 const DrawingCanvas = React.memo(({
   guidePts,
@@ -53,8 +54,14 @@ const DrawingCanvas = React.memo(({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const ptsRef = useRef(guidePts); // نقاط الدليل المتبقية (يُحذف المُضرب منها)
-  const totalRef = useRef(guidePts.length); // إجمالي النقاط (ثابت)
+  const totalRef = useRef<number>(guidePts.length); // إجمالي النقاط (ثابت)
   const hitsCountRef = useRef(0); // عدد النقاط المستهلكة
+
+  /** أحدث المراجع للـ callbacks حتى لا تتعمق المعالجات الملحقة مرةً واحدة */
+  const onHitRef = useRef(onHit);
+  const onDoneRef = useRef(onDone);
+  onHitRef.current = onHit;
+  onDoneRef.current = onDone;
 
   // إعادة التوليد عند تغيير الشكل فقط (لا أثناء الرسم)
   useEffect(() => {
@@ -86,41 +93,43 @@ const DrawingCanvas = React.memo(({
     const ratio = hitsCountRef.current / Math.max(1, totalRef.current);
     if (ratio < DONE_RATIO) return;
     doneRef.current = true; // قفل الاحتفال مرة واحدة فقط
-    onDone();
-  }, [onDone, doneRef]);
+    onDoneRef.current();
+  }, [doneRef]);
 
-  const onPointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      const canvas = canvasRef.current;
-      const r = canvas?.getBoundingClientRect();
-      if (!r) return;
-      const scale = r.width / VIEW;
-      const x = (e.clientX - r.left) / scale;
-      const y = (e.clientY - r.top) / scale;
-      const g = canvas?.getContext('2d');
-      if (!canvas || !g) return;
+  // المعالجات الأصلية — تُربط مرة واحدة عند التركيب وتخاطب الأحداث الحقيقية
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    let capturedId = -1;
+
+    const toLocal = (e: PointerEvent) => {
+      const r = canvas.getBoundingClientRect();
+      const s = r.width / VIEW;
+      return { x: (e.clientX - r.left) / s, y: (e.clientY - r.top) / s };
+    };
+    const ctx = () => canvas.getContext('2d');
+
+    const onDown = (e: PointerEvent) => {
+      const { x, y } = toLocal(e);
       drawing.current = true;
+      const g = ctx();
+      if (!g) return;
       g.beginPath();
       g.moveTo(x, y);
-      try { canvas.setPointerCapture?.(e.pointerId); } catch { /* noop */ }
+      try {
+        canvas.setPointerCapture(e.pointerId);
+        capturedId = e.pointerId;
+      } catch { /* noop */ }
       if (hitTest(x, y)) {
-        onHit();
+        onHitRef.current();
         checkDone();
       }
-    },
-    [hitTest, onHit, checkDone]
-  );
+    };
 
-  const onPointerMove = useCallback(
-    (e: React.PointerEvent) => {
+    const onMove = (e: PointerEvent) => {
       if (!drawing.current) return;
-      const canvas = canvasRef.current;
-      const r = canvas?.getBoundingClientRect();
-      if (!r) return;
-      const scale = r.width / VIEW;
-      const x = (e.clientX - r.left) / scale;
-      const y = (e.clientY - r.top) / scale;
-      const g = canvas?.getContext('2d');
+      const { x, y } = toLocal(e);
+      const g = ctx();
       if (!g) return;
       g.strokeStyle = PEN_COLOR;
       g.lineWidth = PEN_WIDTH;
@@ -129,14 +138,33 @@ const DrawingCanvas = React.memo(({
       g.lineTo(x, y);
       g.stroke();
       if (hitTest(x, y)) {
-        onHit();
+        onHitRef.current();
         checkDone();
       }
-    },
-    [hitTest, onHit, checkDone]
-  );
+    };
 
-  const onPointerUp = useCallback(() => { drawing.current = false; }, []);
+    const onUp = () => {
+      drawing.current = false;
+      if (capturedId !== -1) {
+        try { canvas.releasePointerCapture(capturedId); } catch { /* noop */ }
+        capturedId = -1;
+      }
+    };
+    const onCtx = (e: Event) => e.preventDefault(); // منع قائمة الضغط الطويل (جوال)
+
+    canvas.addEventListener('pointerdown', onDown);
+    canvas.addEventListener('pointermove', onMove);
+    canvas.addEventListener('pointerup', onUp);
+    canvas.addEventListener('pointercancel', onUp);
+    canvas.addEventListener('contextmenu', onCtx);
+    return () => {
+      canvas.removeEventListener('pointerdown', onDown);
+      canvas.removeEventListener('pointermove', onMove);
+      canvas.removeEventListener('pointerup', onUp);
+      canvas.removeEventListener('pointercancel', onUp);
+      canvas.removeEventListener('contextmenu', onCtx);
+    };
+  }, [hitTest, checkDone]);
 
   return (
     <canvas
@@ -144,10 +172,6 @@ const DrawingCanvas = React.memo(({
       width={VIEW}
       height={VIEW}
       className={className}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
       style={{ zIndex: 3 }}
     />
   );
@@ -252,8 +276,8 @@ export const TraceWithMe: React.FC<Props> = ({ item, onTick, onDone, onRetry, cl
 
   return (
     <div className={className} dir="ltr">
-      {/* الطبقة 1: الدليل المنقط الفاتح (خلفية، بلا تفاعل) */}
-      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
+      {/* الطبقة 1: الدليل المنقط الفاتح (خلفية، بلا تفاعل) — دائم الحضور */}
+      <div key="guide" className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
         <svg viewBox={`0 0 ${VIEW} ${VIEW}`} className="w-full h-full" aria-label={`دليل رسم ${item.labelAr}`}>
           <g fill="none" stroke={GUIDE_COLOR} strokeWidth={GUIDE_WIDTH} strokeDasharray="7 6" strokeLinecap="round" strokeLinejoin="round">
             {item.strokes.map((d, i) => {
@@ -269,17 +293,16 @@ export const TraceWithMe: React.FC<Props> = ({ item, onTick, onDone, onRetry, cl
         </svg>
       </div>
 
-      {/* الطبقة 2: الحبر المتقدّم — يظهر فقط بعد أول ضربة */}
-      {hits > 0 && (
-        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2 }}>
-          <svg viewBox={`0 0 ${VIEW} ${VIEW}`} className="w-full h-full" aria-hidden="true">
-            {guideInk}
-          </svg>
-        </div>
-      )}
+      {/* الطبقة 2: الحبر المتقدّم — دائم الحضور، يُظهر بعد أول ضربة فقط */}
+      <div key="ink" className="absolute inset-0 pointer-events-none transition-opacity duration-300" style={{ zIndex: 2, opacity: hits > 0 ? 1 : 0 }}>
+        <svg viewBox={`0 0 ${VIEW} ${VIEW}`} className="w-full h-full" aria-hidden="true">
+          {hits > 0 && guideInk}
+        </svg>
+      </div>
 
-      {/* الطبقة 3: رسم الطفل — مكوّن منفصل مemoized لا يُعاد أثناء الرسم */}
+      {/* الطبقة 3: رسم الطفل — مكوّن منفصل بمعالجات أصلية، موضع بنية ثابت مضمون */}
       <DrawingCanvas
+        key="canvas"
         guidePts={guidePts}
         onHit={handleHit}
         onDone={handleDone}
@@ -287,31 +310,22 @@ export const TraceWithMe: React.FC<Props> = ({ item, onTick, onDone, onRetry, cl
         className="absolute inset-0 touch-none select-none cursor-crosshair"
       />
 
-      {/* شارة التقدم (نسبة 0..100%) — تبقى ظاهرة حتى اكتمال التغطية */}
-      {progress < 1 && (
-        <div
-          className="absolute bottom-1 left-1/2 -translate-x-1/2 z-10 pointer-events-none doodle-title text-xs font-bold px-2 py-0.5 bg-white border-2"
-          style={{ color: INK, borderRadius: '10px 14px 10px 14px', borderColor: INK, boxShadow: '2px 3px 0 rgba(43,42,51,0.2)' }}
-        >
-          ✏️ {Math.round(progress * 100)}%
-        </div>
-      )}
+      {/* شارة التقدم (نسبة 0..100%) — دائمة الحضور، تُخبأ عند اكتمال التغطية */}
+      <div key="badge" className="absolute bottom-1 left-1/2 -translate-x-1/2 z-10 pointer-events-none doodle-title text-xs font-bold px-2 py-0.5 bg-white border-2 transition-opacity duration-300" style={{ color: INK, borderRadius: '10px 14px 10px 14px', borderColor: INK, boxShadow: '2px 3px 0 rgba(43,42,51,0.2)', opacity: progress < 1 ? 1 : 0 }}>
+        ✏️ {Math.round(progress * 100)}%
+      </div>
 
-      {/* رسائل حالة التتبع */}
-      {!done && (
-        <div
-          className="absolute top-1 left-1/2 -translate-x-1/2 z-10 pointer-events-none doodle-title text-xs font-bold px-2 py-0.5 bg-[#ffecc2] border-2"
-          style={{ color: INK, borderRadius: '10px 14px 10px 14px', borderColor: INK, boxShadow: '2px 3px 0 rgba(43,42,51,0.2)' }}
-        >
-          {hits > 0
-            ? `أحسنت! وصل ${Math.round(progress * 100)}% — واصل! ✏️`
-            : 'اتّبع الخط المنقط بقلمك 🖍️'}
-        </div>
-      )}
+      {/* رسائل حالة التتبع — دائمة الحضور، تخفى عند الاكتمال */}
+      <div key="hint" className="absolute top-1 left-1/2 -translate-x-1/2 z-10 pointer-events-none doodle-title text-xs font-bold px-2 py-0.5 bg-[#ffecc2] border-2 transition-opacity duration-300" style={{ color: INK, borderRadius: '10px 14px 10px 14px', borderColor: INK, boxShadow: '2px 3px 0 rgba(43,42,51,0.2)', opacity: !done ? 1 : 0 }}>
+        {hits > 0
+          ? `أحسنت! وصل ${Math.round(progress * 100)}% — واصل! ✏️`
+          : 'اتّبع الخط المنقط بقلمك 🖍️'}
+      </div>
 
       {/* زر إعادة التتبع (يمسح الرسم ويعيد نفس الشكل) */}
       {onRetry && (
         <button
+          key="retry"
           onClick={() => {
             if (!done) return;
             onRetry();
