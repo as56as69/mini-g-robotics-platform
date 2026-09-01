@@ -107,8 +107,14 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
     setDrawKey((k) => k + 1);
   }, []);
 
-  /** صوت "تيك" عند كل ضربة جديدة على الدليل */
+  /** آخر مرة استُخدم فيها صوت "تيك" (lime interval 140ms) */
+  const lastBeepRef = useRef(0);
+
+  /** صوت "تيك" عند كل ضربة جديدة على الدليل — مقيّد لئلا يتكرر كرشاش */
   const handleTraceTick = useCallback(() => {
+    const now = Date.now();
+    if (now - lastBeepRef.current < 140) return;
+    lastBeepRef.current = now;
     SoundFXManager.playClickBeep();
   }, []);
 
@@ -118,6 +124,13 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
     setCelebrate(true);
     SoundFXManager.playVictory();
     window.setTimeout(() => setMood('idle'), 9000);
+  }, []);
+
+  /** إعادة التتبع — مسح الرسم + إعادة توليد المكوّن نفسه */
+  const handleTraceRetry = useCallback(() => {
+    setCelebrate(false);
+    setMood('idle');
+    setDrawKey((k) => k + 1);
   }, []);
 
   const message = (() => {
@@ -212,9 +225,7 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
 
             {/* الورقة البيضاء للرسمة — في وضع «شخبط وياي» تعرض طبقة الدليل + Canvas الطفل */}
             <div
-              className={`relative w-56 h-56 sm:w-72 sm:h-72 border-[3px] border-[#2b2a33] flex-shrink-0 overflow-hidden ${
-                drawMode === 'trace' ? 'mc-paper-wobble' : ''
-              }`}
+              className="relative w-56 h-56 sm:w-72 sm:h-72 border-[3px] border-[#2b2a33] flex-shrink-0 overflow-hidden"
               style={{ background: PAPER.white, borderRadius: '18px 26px 16px 24px', boxShadow: paperShadow(true) }}
             >
               {drawMode === 'trace' ? (
@@ -224,6 +235,7 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
                     item={drawing.item}
                     onTick={handleTraceTick}
                     onDone={handleTraceDone}
+                    onRetry={handleTraceRetry}
                     className="absolute inset-0"
                   />
                 ) : (
