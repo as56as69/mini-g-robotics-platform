@@ -52,7 +52,6 @@ const DrawingCanvas = React.memo(({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
-  const localDone = useRef(false);
   const ptsRef = useRef(guidePts); // نقاط الدليل المتبقية (يُحذف المُضرب منها)
   const totalRef = useRef(guidePts.length); // إجمالي النقاط (ثابت)
   const hitsCountRef = useRef(0); // عدد النقاط المستهلكة
@@ -62,7 +61,6 @@ const DrawingCanvas = React.memo(({
     ptsRef.current = guidePts;
     totalRef.current = guidePts.length;
     hitsCountRef.current = 0;
-    localDone.current = false;
   }, [guidePts]);
 
   const hitTest = useCallback(
@@ -82,19 +80,17 @@ const DrawingCanvas = React.memo(({
     []
   );
 
+  /** إعلان الاكتمال عند ≥ DONE_RATIO — يقع مرّة واحدة، ولا يجمد الرسم */
   const checkDone = useCallback(() => {
-    if (localDone.current || doneRef.current) return;
+    if (doneRef.current) return;
     const ratio = hitsCountRef.current / Math.max(1, totalRef.current);
     if (ratio < DONE_RATIO) return;
-    localDone.current = true;
-    doneRef.current = true;
-    drawing.current = false;
+    doneRef.current = true; // قفل الاحتفال مرة واحدة فقط
     onDone();
   }, [onDone, doneRef]);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (localDone.current) return;
       const canvas = canvasRef.current;
       const r = canvas?.getBoundingClientRect();
       if (!r) return;
@@ -117,7 +113,7 @@ const DrawingCanvas = React.memo(({
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
-      if (!drawing.current || localDone.current) return;
+      if (!drawing.current) return;
       const canvas = canvasRef.current;
       const r = canvas?.getBoundingClientRect();
       if (!r) return;
@@ -291,8 +287,8 @@ export const TraceWithMe: React.FC<Props> = ({ item, onTick, onDone, onRetry, cl
         className="absolute inset-0 touch-none select-none cursor-crosshair"
       />
 
-      {/* شارة التقدم (نسبة 0..100%) — أعلى اللوح بترتيب صريح */}
-      {!done && (
+      {/* شارة التقدم (نسبة 0..100%) — تبقى ظاهرة حتى اكتمال التغطية */}
+      {progress < 1 && (
         <div
           className="absolute bottom-1 left-1/2 -translate-x-1/2 z-10 pointer-events-none doodle-title text-xs font-bold px-2 py-0.5 bg-white border-2"
           style={{ color: INK, borderRadius: '10px 14px 10px 14px', borderColor: INK, boxShadow: '2px 3px 0 rgba(43,42,51,0.2)' }}
