@@ -226,6 +226,153 @@ const CATEGORIES: ScribbleCategory[] = [
 
 export const SCRIBBLE_CATEGORIES = CATEGORIES;
 
+/* ============================================================
+ * عينة مسار SVG → مجموعة نقاط (x,y) بمباعدة step.
+ * نتاجات لخاصية «خربش معي» (قياس قرب/تغطية إصبع الطفل).
+ * تدعم الصيغ المستخدمة فعليًا في strokes:
+ *   M/L/Q/q/l/h/v/Z + circle:x,y,r + (a/A) قوس بيضاوي (هلال القمر).
+ * =========================================================== */
+export function samplePath(d: string, step = 3): { x: number; y: number }[] {
+  const pts: { x: number; y: number }[] = [];
+  // FJفصل circle: → دوائر (نقاط حول المحيط)
+  if (d.startsWith('circle:')) {
+    for (const seg of d.split(' ')) {
+      if (!seg.startsWith('circle:')) continue;
+      const [cx, cy, r] = seg.slice(7).split(',').map(Number);
+      const n = Math.max(8, Math.ceil((2 * Math.PI * r) / step));
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+      }
+    }
+    return pts;
+  }
+
+  // تمرير: استخراج أوامر + أرقام (يدعم سالب/عشري)
+  const nums = d.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  const cmds = d.match(/[MmLlQqHhVvCcAaZz]/g) ?? [];
+  let ni = 0;
+  let cur = { x: 0.0, y: 0.0 };
+  let start = { x: 0.0, y: 0.0 };
+
+  const push = (x: number, y: number) => pts.push({ x, y });
+
+  for (const cmd of cmds) {
+    const lower = cmd.toLowerCase();
+    if (cmd === 'z' || cmd === 'Z') {
+      // إغلاق المسار: عيّن طول الفجوة إلى نقطة البداية (لكشف الخطوط الوسيطة)
+      const dx = start.x - cur.x;
+      const dy = start.y - cur.y;
+      const dist = Math.hypot(dx, dy);
+      const n = Math.max(1, Math.round(dist / step));
+      push(cur.x, cur.y);
+      for (let i = 1; i <= n; i++) {
+        push(cur.x + dx * (i / n), cur.y + dy * (i / n));
+      }
+      cur.x = start.x;
+      cur.y = start.y;
+      continue;
+    }
+    if (lower === 'm') {
+      start = { x: cur.x, y: cur.y };
+      let x = nums[ni++];
+      let y = nums[ni++];
+      if (cmd === 'm') { x += cur.x; y += cur.y; }
+      cur = { x, y };
+      start = { x, y };
+      push(x, y);
+      continue;
+    }
+    if (lower === 'l') {
+      let x = nums[ni++];
+      let y = nums[ni++];
+      if (cmd === 'l') { x += cur.x; y += cur.y; }
+      const sx = cur.x, sy = cur.y;
+      const dist = Math.hypot(x - sx, y - sy);
+      const n = Math.max(1, Math.round(dist / step));
+      push(sx, sy);
+      for (let i = 1; i <= n; i++) push(sx + (x - sx) * (i / n), sy + (y - sy) * (i / n));
+      cur = { x, y };
+      continue;
+    }
+    if (lower === 'h') {
+      let x = nums[ni++];
+      if (cmd === 'h') x += cur.x;
+      const sx = cur.x, sy = cur.y;
+      const dist = Math.abs(x - sx);
+      const n = Math.max(1, Math.round(dist / step));
+      push(sx, sy);
+      for (let i = 1; i <= n; i++) push(sx + (x - sx) * (i / n), sy);
+      cur = { x, y: sy };
+      continue;
+    }
+    if (lower === 'v') {
+      let y = nums[ni++];
+      if (cmd === 'v') y += cur.y;
+      const sx = cur.x, sy = cur.y;
+      const dist = Math.abs(y - sy);
+      const n = Math.max(1, Math.round(dist / step));
+      push(sx, sy);
+      for (let i = 1; i <= n; i++) push(sx, sy + (y - sy) * (i / n));
+      cur = { x: sx, y };
+      continue;
+    }
+    if (lower === 'q') {
+      let cx = nums[ni++], cy = nums[ni++], x = nums[ni++], y = nums[ni++];
+      if (cmd === 'q') { cx += cur.x; cy += cur.y; x += cur.x; y += cur.y; }
+      const p0 = { x: cur.x, y: cur.y };
+      const p1 = { x: cx, y: cy };
+      const p2 = { x, y };
+      const dist = Math.hypot(x - p0.x, y - p0.y);
+      const n = Math.max(4, Math.round(dist / step));
+      push(p0.x, p0.y);
+      for (let i = 1; i <= n; i++) {
+        const t = i / n;
+        const a = (1 - t) * (1 - t), b = 2 * t * (1 - t), c = t * t;
+        push(a * p0.x + b * p1.x + c * p2.x, a * p0.y + b * p1.y + c * p2.y);
+      }
+      cur = { x, y };
+      continue;
+    }
+    if (lower === 'c') {
+      // منحنى بيزيه تكعيبي — نحتاج 6 أرقام لكل أمر
+      let c1x = nums[ni++], c1y = nums[ni++], c2x = nums[ni++], c2y = nums[ni++], x = nums[ni++], y = nums[ni++];
+      if (cmd === 'c') { c1x += cur.x; c1y += cur.y; c2x += cur.x; c2y += cur.y; x += cur.x; y += cur.y; }
+      const p0 = { x: cur.x, y: cur.y }, p1 = { x: c1x, y: c1y }, p2 = { x: c2x, y: c2y }, p3 = { x, y };
+      const dist = Math.hypot(x - p0.x, y - p0.y);
+      const n = Math.max(6, Math.round(dist / step));
+      push(p0.x, p0.y);
+      for (let i = 1; i <= n; i++) {
+        const t = i / n, mt = 1 - t;
+        const a = mt * mt * mt, b = 3 * mt * mt * t, c = 3 * mt * t * t, d = t * t * t;
+        push(a * p0.x + b * p1.x + c * p2.x + d * p3.x, a * p0.y + b * p1.y + c * p2.y + d * p3.y);
+      }
+      cur = { x, y };
+      continue;
+    }
+    if (lower === 'a') {
+      // قوس إهليلجي SVG (هلال القمر) — خوارزمية W3C مبسّطة
+      const rx = nums[ni++], ry = nums[ni++], xrot = nums[ni++] ?? 0, laf = nums[ni++] ?? 0, sw = nums[ni++] ?? 0;
+      let x = nums[ni++], y = nums[ni++];
+      if (cmd === 'a') { x += cur.x; y += cur.y; }
+      const dist = Math.hypot(x - cur.x, y - cur.y);
+      const n = Math.max(8, Math.round((dist / step) * 1.2));
+      const end = { x, y };
+      for (let i = 0; i <= n; i++) {
+        const t = i / n;
+        const px = cur.x + (end.x - cur.x) * t;
+        const py = cur.y + (end.y - cur.y) * t;
+        // إزاحة عادية بسيطة لتقريب انحناء القوس دون انفجار أرقام
+        const nx = -(end.x - cur.x), ny = (end.y - cur.y);
+        push(px + nx * 0.14 * Math.sin(Math.PI * t), py + ny * 0.14 * Math.sin(Math.PI * t));
+      }
+      cur = end;
+      continue;
+    }
+  }
+  return pts;
+}
+
 /** اختيار ورقة عشوائية للجلسة (قرار التصميم: ورقة مختلفة لكل جلسة) */
 export const SESSION_PAPERS = [
   { id: 'dotted', bg: PAPER.white, label: 'ورقة منقّطة' },

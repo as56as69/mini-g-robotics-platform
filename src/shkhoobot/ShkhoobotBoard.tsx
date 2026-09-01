@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Home, RefreshCw } from 'lucide-react';
 import { ScribbleBlob } from '../design/primitives';
-import { PAPER, paperShadow } from '../design/tokens';
+import { INK, PAPER, paperShadow } from '../design/tokens';
 import { SoundFXManager } from '../ble/SoundFX';
+import { TraceWithMe } from './TraceWithMe';
 import {
   SCRIBBLE_CATEGORIES,
   ScribbleDrawing,
@@ -13,24 +14,32 @@ import {
 /* ============================================================
  * كود ماجيك — لوحة مستر شخبوط 🌀
  * وحش خربشة (خطوط متداخلة + عينان تتبعان) له لوحته الخاصة.
- * الطفل يختار فئة جاهزة → شخبوط يرسم شيئًا منها بالخربشة.
+ * وضعان للرسم (قرار المستخدم):
+ *   - «شخبوط يرسم»: شخبوط يرسم شيئًا من الفئة بنفسه (خربشة).
+ *   - «خربش معي»: الطفل يتتبع الخطوط المنقطة بقلمه (Canvas).
  * تخطيط عمود flex حقيقي (شريط / محتوى مرن) — بلا absolute inset.
  * ============================================================
  */
 
 type Mood = 'idle' | 'think' | 'draw' | 'cheer';
+type DrawMode = 'watch' | 'trace';
 
 interface Props {
   onBack: () => void;
 }
 
+/** ألوان القصاصات الاحتفالية (بلا مكتبات خارجية) */
+const CONFETTI_COLORS = ['#ffd93d', '#4fc3f7', '#6bcf6b', '#ff8fb0', '#ff7f50', '#9b6bff'];
+
 export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
   const [mood, setMood] = useState<Mood>('idle');
+  const [drawMode, setDrawMode] = useState<DrawMode>('watch');
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 100000));
   const [drawing, setDrawing] = useState<{ item: ScribbleItem; seed: number } | null>(null);
   const [paper, setPaper] = useState(() => pickRandomPaper());
   const [drawKey, setDrawKey] = useState(0);
   const [look, setLook] = useState({ x: 0, y: 0 });
+  const [celebrate, setCelebrate] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
 
   /** ورقة جديدة لكل جلسة (عند كل فتح للوحة) */
@@ -62,21 +71,53 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
     return () => window.removeEventListener('pointermove', onMove);
   }, []);
 
-  /** التفكير ثم الرسم */
-  const drawItem = useCallback((catId: string, itemId: string) => {
+  /** التفكير ثم الرسم — في وضع «شخبوط يرسم» */
+  const drawItem = useCallback(
+    (catId: string, itemId: string) => {
+      if (drawMode === 'trace') {
+        traceItem(catId, itemId);
+        return;
+      }
+      const cat = SCRIBBLE_CATEGORIES.find((c) => c.id === catId);
+      const item = cat?.items.find((i) => i.id === itemId);
+      if (!item) return;
+      SoundFXManager.playPaperRustle();
+      setMood('think');
+      window.setTimeout(() => {
+        setMood('draw');
+        setDrawing({ item, seed: Math.floor(Math.random() * 100000) });
+        setDrawKey((k) => k + 1);
+        SoundFXManager.playRobotChirp();
+        window.setTimeout(() => setMood('cheer'), 2400);
+        window.setTimeout(() => setMood('idle'), 6000);
+      }, 900);
+    },
+    [drawMode]
+  );
+
+  /** اختيار في وضع «خربش معي» — شخبوط ينتظر، الطفل يتتبع */
+  const traceItem = useCallback((catId: string, itemId: string) => {
     const cat = SCRIBBLE_CATEGORIES.find((c) => c.id === catId);
     const item = cat?.items.find((i) => i.id === itemId);
     if (!item) return;
     SoundFXManager.playPaperRustle();
-    setMood('think');
-    window.setTimeout(() => {
-      setMood('draw');
-      setDrawing({ item, seed: Math.floor(Math.random() * 100000) });
-      setDrawKey((k) => k + 1);
-      SoundFXManager.playRobotChirp();
-      window.setTimeout(() => setMood('cheer'), 2400);
-      window.setTimeout(() => setMood('idle'), 6000);
-    }, 900);
+    setMood('idle');
+    setCelebrate(false);
+    setDrawing({ item, seed: Math.floor(Math.random() * 100000) });
+    setDrawKey((k) => k + 1);
+  }, []);
+
+  /** صوت "تيك" عند كل ضربة جديدة على الدليل */
+  const handleTraceTick = useCallback(() => {
+    SoundFXManager.playClickBeep();
+  }, []);
+
+  /** اكتمال ≥80% → احتفال + رسالة */
+  const handleTraceDone = useCallback(() => {
+    setMood('cheer');
+    setCelebrate(true);
+    SoundFXManager.playVictory();
+    window.setTimeout(() => setMood('idle'), 9000);
   }, []);
 
   const message = (() => {
@@ -86,11 +127,24 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
       case 'draw':
         return 'أنظر! أرسمها خطاً بخط… ✏️';
       case 'cheer':
+        if (drawMode === 'trace' && drawing)
+          return `ممتاز! لقد رسمت «${drawing.item.labelAr}» بنفسك! 🎉`;
         return 'تمّت! كل شخبطة فريدة مثلي! 🌀';
       default:
+        if (drawMode === 'trace')
+          return 'اختر فئة ثم اتبع الخطوط المنقطة بقلمك — أنا أشجعك! ✏️🤗';
         return 'هلا! أنا «مستر شخبوط» — اختر فئة وسأخربشها لك!';
     }
   })();
+
+  /** مبدّل الوضع — اليوم دائمًا في وضع التتبع افتراضيًا للرضوضة؟ (لا، افتراضيًا 'watch') */
+  const switchMode = useCallback((mode: DrawMode) => {
+    setDrawMode(mode);
+    setCelebrate(false);
+    setMood('idle');
+    setDrawing(null);
+    setDrawKey((k) => k + 1);
+  }, []);
 
   return (
     <div className="flex-1 relative overflow-hidden flex flex-col min-h-0" dir="rtl">
@@ -117,13 +171,35 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
         dir="rtl"
       >
         <div ref={boardRef} className="max-w-3xl mx-auto flex flex-col gap-3">
+          {/* مبدّل الوضع: «شخبوط يرسم» ↔ «خربش معي» */}
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => switchMode('watch')}
+              className={`doodle-title text-sm font-bold px-4 py-2 border-[2.5px] rounded-2xl transition active:scale-95 ${
+                drawMode === 'watch' ? 'bg-[#6bcb77] text-white' : 'bg-white text-[#2b2a33]'
+              }`}
+              style={{ borderColor: INK, boxShadow: paperShadow() }}
+            >
+              🌀 شخبوط يرسم
+            </button>
+            <button
+              onClick={() => switchMode('trace')}
+              className={`doodle-title text-sm font-bold px-4 py-2 border-[2.5px] rounded-2xl transition active:scale-95 ${
+                drawMode === 'trace' ? 'bg-[#ffd93d] text-[#2b2a33]' : 'bg-white text-[#2b2a33]'
+              }`}
+              style={{ borderColor: INK, boxShadow: paperShadow() }}
+            >
+              ✏️ خربش معي
+            </button>
+          </div>
+
           {/* مسرح شخبوط + الرسمة */}
-          <div className="flex items-center justify-center gap-4 flex-wrap">
+          <div className="flex items-start justify-center gap-4 sm:gap-6 flex-wrap">
             {/* مستر شخبوط — SVG بخط width/height صريحين دائمًا */}
             <div className="relative w-40 h-52 sm:w-48 sm:h-60 flex items-center justify-center flex-shrink-0">
               <ScribbleBlob
                 seed={seed}
-                mood={mood === 'think' ? 'think' : 'idle'}
+                mood={drawMode === 'trace' ? (mood === 'cheer' ? 'cheer' : 'idle') : mood === 'think' ? 'think' : 'idle'}
                 lookX={look.x}
                 lookY={look.y}
                 className="mc-wiggle"
@@ -134,23 +210,62 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
               </span>
             </div>
 
-            {/* الورقة البيضاء للرسمة */}
+            {/* الورقة البيضاء للرسمة — في وضع «خربش معي» تعرض طبقة الدليل + Canvas الطفل */}
             <div
-              className="relative w-48 h-48 sm:w-56 sm:h-56 border-[3px] border-[#2b2a33] flex-shrink-0"
+              className={`relative w-56 h-56 sm:w-72 sm:h-72 border-[3px] border-[#2b2a33] flex-shrink-0 overflow-hidden ${
+                drawMode === 'trace' ? 'mc-paper-wobble' : ''
+              }`}
               style={{ background: PAPER.white, borderRadius: '18px 26px 16px 24px', boxShadow: paperShadow(true) }}
             >
-              {drawing ? (
+              {drawMode === 'trace' ? (
+                drawing ? (
+                  <TraceWithMe
+                    key={'trace-' + drawKey}
+                    item={drawing.item}
+                    onTick={handleTraceTick}
+                    onDone={handleTraceDone}
+                    className="absolute inset-0"
+                  />
+                ) : (
+                  <p className="doodle-title absolute inset-0 flex items-center justify-center text-[#2b2a33]/35 text-sm text-center px-6">
+                    اختر شيئًا لتتبع خطوطه 🖍️👇
+                  </p>
+                )
+              ) : drawing ? (
                 <ScribbleDrawing
                   key={drawKey}
                   item={drawing.item}
                   seed={drawing.seed}
                   live
-                  className="w-full h-full p-2"
+                  className="w-full h-full p-2 sm:p-3"
                 />
               ) : (
-                <p className="doodle-title absolute inset-0 flex items-center justify-center text-[#2b2a33]/35 text-xs text-center px-4">
+                <p className="doodle-title absolute inset-0 flex items-center justify-center text-[#2b2a33]/35 text-sm text-center px-6">
                   ورقة الرسم — اختر فئة وأشياءً 👇
                 </p>
+              )}
+
+              {/* قصاصات الاحتفال عند اكتمال التتبع */}
+              {celebrate && (
+                <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
+                  {Array.from({ length: 26 }).map((_, i) => {
+                    const left = (i * 37) % 100;
+                    const delay = (i % 8) * 0.12;
+                    const dur = 2 + (i % 5) * 0.4;
+                    return (
+                      <span
+                        key={i}
+                        className="mc-confetti"
+                        style={{
+                          left: `${left}%`,
+                          background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+                          animationDelay: `${delay}s`,
+                          animationDuration: `${dur}s`,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
@@ -163,24 +278,30 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
             <p className="doodle-title text-[#2b2a33] text-xs sm:text-sm font-bold">{message}</p>
           </div>
 
-          {/* لوحة الفئات */}
-          <div className="flex flex-col gap-2 mt-1">
+          {/* لوحة الفئات — مسافة أريح بين الفئات وأزرار داكنة واضحة لأصابع الأطفال */}
+          <div className="flex flex-col gap-4 mt-2">
             {SCRIBBLE_CATEGORIES.map((cat) => (
-              <div key={cat.id} className="flex items-center gap-2 flex-wrap justify-center">
-                <span className="doodle-title text-xs font-bold text-[#2b2a33]/70 w-20 text-left shrink-0">
+              <div
+                key={cat.id}
+                className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(255,255,255,0.6)', border: '2px dashed rgba(43,42,51,0.18)' }}
+              >
+                <span className="doodle-title text-sm font-bold text-[#2b2a33] sm:w-28 sm:pl-3 flex-shrink-0 text-center sm:text-right">
                   {cat.icon} {cat.labelAr}
                 </span>
-                {cat.items.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => drawItem(cat.id, item.id)}
-                    disabled={mood === 'think' || mood === 'draw'}
-                    className="doodle-title text-xs font-bold px-3 py-2 bg-white border-[2.5px] border-[#2b2a33] rounded-[12px_18px_12px_18px] transition active:scale-95 hover:bg-[#ffecc2] disabled:opacity-40"
-                    style={{ boxShadow: '2px 3px 0 rgba(43,42,51,0.2)' }}
-                  >
-                    {item.icon} {item.labelAr}
-                  </button>
-                ))}
+                <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-start">
+                  {cat.items.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => drawItem(cat.id, item.id)}
+                      disabled={mood === 'think' || mood === 'draw'}
+                      className="doodle-title text-sm font-bold px-4 py-2.5 bg-white text-[#2b2a33] border-[2.5px] border-[#2b2a33] rounded-[12px_18px_12px_18px] transition active:scale-95 hover:bg-[#ffecc2] disabled:opacity-40"
+                      style={{ boxShadow: '2px 3px 0 rgba(43,42,51,0.2)' }}
+                    >
+                      {item.icon} {item.labelAr}
+                    </button>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
