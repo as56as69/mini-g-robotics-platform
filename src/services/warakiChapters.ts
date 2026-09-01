@@ -207,6 +207,10 @@ export const CHAPTER_5: AdventureChapter = {
     titleAr: 'أُنجز الموسم الأول!',
     bodyAr: 'عاد حسن ووجد عباس مبرمجاً حقيقياً — ورقي أصبح «حارس عباس» الرسمي! اكتمل الاتفاق السحري… ومغامرة جديدة تنتظر!',
   },
+  gift: {
+    titleAr: '🎁 هدية من حسن!',
+    bodyAr: 'حسن مسرور ببرمجة عباس — يمد يده بعلبة مغلّفة: «هذه لعبة ورقي الحرّة! العب بها بلمسة إصبعك، بلا بلوكات ولا برمجة — فقط قفز ومَرَح!»',
+  },
 };
 
 export const WARAKI_CHAPTERS: AdventureChapter[] = [CHAPTER_1, CHAPTER_2, CHAPTER_3, CHAPTER_4, CHAPTER_5];

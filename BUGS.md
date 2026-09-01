@@ -274,3 +274,41 @@
 - `npx tsc --noEmit` ✅ · `npm run build` ✅.
 - حل الفصل 2 الآن: **اركض 5 + اركض 5** (62 → 12 → 8) — ينتهي الفصل بمكافأة 🤝.
 - فصل 4 لم يتأثر: القتال يبقى إلزاميًا.
+
+---
+
+# 🎪 ملعب ورقي — Phase 0 (تثبيت الهوية) + المسارين (2026-09-01)
+
+**قرارات المستخدم المقفلة:**
+1. فلتر جديد مستقل للميزات الجديدة (لا لمس `doodleWiggle`/`adventureWiggle`) — التوحيد لاحقًا كتشطيب.
+2. زرّان مستقلان بجانب «⚡ مغامرات ورقي 📖» → صف ثلاثية: مغامرات · لعبة ورقي · مستر شخبوط.
+3. لعبة ورقي بنمط **Doodle Jump** (لمسة=قفزة، سحب=حركة، صعوبة ثابتة) — هدية حسن لعباس بعد الموسم الأول.
+4. مستر شخبوط: **فئات جاهزة** يختار منها الطفل، جسد خربشة + عينان تتبعان + ردود فعل، **ورقة مختلفة لكل جلسة**.
+5. الهوية أولًا ثم الكود — كل الميزات الجديدة تستهلك tokens/primitives فقط.
+
+## Phase 0 — تثبيت الهوية المشتركة
+| الملف | الحالة |
+|---|---|
+| `src/design/tokens.ts` | ✅ مصدر وحيد: INK `#2b2a33` · PAPER (white/cream/kraft/warm/note) · ACCENT ×6 · WIGGLE (fractalNoise 0.012/scale 3.5) · WOBBLY_RADIUS · paperShadow() · FONT_DOODLE · MOTION |
+| `src/design/primitives.tsx` | ✅ `WiggleSVG` (فلتر `mcWiggle` مستقل) · `PaperSprite` (ورقي يقفز: squash & stretch) · `ScribbleBlob` (جسد خربشة ببذرة + عينان تتبعان + مزاج) · `PaperPlatform`/`PaperObstacle` · `ScribbleWorldBackdrop` · `seededRandom` |
+| `index.css` | ✅ `shkhoobot-pupil` · `shkhoobot-spin` · `scribble-live` (ظهور القلم بـ stroke-dashoffset) · `mc-paper-wobble` · `mc-waraki-jump` · `mc-score-pop` |
+
+## المسار 1 — لعبة ورقي 🦘 (هدية حسن)
+| الملف | الحالة |
+|---|---|
+| `src/games/useWarakiJumpEngine.ts` | ✅ نواة RAF: جاذبية 1500 + قفزة لمس (-640) + حركة أفقية نحو الإصبع + كاميرا تتبع + توليد منصات لا نهائي + عوائق (فرصة 0.22 ثابتة) + خسارة بالسقوط + أفضل نتيجة `mg_waraki_jump_best` |
+| `src/games/WarakiJumpGame.tsx` | ✅ مسرح لمس كامل: `PaperSprite` يقفز فوق `PaperPlatform` (`mc-paper-wobble`) + عوائق `PaperObstacle` + خلفية `ScribbleWorldBackdrop` + شارة ارتفاع + شاشة خسارة ورقية + إعادة تلقائية 2.6s |
+| `src/services/warakiChapters.ts` + `src/types/warakiAdventure.ts` | ✅ حقل `gift` على CHAPTER_5 (عودة حسن) |
+| `WarakiAdventuresView.tsx` | ✅ بعد مكافأة الفصل الختامي: زر «🎁 افتح هدية حسن!» → `WarakiJumpGame` ملء الشاشة داخل المغامرة |
+| `DoodleModeView.tsx` | ✅ زر «🕹️ لعبة ورقي 🎁» مستقل بجانب المغامرات |
+
+## المسار 2 — مستر شخبوط 🌀
+| الملف | الحالة |
+|---|---|
+| `src/shkhoobot/ScribbleRenderer.tsx` | ✅ 5 فئات جاهزة (حيوانات: قطة/سمكة/طائر · مركبات: سيارة/صاروخ · فضاء: قمر/نجمة · طبيعة: شجرة/شمس · مشاعر: قلب/ابتسامة) + `buildScribble` (هالة خربشة عشوائية حول المسارات الأساسية) + `ScribbleDrawing` يرسم خطًا بخط (`scribble-live`) + `pickRandomPaper` (ورقة مختلفة لكل جلسة) |
+| `src/shkhoobot/ShkhoobotBoard.tsx` | ✅ لوحة شخبوط: جسد `ScribbleBlob` + عينان تتبعان المؤشر/الإصبع + حالات (خامل/يفكر/يرسم/يحتفل) + فقاعة رسائل + إعادة تشكيل الجسد ببذرة جديدة |
+
+## ✅ التحقق (2026-09-01)
+- `npx tsc --noEmit` ✅ (0 أخطاء) · `npm run build` ✅ (PWA precache 32).
+- `mgdev.sh` يعيد تشغيل vite:3000 + school:3300 بنجاح.
+- الصفحة الرئيسية: 3 أزرار مستقلة بجوار بعضها (⚡ مغامرات · 🕹️ لعبة · 🌀 شخبوط).

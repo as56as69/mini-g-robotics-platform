@@ -55,6 +55,11 @@ export interface AdventureChapter {
     bodyAr: string;
     icon: string;
   };
+  /** حسن's gift (season end only) — opens Waraki Jump free-play game */
+  gift?: {
+    titleAr: string;
+    bodyAr: string;
+  };
 }
 
 export interface EngineState {

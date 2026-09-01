@@ -4,6 +4,7 @@ import { AdventureAction, AdventureCommand } from '../types/warakiAdventure';
 import { WARAKI_CHAPTERS } from '../services/warakiChapters';
 import { useAdventureEngine } from './useAdventureEngine';
 import { SoundFXManager } from '../ble/SoundFX';
+import { WarakiJumpGame } from '../games/WarakiJumpGame';
 
 interface Props {
   onBack: () => void;
@@ -70,6 +71,7 @@ const ChapterStage: React.FC<{
     } catch { /* ignore */ }
   });
   const [showReward, setShowReward] = useState(false);
+  const [showGift, setShowGift] = useState(false);
   // Reward appears 1.2s AFTER the win so the kid watches the monster scatter
   React.useEffect(() => {
     if (state.status === 'won') {
@@ -488,11 +490,28 @@ const ChapterStage: React.FC<{
                   >
                     📖 الفصل التالي!
                   </button>
+                ) : chapter.gift ? (
+                  <button
+                    onClick={() => {
+                      SoundFXManager.playPaperTorn();
+                      setShowGift(true);
+                    }}
+                    className="doodle-button doodle-title text-base font-bold px-6 py-3 bg-gradient-to-l from-[#ffd93d] to-[#ff9f43] text-[#2b2a33] border-[3px] border-[#2b2a33] rounded-2xl active:scale-95"
+                    style={{ boxShadow: '4px 5px 0 rgba(43,42,51,0.25)' }}
+                  >
+                    🎁 افتح هدية حسن!
+                  </button>
                 ) : (
                   <p className="doodle-title text-[#2b2a33]/50 text-[10px]">الفصول القادمة قريباً… 📖</p>
                 )}
               </div>
             </div>
+          </div>
+        )}
+        {/* حسن's gift — season-end reward opens the free-jump game */}
+        {state.status === 'won' && showGift && (
+          <div className="absolute inset-0 z-40 bg-[#f5f0e1]">
+            <WarakiJumpGame onBack={() => setShowGift(false)} />
           </div>
         )}
       </div>

@@ -4,6 +4,8 @@ import { SoundFXManager } from '../ble/SoundFX';
 import { BlocklyWorkspace } from '../blockly/BlocklyWorkspace';
 import { listenWaraki, WarakiEvent } from '../services/warakiBus';
 import { WarakiAdventuresView } from '../adventures/WarakiAdventuresView';
+import { WarakiJumpGame } from '../games/WarakiJumpGame';
+import { ShkhoobotBoard } from '../shkhoobot/ShkhoobotBoard';
 
 interface Props {}
 
@@ -293,6 +295,8 @@ export const DoodleModeView: React.FC<Props> = () => {
   const [lampOn, setLampOn] = useState(false);
   const [shakeOn, setShakeOn] = useState(false);
   const [showAdventures, setShowAdventures] = useState(false);
+  const [showJumpGame, setShowJumpGame] = useState(false);
+  const [showShkhoobot, setShowShkhoobot] = useState(false);
   const pupil1Ref = useRef<SVGGElement>(null);
   const pupil2Ref = useRef<SVGGElement>(null);
   const crownRef = useRef<SVGGElement>(null);
@@ -393,12 +397,18 @@ export const DoodleModeView: React.FC<Props> = () => {
 
   return (
     <div className="flex-1 relative overflow-hidden" dir="rtl">
-      {/* ===== Adventures full page (opened from Magic Code) ===== */}
+      {/* ===== Full-page features (opened from Magic Code) ===== */}
       {showAdventures && (
         <WarakiAdventuresView onBack={() => setShowAdventures(false)} />
       )}
+      {showJumpGame && (
+        <WarakiJumpGame onBack={() => setShowJumpGame(false)} />
+      )}
+      {showShkhoobot && (
+        <ShkhoobotBoard onBack={() => setShowShkhoobot(false)} />
+      )}
 
-      {!showAdventures && (
+      {!showAdventures && !showJumpGame && !showShkhoobot && (
       <>
       {/* ===== Shared SVG wiggly filter (defined once) ===== */}
       <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden>
@@ -518,21 +528,55 @@ export const DoodleModeView: React.FC<Props> = () => {
           </p>
         </div>
 
-        {/* ===== Adventures entrance — open Waraki's own story page ===== */}
-        <div className="text-center mt-1">
-          <button
-            onClick={() => {
-              SoundFXManager.playPaperRustle();
-              setShowAdventures(true);
-            }}
-            className="doodle-title text-lg sm:text-2xl font-bold px-10 py-4 bg-gradient-to-l from-[#4d96ff] to-[#6bcb77] text-white border-[3px] border-[#2b2a33] rounded-2xl transition active:scale-95 hover:brightness-110"
-            style={{ boxShadow: '5px 7px 0 rgba(43,42,51,0.28)' }}
-          >
-            ⚡ مغامرات ورقي 📖
-          </button>
-          <p className="text-[10px] text-[#2b2a33]/45 doodle-title mt-1.5">
-            افتح دفتر المغامرة — برمج ورقي ليمشي ويقفز ويقاتل الأشرار!
-          </p>
+        {/* ===== Playground entrances — 3 independent full-page features ===== */}
+        <div className="mt-4 flex items-stretch justify-center gap-3 flex-wrap">
+          <div className="text-center">
+            <button
+              onClick={() => {
+                SoundFXManager.playPaperRustle();
+                setShowAdventures(true);
+              }}
+              className="doodle-title text-lg sm:text-2xl font-bold px-8 py-4 bg-gradient-to-l from-[#4d96ff] to-[#6bcb77] text-white border-[3px] border-[#2b2a33] rounded-2xl transition active:scale-95 hover:brightness-110"
+              style={{ boxShadow: '5px 7px 0 rgba(43,42,51,0.28)' }}
+            >
+              ⚡ مغامرات ورقي 📖
+            </button>
+            <p className="text-[10px] text-[#2b2a33]/45 doodle-title mt-1.5">
+              برمج ورقي ليمشي ويقفز ويقاتل الأشرار!
+            </p>
+          </div>
+
+          <div className="text-center">
+            <button
+              onClick={() => {
+                SoundFXManager.playPaperRustle();
+                setShowJumpGame(true);
+              }}
+              className="doodle-title text-lg sm:text-2xl font-bold px-8 py-4 bg-gradient-to-l from-[#ffd93d] to-[#ff9f43] text-[#2b2a33] border-[3px] border-[#2b2a33] rounded-2xl transition active:scale-95 hover:brightness-110"
+              style={{ boxShadow: '5px 7px 0 rgba(43,42,51,0.28)' }}
+            >
+              🕹️ لعبة ورقي 🎁
+            </button>
+            <p className="text-[10px] text-[#2b2a33]/45 doodle-title mt-1.5">
+              هدية حسن — قفز بلمسة إصبعك، بلا بلوكات!
+            </p>
+          </div>
+
+          <div className="text-center">
+            <button
+              onClick={() => {
+                SoundFXManager.playPaperRustle();
+                setShowShkhoobot(true);
+              }}
+              className="doodle-title text-lg sm:text-2xl font-bold px-8 py-4 bg-gradient-to-l from-[#ff6b9d] to-[#ff6b6b] text-white border-[3px] border-[#2b2a33] rounded-2xl transition active:scale-95 hover:brightness-110"
+              style={{ boxShadow: '5px 7px 0 rgba(43,42,51,0.28)' }}
+            >
+              🌀 مستر شخبوط
+            </button>
+            <p className="text-[10px] text-[#2b2a33]/45 doodle-title mt-1.5">
+              وحش الخربشات — اختر فئة وسيرسمها لك بخربشته!
+            </p>
+          </div>
         </div>
 
         {/* Torn bottom edge of the page */}
