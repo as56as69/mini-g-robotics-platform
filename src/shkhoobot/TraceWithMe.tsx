@@ -6,16 +6,25 @@ import { ScribbleItem, samplePath } from './ScribbleRenderer';
 /* ============================================================
  * كود ماجيك — «شخبط وياي» ✏️ (خاصية تتبع الخطوط المنقطة)
  * ثلاث طبقات فوق بعضها تمامًا داخل ورقة الرسم:
- *   1) SVG الدليل: الخطوط المنقطة الفاتحة (خلفية، بلا تفاعل).
- *   2) SVG «الحبر المتقدّم»: نفس الخطوط لكن بحالها الصلب بلون
- *      القلم تُحَبَّر تدريجيًا من البداية حسب نسبة التغطية
- *      (pathLength=1 + strokeDashoffset) → الطفل يرى أثر تتبعه.
- *   3) DrawingCanvas: مكوّن منفصل (React.memo) يلتقط الإصبع
- *      ويرسم فوق الجميع — لا يعيد رسمه React أثناء اللمس أبداً.
- * عند لمس دليل جديد (قرب ≤ عتبة) → onTick.
- * عند تغطية ≥ 80% من نقاط الدليل → onDone (احتفال).
- * إحداثيات: كل شيء في viewBox 0 0 200 200، والإبهام يُقيَّس
- * بمراعاة حجم العرض الفعلي (مثل لعبة ورقي).
+ *   1) SVG الدليل: الخطوط المنقطة الفاتحة + نقاط الفحص المرئية
+ *      (الدوائر الصغيرة = نفس الإحداثيات التي يفحصها hitTest
+ *      بالضبط → ما يلمسه الطفل هو ما يُحتسب).
+ *   2) SVG «الحبر المتقدّم»: نفس الخطوط بحالها الصلب بلون القلم
+ *      تُحَبَّر تدريجيًا (pathLength=1 + strokeDashoffset).
+ *   3) DrawingCanvas: مكوّن منفصل (React.memo) يلتقط الإصبع ويرسم.
+ *
+ * نظام التقدم = «Checkpoints Pipeline»:
+ *   • كل شكل → نقاط فحص متقاربة ومتباعدة بانتظام (samplePath, CL=6).
+ *   • أثناء السكّرة يفحص hitTest مسافة كل نقطة غير مزارة إلى المقطع
+ *     الممسوح (من موضع الإصبع السابق إلى الحالي) ≤ TOLERANCE
+ *     → لا تُفوَّت نقاط بسبب سرعة اليد أو قلة أحداث المؤشر.
+ *   • المجموعة visitedIndices (Set) تسجّل كل نقطة مرة واحدة فقط،
+ *     والنسبة = عددها/الإجمالي → تتحرك 0→100 بسلاسة.
+ *   • عند التغطية ≥ 80% → onDone (احتفال، مرة واحدة).
+ *
+ * إحداثيات: كل شيء في viewBox 0 0 200 200، والإصبع يُقيَّس
+ * بالمقياس الصريح canvas.width/rect.width (صيغة مضمونة للشاشات،
+ * حتى لو تمدّد الـ canvas بأي مقاس غير مربّع).
  * ============================================================
  */
 
@@ -25,18 +34,18 @@ const GUIDE_WIDTH = 4;
 const PEN_COLOR = '#4A5568';
 const PEN_WIDTH = 8;
 const INK_WIDTH = 8;
-/** المباعدة بين نقاط الدليل (أوسع من السابق لتجنب التداخل المفرط) */
+/** المباعدة بين نقاط الفحص (مائدة منتظمة ~6 وحدات viewBox) */
 const SAMPLING_STEP = 6;
-/** نصف قطر المسح: مسامح سخي (≈20بكسل فعلي) حتى تتقدم النسبة مع يد الطفل */
-const HIT_RADIUS = 18;
+/** هامش الخطأ المسموح — مسامح سخي (≈25 وحدة): لا تتقدم النسبة إلا بالأقرب */
+const TOLERANCE = 25;
 /** نسبة التغطية المطلوبة لاعتبار التتبع مكتملًا */
 const DONE_RATIO = 0.8;
 
 /* ------------------------------------------------------------
- * DrawingCanvas — مكوّن منفصل مemoized لا يُعاد رسمه أثناء اللمس.
- * جميع الحالة تُدار بـ refs، والماوس/اللمس عبر معالجات DOM صريحة
- * (addEventListener) تُربط مرة واحدة عند التركيب — فلا يتأثر بسكّة
- * React أبدًا، ولا تُمسح لوحة البكسلات (backing store) مهما حدث.
+ * DrawingCanvas — مكوّن منفصل memoized لا يُعاد رسمه أثناء اللمس.
+ * جميع الحالة تُدار بـ refs، والمعالجات DOM صريحة (addEventListener)
+ * تُربط مرة واحدة عند التركيب — فلا يتأثر بمُمرّات React، ولا تُمسح
+ * لوحة البكسلات (backing store) مهما حدث.
  * ----------------------------------------------------------- */
 const DrawingCanvas = React.memo(({
   guidePts,
@@ -46,18 +55,19 @@ const DrawingCanvas = React.memo(({
   className,
 }: {
   guidePts: { x: number; y: number }[];
-  onHit: () => void;
+  onHit: (pt: { x: number; y: number }) => void;
   onDone: () => void;
   doneRef: React.MutableRefObject<boolean>;
   className?: string;
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
-  const ptsRef = useRef(guidePts); // نقاط الدليل المتبقية (يُحذف المُضرب منها)
-  const totalRef = useRef<number>(guidePts.length); // إجمالي النقاط (ثابت)
-  const hitsCountRef = useRef(0); // عدد النقاط المستهلكة
+  /** النقاط التي مرّ عليها الطفل بالفعل — كل نقطة تُحتسب مرة واحدة فقط */
+  const visitedRef = useRef<Set<number>>(new Set());
+  const totalRef = useRef<number>(guidePts.length);
+  /** آخر موضع للإصبع ضمن السكّرة الحالية (لرصد المقطع الممسوح) */
+  const lastPos = useRef<{ x: number; y: number } | null>(null);
 
-  /** أحدث المراجع للـ callbacks حتى لا تتعمق المعالجات الملحقة مرةً واحدة */
   const onHitRef = useRef(onHit);
   const onDoneRef = useRef(onDone);
   onHitRef.current = onHit;
@@ -65,33 +75,46 @@ const DrawingCanvas = React.memo(({
 
   // إعادة التوليد عند تغيير الشكل فقط (لا أثناء الرسم) — إفراغ دفاعي إضافي
   useEffect(() => {
-    ptsRef.current = guidePts;
+    visitedRef.current = new Set();
     totalRef.current = guidePts.length;
-    hitsCountRef.current = 0;
     canvasRef.current?.getContext('2d')?.clearRect(0, 0, VIEW, VIEW);
   }, [guidePts]);
 
-  const hitTest = useCallback(
-    (x: number, y: number): boolean => {
-      const pts = ptsRef.current;
+  /** فحص المقطع (أ)…(ب): كل نقطة فحص غير مزارة تبعد ≤ TOLERANCE عن المقطع تُحتسب.
+   *  معالجة المقطع بدل نقطة-نقطة = مسح كامل حتى في الحركات السريعة. */
+  const hitCheck = useCallback(
+    (ax: number, ay: number, bx: number, by: number): boolean => {
+      const pts = guidePts;
+      if (pts.length === 0) return false;
+      const abx = bx - ax;
+      const aby = by - ay;
+      const ab2 = abx * abx + aby * aby;
+      let hitAny = false;
       for (let i = 0; i < pts.length; i++) {
-        const dx = pts[i].x - x;
-        const dy = pts[i].y - y;
-        if (dx * dx + dy * dy < HIT_RADIUS * HIT_RADIUS) {
-          pts.splice(i, 1);
-          hitsCountRef.current += 1;
-          return true;
+        if (visitedRef.current.has(i)) continue;
+        const px = pts[i].x;
+        const py = pts[i].y;
+        let t = 0;
+        if (ab2 > 0) {
+          t = Math.max(0, Math.min(1, ((px - ax) * abx + (py - ay) * aby) / ab2));
+        }
+        const dx = ax + abx * t - px;
+        const dy = ay + aby * t - py;
+        if (dx * dx + dy * dy <= TOLERANCE * TOLERANCE) {
+          visitedRef.current.add(i);
+          onHitRef.current({ x: px, y: py });
+          hitAny = true;
         }
       }
-      return false;
+      return hitAny;
     },
-    []
+    [guidePts]
   );
 
   /** إعلان الاكتمال عند ≥ DONE_RATIO — يقع مرّة واحدة، ولا يجمد الرسم */
   const checkDone = useCallback(() => {
     if (doneRef.current) return;
-    const ratio = hitsCountRef.current / Math.max(1, totalRef.current);
+    const ratio = visitedRef.current.size / Math.max(1, totalRef.current);
     if (ratio < DONE_RATIO) return;
     doneRef.current = true; // قفل الاحتفال مرة واحدة فقط
     onDoneRef.current();
@@ -103,57 +126,66 @@ const DrawingCanvas = React.memo(({
     if (!canvas) return;
     let capturedId = -1;
 
+    /** إحداثيات الإصبع بمقياس viewBox صريح + تثبيت داخل الورقة */
     const toLocal = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
-      const s = r.width / VIEW;
-      return { x: (e.clientX - r.left) / s, y: (e.clientY - r.top) / s };
+      const sx = r.width > 0 ? canvas.width / r.width : 1;
+      const sy = r.height > 0 ? canvas.height / r.height : 1;
+      const x = Math.min(VIEW, Math.max(0, (e.clientX - r.left) * sx));
+      const y = Math.min(VIEW, Math.max(0, (e.clientY - r.top) * sy));
+      return { x, y };
     };
     const ctx = () => canvas.getContext('2d');
 
-    const onDown = (e: PointerEvent) => {
-      if (e.pointerType === 'mouse' && e.button !== 0) return; // اليسار فقط
-      const { x, y } = toLocal(e);
-      drawing.current = true;
-      const g = ctx();
-      if (!g) return;
-      g.beginPath();
-      g.moveTo(x, y);
-      try {
-        canvas.setPointerCapture(e.pointerId);
-        capturedId = e.pointerId;
-      } catch { /* noop */ }
-      if (hitTest(x, y)) {
-        onHitRef.current();
-        checkDone();
-      }
-    };
-
-    const onMove = (e: PointerEvent) => {
-      if (!drawing.current) return;
-      const { x, y } = toLocal(e);
-      const g = ctx();
-      if (!g) return;
+    const strokeTo = (g: CanvasRenderingContext2D, x: number, y: number) => {
       g.strokeStyle = PEN_COLOR;
       g.lineWidth = PEN_WIDTH;
       g.lineCap = 'round';
       g.lineJoin = 'round';
       g.lineTo(x, y);
       g.stroke();
-      if (hitTest(x, y)) {
-        onHitRef.current();
-        checkDone();
+    };
+
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return; // اليسار فقط
+      const { x, y } = toLocal(e);
+      drawing.current = true;
+      lastPos.current = { x, y };
+      const g = ctx();
+      if (g) {
+        g.beginPath();
+        g.moveTo(x, y);
       }
+      try {
+        canvas.setPointerCapture(e.pointerId);
+        capturedId = e.pointerId;
+      } catch { /* noop */ }
+      if (hitCheck(x, y, x, y)) checkDone();
+    };
+
+    const onMove = (e: PointerEvent) => {
+      if (!drawing.current) return;
+      const { x, y } = toLocal(e);
+      const g = ctx();
+      if (g) strokeTo(g, x, y);
+      const from = lastPos.current ?? { x, y };
+      if (hitCheck(from.x, from.y, x, y)) checkDone();
+      lastPos.current = { x, y };
     };
 
     const onUp = () => {
       drawing.current = false;
+      lastPos.current = null;
       if (capturedId !== -1) {
         try { canvas.releasePointerCapture(capturedId); } catch { /* noop */ }
         capturedId = -1;
       }
     };
     // إن فقد التقاط الإصبع أو غادر المؤشر أثناء السكّرة → إنهاؤها لئلا يرسم خطوط قفز
-    const onStopStroke = () => { drawing.current = false; };
+    const onStopStroke = () => {
+      drawing.current = false;
+      lastPos.current = null;
+    };
     const onCtx = (e: Event) => e.preventDefault(); // منع قائمة الضغط الطويل (جوال)
 
     canvas.addEventListener('pointerdown', onDown);
@@ -172,7 +204,7 @@ const DrawingCanvas = React.memo(({
       canvas.removeEventListener('pointerleave', onStopStroke);
       canvas.removeEventListener('contextmenu', onCtx);
     };
-  }, [hitTest, checkDone]);
+  }, [hitCheck, checkDone]);
 
   return (
     <canvas
@@ -187,7 +219,7 @@ const DrawingCanvas = React.memo(({
 DrawingCanvas.displayName = 'DrawingCanvas';
 
 /* ------------------------------------------------------------
- * TraceWithMe — المكوّن الرئيسي: الدليل + الحبر المتقدّم + DrawingCanvas
+ * TraceWithMe — المكوّن الرئيسي: الدليل + نقاط الفحص + الحبر + DrawingCanvas
  * ----------------------------------------------------------- */
 interface Props {
   item: ScribbleItem;
@@ -201,23 +233,49 @@ export const TraceWithMe: React.FC<Props> = ({ item, onTick, onDone, onRetry, cl
   const doneRef = useRef(false);
   const [hits, setHits] = useState(0);
   const [done, setDone] = useState(false);
+  const [flash, setFlash] = useState<{ x: number; y: number; key: number }[]>([]);
+  const flashKeyRef = useRef(0);
   const stableOnDoneRef = useRef(onDone);
   stableOnDoneRef.current = onDone;
 
-  const guidePts = useMemo(() => item.strokes.flatMap((stroke) => samplePath(stroke, SAMPLING_STEP)), [item]);
+  /** نقاط الفحص: مولّدة من نفس بيانات strokes، تُصفّى خارج الورقة دفاعًا */
+  const guidePts = useMemo(() => {
+    const all = item.strokes.flatMap((stroke) => samplePath(stroke, SAMPLING_STEP));
+    return all.filter((p) => p.x >= 0 && p.x <= VIEW && p.y >= 0 && p.y <= VIEW);
+  }, [item]);
   const total = guidePts.length;
   const progress = total > 0 ? Math.min(1, hits / total) : 0;
+
+  // تشخيص عند التركيب: إحصاء النقاط لكل شكل (يساعد على تعقّب أي انحراف)
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log(`[شخبط وياي] «${item.labelAr}» → نقاط فحص: ${total}`);
+    }
+  }, [item, total]);
 
   useEffect(() => {
     doneRef.current = false;
     setHits(0);
     setDone(false);
+    setFlash([]);
   }, [item]);
 
-  const handleHit = useCallback(() => {
-    setHits((h) => h + 1);
-    onTick?.();
-  }, [onTick]);
+  // إخفاء وميض "النقطة المُصابة" بعد ثوانٍ — مع بقاء الإشارات للنقاط الأخيرة
+  useEffect(() => {
+    if (flash.length === 0) return;
+    const t = window.setTimeout(() => setFlash([]), 700);
+    return () => window.clearTimeout(t);
+  }, [flash]);
+
+  const handleHit = useCallback(
+    (pt: { x: number; y: number }) => {
+      setHits((h) => h + 1);
+      const key = ++flashKeyRef.current;
+      setFlash((f) => [...f.slice(-9), { x: pt.x, y: pt.y, key }]);
+      onTick?.();
+    },
+    [onTick]
+  );
 
   const handleDone = useCallback(() => {
     setDone(true);
@@ -284,7 +342,7 @@ export const TraceWithMe: React.FC<Props> = ({ item, onTick, onDone, onRetry, cl
 
   return (
     <div className={className} dir="ltr">
-      {/* الطبقة 1: الدليل المنقط الفاتح (خلفية، بلا تفاعل) — دائم الحضور */}
+      {/* الطبقة 1: الدليل المنقط الفاتح + نقاط الفحص (خلفية، بلا تفاعل) */}
       <div key="guide" className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
         <svg viewBox={`0 0 ${VIEW} ${VIEW}`} preserveAspectRatio="none" className="w-full h-full" aria-label={`دليل رسم ${item.labelAr}`}>
           <g fill="none" stroke={GUIDE_COLOR} strokeWidth={GUIDE_WIDTH} strokeDasharray="7 6" strokeLinecap="round" strokeLinejoin="round">
@@ -298,6 +356,16 @@ export const TraceWithMe: React.FC<Props> = ({ item, onTick, onDone, onRetry, cl
               return <path key={`g${i}`} d={d} />;
             })}
           </g>
+          {/* نقاط الفحص المرئية — نفس إحداثيات hitTest بالضبط */}
+          <g fill={GUIDE_COLOR} opacity={0.75}>
+            {guidePts.map((p, i) => (
+              <circle key={`cp${i}`} cx={p.x} cy={p.y} r={1.8} />
+            ))}
+          </g>
+          {/* وميض النقط المُصابة — نبضة خضراء تتوسع وتتلاشى */}
+          {flash.map((f) => (
+            <circle key={f.key} className="mc-trace-flash" cx={f.x} cy={f.y} r={6} fill="#59ba6b" />
+          ))}
         </svg>
       </div>
 
