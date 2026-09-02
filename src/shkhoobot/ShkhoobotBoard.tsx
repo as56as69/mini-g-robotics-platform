@@ -3,7 +3,7 @@ import { Home, RefreshCw } from 'lucide-react';
 import { ScribbleBlob } from '../design/primitives';
 import { INK, PAPER, paperShadow } from '../design/tokens';
 import { SoundFXManager } from '../ble/SoundFX';
-import { TraceWithMe } from './TraceWithMe';
+import { TraceMockup } from './TraceMockup';
 import {
   SCRIBBLE_CATEGORIES,
   ScribbleDrawing,
@@ -16,7 +16,8 @@ import {
  * وحش خربشة (خطوط متداخلة + عينان تتبعان) له لوحته الخاصة.
  * وضعان للرسم (قرار المستخدم):
  *   - «شخبوط يرسم»: شخبوط يرسم شيئًا من الفئة بنفسه (خربشة).
- *   - «شخبط وياي»: الطفل يتتبع الخطوط المنقطة بقلمه (Canvas).
+ *   - «شخبط وياي»: عرض تصميمي (Mockup) — دليل منقّط بلا تفاعل،
+ *     التطوير التفاعلي مؤجل.
  * تخطيط عمود flex حقيقي (شريط / محتوى مرن) — بلا absolute inset.
  * ============================================================
  */
@@ -95,7 +96,7 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
     [drawMode]
   );
 
-  /** اختيار في وضع «شخبط وياي» — شخبوط ينتظر، الطفل يتتبع */
+  /** اختيار في وضع «شخبط وياي» — معاينة تصميمية: يعرض الشكل فقط (تفاعل لاحقًا) */
   const traceItem = useCallback((catId: string, itemId: string) => {
     const cat = SCRIBBLE_CATEGORIES.find((c) => c.id === catId);
     const item = cat?.items.find((i) => i.id === itemId);
@@ -107,32 +108,6 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
     setDrawKey((k) => k + 1);
   }, []);
 
-  /** آخر مرة استُخدم فيها صوت "تيك" (lime interval 140ms) */
-  const lastBeepRef = useRef(0);
-
-  /** صوت "تيك" عند كل ضربة جديدة على الدليل — مقيّد لئلا يتكرر كرشاش */
-  const handleTraceTick = useCallback(() => {
-    const now = Date.now();
-    if (now - lastBeepRef.current < 140) return;
-    lastBeepRef.current = now;
-    SoundFXManager.playClickBeep();
-  }, []);
-
-  /** اكتمال ≥80% → احتفال + رسالة */
-  const handleTraceDone = useCallback(() => {
-    setMood('cheer');
-    setCelebrate(true);
-    SoundFXManager.playVictory();
-    window.setTimeout(() => setMood('idle'), 9000);
-  }, []);
-
-  /** إعادة التتبع — مسح الرسم + إعادة توليد المكوّن نفسه */
-  const handleTraceRetry = useCallback(() => {
-    setCelebrate(false);
-    setMood('idle');
-    setDrawKey((k) => k + 1);
-  }, []);
-
   const message = (() => {
     switch (mood) {
       case 'think':
@@ -140,12 +115,10 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
       case 'draw':
         return 'أنظر! أرسمها خطاً بخط… ✏️';
       case 'cheer':
-        if (drawMode === 'trace' && drawing)
-          return `ممتاز! لقد رسمت «${drawing.item.labelAr}» بنفسك! 🎉`;
         return 'تمّت! كل شخبطة فريدة مثلي! 🌀';
       default:
         if (drawMode === 'trace')
-          return 'اختر فئة ثم اتبع الخطوط المنقطة بقلمك — أنا أشجعك! ✏️🤗';
+          return 'اختر فئة وشاهد شكلها — التفاعل قيد التطوير ✏️🤗';
         return 'هلا! أنا «مستر شخبوط» — اختر فئة وسأخربشها لك!';
     }
   })();
@@ -223,24 +196,21 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
               </span>
             </div>
 
-            {/* الورقة البيضاء للرسمة — في وضع «شخبط وياي» تعرض طبقة الدليل + Canvas الطفل */}
+            {/* الورقة البيضاء للرسمة — في وضع «شخبط وياي» تعرض الدليل المنقط كتصميم ثابت */}
             <div
               className="relative w-56 h-56 sm:w-72 sm:h-72 border-[3px] border-[#2b2a33] flex-shrink-0 overflow-hidden"
               style={{ background: PAPER.white, borderRadius: '18px 26px 16px 24px', boxShadow: paperShadow(true) }}
             >
               {drawMode === 'trace' ? (
                 drawing ? (
-                  <TraceWithMe
+                  <TraceMockup
                     key={'trace-' + drawKey}
                     item={drawing.item}
-                    onTick={handleTraceTick}
-                    onDone={handleTraceDone}
-                    onRetry={handleTraceRetry}
                     className="absolute inset-0"
                   />
                 ) : (
                   <p className="doodle-title absolute inset-0 flex items-center justify-center text-[#2b2a33]/35 text-sm text-center px-6">
-                    اختر شيئًا لتتبع خطوطه 🖍️👇
+                    اختر شيئًا لرؤية خطوطه على الورقة 👇
                   </p>
                 )
               ) : drawing ? (

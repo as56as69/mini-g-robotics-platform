@@ -915,17 +915,6 @@ html[data-mode="doodle"] .doodle-blockly-frame {
   animation: mcConfetti 2.6s ease-in forwards;
 }
 
-/* وميض «نقطة أُصيبت» في شخبط وياي — نبضة خضراء تتوسع وتتلاشى (CSS فقط) */
-@keyframes mcTraceFlash {
-  0% { transform: scale(0.35); opacity: 0.95; }
-  100% { transform: scale(2.6); opacity: 0; }
-}
-.mc-trace-flash {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: mcTraceFlash 0.6s ease-out forwards;
-}
-
 /* ===== Doodle Blockly workspace overrides (scoped to doodle mode) ===== */
 html[data-mode="doodle"] .blocklyToolboxDiv {
   background-color: #f5f0e1 !important;
