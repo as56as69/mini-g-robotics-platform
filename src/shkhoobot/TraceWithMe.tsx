@@ -23,12 +23,12 @@ const VIEW = 200;
 const GUIDE_COLOR = '#a0aec0';
 const GUIDE_WIDTH = 4;
 const PEN_COLOR = '#4A5568';
-const PEN_WIDTH = 6;
-const INK_WIDTH = 6;
+const PEN_WIDTH = 8;
+const INK_WIDTH = 8;
 /** المباعدة بين نقاط الدليل (أوسع من السابق لتجنب التداخل المفرط) */
 const SAMPLING_STEP = 6;
-/** نصف قطر المسح: نحو ضعف المباعدة → ~12 نقطة/لمسة بدل ~78 */
-const HIT_RADIUS = 12;
+/** نصف قطر المسح: مسامح سخي (≈20بكسل فعلي) حتى تتقدم النسبة مع يد الطفل */
+const HIT_RADIUS = 18;
 /** نسبة التغطية المطلوبة لاعتبار التتبع مكتملًا */
 const DONE_RATIO = 0.8;
 
@@ -63,11 +63,12 @@ const DrawingCanvas = React.memo(({
   onHitRef.current = onHit;
   onDoneRef.current = onDone;
 
-  // إعادة التوليد عند تغيير الشكل فقط (لا أثناء الرسم)
+  // إعادة التوليد عند تغيير الشكل فقط (لا أثناء الرسم) — إفراغ دفاعي إضافي
   useEffect(() => {
     ptsRef.current = guidePts;
     totalRef.current = guidePts.length;
     hitsCountRef.current = 0;
+    canvasRef.current?.getContext('2d')?.clearRect(0, 0, VIEW, VIEW);
   }, [guidePts]);
 
   const hitTest = useCallback(
@@ -110,6 +111,7 @@ const DrawingCanvas = React.memo(({
     const ctx = () => canvas.getContext('2d');
 
     const onDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return; // اليسار فقط
       const { x, y } = toLocal(e);
       drawing.current = true;
       const g = ctx();
@@ -150,18 +152,24 @@ const DrawingCanvas = React.memo(({
         capturedId = -1;
       }
     };
+    // إن فقد التقاط الإصبع أو غادر المؤشر أثناء السكّرة → إنهاؤها لئلا يرسم خطوط قفز
+    const onStopStroke = () => { drawing.current = false; };
     const onCtx = (e: Event) => e.preventDefault(); // منع قائمة الضغط الطويل (جوال)
 
     canvas.addEventListener('pointerdown', onDown);
     canvas.addEventListener('pointermove', onMove);
     canvas.addEventListener('pointerup', onUp);
     canvas.addEventListener('pointercancel', onUp);
+    canvas.addEventListener('lostpointercapture', onStopStroke);
+    canvas.addEventListener('pointerleave', onStopStroke);
     canvas.addEventListener('contextmenu', onCtx);
     return () => {
       canvas.removeEventListener('pointerdown', onDown);
       canvas.removeEventListener('pointermove', onMove);
       canvas.removeEventListener('pointerup', onUp);
       canvas.removeEventListener('pointercancel', onUp);
+      canvas.removeEventListener('lostpointercapture', onStopStroke);
+      canvas.removeEventListener('pointerleave', onStopStroke);
       canvas.removeEventListener('contextmenu', onCtx);
     };
   }, [hitTest, checkDone]);
@@ -278,7 +286,7 @@ export const TraceWithMe: React.FC<Props> = ({ item, onTick, onDone, onRetry, cl
     <div className={className} dir="ltr">
       {/* الطبقة 1: الدليل المنقط الفاتح (خلفية، بلا تفاعل) — دائم الحضور */}
       <div key="guide" className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
-        <svg viewBox={`0 0 ${VIEW} ${VIEW}`} className="w-full h-full" aria-label={`دليل رسم ${item.labelAr}`}>
+        <svg viewBox={`0 0 ${VIEW} ${VIEW}`} preserveAspectRatio="none" className="w-full h-full" aria-label={`دليل رسم ${item.labelAr}`}>
           <g fill="none" stroke={GUIDE_COLOR} strokeWidth={GUIDE_WIDTH} strokeDasharray="7 6" strokeLinecap="round" strokeLinejoin="round">
             {item.strokes.map((d, i) => {
               if (d.startsWith('circle:')) {
@@ -295,7 +303,7 @@ export const TraceWithMe: React.FC<Props> = ({ item, onTick, onDone, onRetry, cl
 
       {/* الطبقة 2: الحبر المتقدّم — دائم الحضور، يُظهر بعد أول ضربة فقط */}
       <div key="ink" className="absolute inset-0 pointer-events-none transition-opacity duration-300" style={{ zIndex: 2, opacity: hits > 0 ? 1 : 0 }}>
-        <svg viewBox={`0 0 ${VIEW} ${VIEW}`} className="w-full h-full" aria-hidden="true">
+        <svg viewBox={`0 0 ${VIEW} ${VIEW}`} preserveAspectRatio="none" className="w-full h-full" aria-hidden="true">
           {hits > 0 && guideInk}
         </svg>
       </div>
