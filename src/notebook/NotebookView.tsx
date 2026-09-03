@@ -76,13 +76,18 @@ function NotebookInner() {
       </div>
 
       {/* المحتوى الرئيسي */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4">
-        {tab === 'draw' && <DrawTab lang={lang} mode={mode} setLang={setLang} setMode={setMode} />}
-        {tab === 'games' && <GamesTab letters={letters} />}
-        {tab === 'coloring' && <ColoringTab />}
-        {tab === 'teacher' && <TeacherTab />}
-        {tab === 'cert' && <CertTab />}
-      </div>
+      {tab === 'draw' ? (
+        <div className="flex-1 min-h-0">
+          <DrawTab lang={lang} mode={mode} setLang={setLang} setMode={setMode} />
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4">
+          {tab === 'games' && <GamesTab letters={letters} />}
+          {tab === 'coloring' && <ColoringTab />}
+          {tab === 'teacher' && <TeacherTab />}
+          {tab === 'cert' && <CertTab />}
+        </div>
+      )}
 
       {/* شريط الحروف السفلي */}
       <div className="flex-shrink-0 px-2 py-1.5 bg-white/80 border-t-[3px] border-dashed border-[#d4b8a0] flex items-center gap-1.5 overflow-x-auto">
