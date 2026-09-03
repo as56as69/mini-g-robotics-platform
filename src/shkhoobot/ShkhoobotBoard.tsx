@@ -3,7 +3,7 @@ import { Home, RefreshCw } from 'lucide-react';
 import { ScribbleBlob } from '../design/primitives';
 import { INK, PAPER, paperShadow } from '../design/tokens';
 import { SoundFXManager } from '../ble/SoundFX';
-import { TraceMockup } from './TraceMockup';
+import { TraceCanvas } from './TraceCanvas';
 import {
   SCRIBBLE_CATEGORIES,
   ScribbleDrawing,
@@ -47,6 +47,19 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
   useEffect(() => {
     setPaper(pickRandomPaper());
     setSeed(Math.floor(Math.random() * 100000));
+  }, []);
+
+  /** اكتمال التتبع — احتفال */
+  const handleTraceComplete = useCallback((_ratio: number) => {
+    setMood('cheer');
+    setCelebrate(true);
+    SoundFXManager.playVictory();
+    window.setTimeout(() => setMood('idle'), 5000);
+  }, []);
+
+  /** تحديث نسبة التتبع */
+  const handleTraceProgress = useCallback((_pct: number) => {
+    // يمكن إضافة صوت clicks هنا لاحقاً
   }, []);
 
   /** العينان تتبعان المؤشر/الإصبع — مراقب شامل مُهدّأ (كل ~80ms) */
@@ -118,7 +131,7 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
         return 'تمّت! كل شخبطة فريدة مثلي! 🌀';
       default:
         if (drawMode === 'trace')
-          return 'اختر فئة وشاهد شكلها — التفاعل قيد التطوير ✏️🤗';
+          return 'اتّبع الخطوط المنقطة بقلمك — سأشجعك! ✏️🤗';
         return 'هلا! أنا «مستر شخبوط» — اختر فئة وسأخربشها لك!';
     }
   })();
@@ -203,14 +216,16 @@ export const ShkhoobotBoard: React.FC<Props> = ({ onBack }) => {
             >
               {drawMode === 'trace' ? (
                 drawing ? (
-                  <TraceMockup
+                  <TraceCanvas
                     key={'trace-' + drawKey}
                     item={drawing.item}
+                    onComplete={handleTraceComplete}
+                    onProgress={handleTraceProgress}
                     className="absolute inset-0"
                   />
                 ) : (
                   <p className="doodle-title absolute inset-0 flex items-center justify-center text-[#2b2a33]/35 text-sm text-center px-6">
-                    اختر شيئًا لرؤية خطوطه على الورقة 👇
+                    اختر شيئًا لتتبع خطوطه 🖍️👇
                   </p>
                 )
               ) : drawing ? (

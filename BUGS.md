@@ -564,3 +564,19 @@ TOLERANCE 25، Pointer Events، توزيع منتظم للنقاط، touch-actio
 ### تحقق
 - `npx tsc --noEmit` ✅ · `npm run build` ✅ · `mgdev.sh` ✅ (vite:200)
 - لا مراجع متبقية لـ `TraceWithMe` أو معالجات التتبع في `src/`.
+
+## ✏️ «شخبط وياي»: تطوير تفاعلي — Canvas + SVG مدمج (2026-09-02)
+
+بناءً على نهج دفتر ماجيك كود (بساطة + canfas واحد) مع SVG للدليل.
+
+### ما تم
+1. **إنشاء `shkhoobot/TraceCanvas.tsx`**: مكون تفاعلي جديد:
+   - **Canvas**: حبر الطفل فقط (pointer events، lineTo)
+   - **SVG overlay**: دليل الخطوط المنقط من item.strokes
+   - **شارة نسبة**: تتحدث لحظياً أسفل
+   - **اكتمال بسيط**: نقاط الدليل تُsample، مسافة ≤ 30px = "زُرت"، ≥80% → احتفال
+2. **حذف `TraceMockup.tsx`** (المكون الثابت القديم).
+3. **تحديث `ShkhoobotBoard.tsx`**: استيراد TraceCanvas + handlers (onComplete → احتفال + صوت victory).
+
+### التحقق
+- `npx tsc --noEmit` ✅ · `npm run build` ✅ · `mgdev.sh` ✅ (vite:200)
