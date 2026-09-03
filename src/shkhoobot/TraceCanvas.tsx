@@ -96,9 +96,13 @@ export const TraceCanvas: React.FC<Props> = ({
       const rect = canvas.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
       const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
-      setInkPoints([{ x, y }]);
+      setInkPoints((prev) => {
+        const next = [...prev, { x, y }];
+        redrawInk(next);
+        return next;
+      });
     },
-    [completed],
+    [completed, redrawInk],
   );
 
   const handlePointerMove = useCallback(
