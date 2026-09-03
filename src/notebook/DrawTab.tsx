@@ -264,12 +264,12 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
         <button onClick={() => setMode('numbers')} className={`font-bold px-3 py-1.5 rounded-[20px_6px_20px_6px] border-[3px] text-xs ${mode === 'numbers' ? 'bg-[#00b894] text-white border-[#00917b]' : 'bg-white text-[#2d3436] border-[#d4b8a0]'}`}>🔢 أرقام</button>
       </div>
 
-      {/* منطقة الرسم: دفتر بارتفاع ثابت مضمون + شريط جانبي */}
-      <div className="flex-1 min-h-0 px-3 sm:px-6 pb-3 flex gap-4 items-start overflow-y-auto">
+      {/* منطقة الرسم: دفتر بنسبة أبعاد متجاوبة + شريط جانبي (يتراص تحت الموبايل) */}
+      <div className="flex-1 min-h-0 px-3 sm:px-6 pb-3 flex flex-col lg:flex-row gap-4 items-center lg:items-stretch overflow-y-auto">
         {/* خلفية ورقة بيج حول الدفتر */}
-        <div className="flex-1 min-w-0 rounded-[14px_28px_14px_28px] bg-[#f6ead9] p-3 sm:p-4 shadow-[inset_0_2px_6px_rgba(0,0,0,0.06)]">
-          {/* الدفتر الأبيض — ارتفاع ثابت مضمون (حسب نمط TraceCanvas المثبت) */}
-          <div className="relative w-full h-[460px] border-[3px] border-[#efe3d2] rounded-[8px_18px_8px_18px] bg-white shadow-[0_12px_32px_rgba(0,0,0,0.12),0_2px_0_#e6d6c2] overflow-hidden">
+        <div className="flex-1 min-w-0 w-full rounded-[14px_28px_14px_28px] bg-[#f6ead9] p-3 sm:p-4 shadow-[inset_0_2px_6px_rgba(0,0,0,0.06)] flex items-center justify-center">
+          {/* الدفتر الأبيض — نسبة أبعاد متجاوبة (aspect-ratio) تمنع الانهيار وتضبط الارتفاع حسب العرض */}
+          <div className="relative w-full max-w-4xl aspect-[3/4] sm:aspect-[4/3] lg:aspect-[16/10] min-h-[280px] max-h-[72vh] border-[3px] border-[#efe3d2] rounded-[8px_18px_8px_18px] bg-white shadow-[0_12px_32px_rgba(0,0,0,0.12),0_2px_0_#e6d6c2] overflow-hidden">
             {/* خطوط المسطرة المدرسية: كل سطر ثالث أغمق (خط الأساس) */}
             <div
               aria-hidden
@@ -321,14 +321,14 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
           </div>
         </div>
 
-        {/* الشريط الجانبي */}
-        <div className="w-48 flex-shrink-0 flex flex-col gap-3">
+        {/* الشريط الجانبي: يتراص تحت الدفتر في الموبايل، وبجانبه في الشاشات الكبيرة */}
+        <div className="w-full lg:w-56 flex-shrink-0 flex flex-row lg:flex-col gap-3 items-center lg:items-stretch justify-center">
           <div className="bg-[#f8f4f0] rounded-[14px_5px_14px_5px] border-2 border-dashed border-[#d4b8a0] p-3 text-center">
             <div className="text-[10px] text-[#636e72] font-bold">⭐ الحرف الحالي</div>
             <div className="text-5xl font-bold text-[#2d3436] my-1">{char}</div>
             {word && <div className="text-[11px] text-[#636e72]">{word.emoji} {word.word} — {word.meaning}</div>}
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-4 lg:grid-cols-2 gap-2">
             <button onClick={() => { if (index > 0) setIndex(index - 1); }} className="font-bold px-2 py-2 bg-[#74b9ff] text-white rounded-[20px_5px_20px_5px] border-[3px] border-[#4a8fd4] text-xs">⬅️ السابق</button>
             <button onClick={() => { if (index < total - 1) setIndex(index + 1); }} className="font-bold px-2 py-2 bg-[#55efc4] text-[#0a3d2a] rounded-[20px_5px_20px_5px] border-[3px] border-[#2cc998] text-xs">التالي ➡️</button>
             <button onClick={() => setIndex(Math.floor(Math.random() * total))} className="font-bold px-2 py-2 bg-[#fdcb6e] text-[#6c5200] rounded-[20px_5px_20px_5px] border-[3px] border-[#f0a500] text-xs">🔀 عشوائي</button>
