@@ -240,12 +240,12 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
         <button onClick={() => setMode('numbers')} className={`font-bold px-3 py-1.5 rounded-[20px_6px_20px_6px] border-[3px] text-xs ${mode === 'numbers' ? 'bg-[#00b894] text-white border-[#00917b]' : 'bg-white text-[#2d3436] border-[#d4b8a0]'}`}>🔢 أرقام</button>
       </div>
 
-      {/* منطقة الرسم: تملأ المساحة المتبقية */}
-      <div className="flex-1 min-h-0 px-3 sm:px-6 pb-3 flex gap-4 items-stretch">
+      {/* منطقة الرسم: دفتر بارتفاع ثابت مضمون + شريط جانبي */}
+      <div className="flex-1 min-h-0 px-3 sm:px-6 pb-3 flex gap-4 items-start overflow-y-auto">
         {/* خلفية ورقة بيج حول الدفتر */}
-        <div className="flex-1 min-w-0 rounded-[14px_28px_14px_28px] bg-[#f6ead9] p-3 sm:p-4 flex shadow-[inset_0_2px_6px_rgba(0,0,0,0.06)]">
-          {/* الدفتر الأبيض */}
-          <div className="relative flex-1 border-[3px] border-[#efe3d2] rounded-[8px_18px_8px_18px] bg-white shadow-[0_12px_32px_rgba(0,0,0,0.12),0_2px_0_#e6d6c2] overflow-hidden">
+        <div className="flex-1 min-w-0 rounded-[14px_28px_14px_28px] bg-[#f6ead9] p-3 sm:p-4 shadow-[inset_0_2px_6px_rgba(0,0,0,0.06)]">
+          {/* الدفتر الأبيض — ارتفاع ثابت مضمون (حسب نمط TraceCanvas المثبت) */}
+          <div className="relative w-full h-[460px] border-[3px] border-[#efe3d2] rounded-[8px_18px_8px_18px] bg-white shadow-[0_12px_32px_rgba(0,0,0,0.12),0_2px_0_#e6d6c2] overflow-hidden">
             {/* خطوط المسطرة المدرسية: كل سطر ثالث أغمق (خط الأساس) */}
             <div
               aria-hidden
@@ -281,8 +281,7 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
               {isDone && <span className="bg-[#00b894] text-white px-2 py-0.5 rounded-full text-xs font-bold">⭐ متقن</span>}
             </div>
 
-            {celebration && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/10 backdrop-blur-[2px]">
+            {celebration && (              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/10 backdrop-blur-[2px]">
                 <div className="bg-white rounded-[20px_8px_20px_8px] border-4 border-dashed border-[#6c5ce7] px-6 py-4 text-center animate-bounce">
                   <div className="text-4xl">🎉</div>
                   <div className="text-lg font-bold text-[#2d3436] mt-1">ممتاز! {char}</div>
@@ -295,7 +294,7 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
         </div>
 
         {/* الشريط الجانبي */}
-        <div className="w-48 flex-shrink-0 flex flex-col gap-3 overflow-y-auto">
+        <div className="w-48 flex-shrink-0 flex flex-col gap-3">
           <div className="bg-[#f8f4f0] rounded-[14px_5px_14px_5px] border-2 border-dashed border-[#d4b8a0] p-3 text-center">
             <div className="text-[10px] text-[#636e72] font-bold">⭐ الحرف الحالي</div>
             <div className="text-5xl font-bold text-[#2d3436] my-1">{char}</div>
