@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { KidHomeView } from './components/KidHomeView';
 import { SchoolLMSView } from './components/SchoolLMSView';
 import { DoodleModeView } from './components/DoodleModeView';
+import { NotebookView } from './notebook/NotebookView';
 import { bleService } from './ble/BLEManager';
 
 export function App() {
@@ -11,7 +12,7 @@ export function App() {
   const [appMode, setAppMode] = useState<AppMode>(() => {
     try {
       const saved = localStorage.getItem('mg_app_mode');
-      if (saved === 'kid_home' || saved === 'school_lms' || saved === 'doodle') return saved;
+      if (saved === 'kid_home' || saved === 'school_lms' || saved === 'doodle' || saved === 'notebook') return saved;
     } catch { /* noop */ }
     return 'kid_home';
   });
@@ -63,6 +64,8 @@ export function App() {
       <main className="main-dashboard-content relative z-[1] flex-1 flex overflow-hidden pt-1 sm:pt-2">
         {appMode === 'doodle' ? (
           <DoodleModeView />
+        ) : appMode === 'notebook' ? (
+          <NotebookView />
         ) : appMode === 'kid_home' ? (
           <KidHomeView activeModel={activeModel} state={robotState} />
         ) : (

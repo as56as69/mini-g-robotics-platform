@@ -580,3 +580,28 @@ TOLERANCE 25، Pointer Events، توزيع منتظم للنقاط، touch-actio
 
 ### التحقق
 - `npx tsc --noEmit` ✅ · `npm run build` ✅ · `mgdev.sh` ✅ (vite:200)
+
+## 📒 «الدفتر التفاعلي» (دفتر بغداد) — تبويب 4 بالهيدر (2026-09-03)
+
+بناءً على الملف المرجعي «دفتر ماجيك كود.html» (2710 سطراً). أُضيف تبويب **4 مستقل** في الهيدر «الدفتر التفاعلي 📒» بجانب (kid_home / school_lms / doodle). يجمع 5 أقسام + نظام نجوم/ميداليات.
+
+### ما تم
+1. **`types/robot.ts`**: `AppMode` أصبح `'kid_home' | 'school_lms' | 'doodle' | 'notebook'` (سطر 59).
+2. **`components/Header.tsx`**: تبويب 4 «الدفتر التفاعلي 📒» (أيقونة BookOpen، تفعيل بنفسجي `#6c5ce7`).
+3. **`notebook/data.ts`**: `BAGHDADI_WORDS` (28 حرف)، `MEDALS`، `COLORING_PAGES` (8 صفحات)، `LETTER_PATHS` (حروف+أرقام+إنجليزي)، `TAB_NAMES/CELEBRATION_MESSAGES/LETTERS_PER_SESSION`.
+4. **`notebook/utils.ts`**: `NotebookProgress/Student`، حفظ/تحميل، `letterKey/sessionLetters/shuffle`. مفاتيح التخزين: `mg_notebook_progress` و `mg_notebook_students`.
+5. **`notebook/notebookContext.tsx`**: `NotebookProvider` + `useNotebook` (النجوم/الإكمال/الطلاب).
+6. **`notebook/NotebookView.tsx`**: الحاوية — شريط النجوم/الميداليات + 5 تبويبات + شريط الحروف.
+7. **`notebook/DrawTab.tsx`**: «شخبط وياي» — كتابة الحرف (Canvas حبر + SVG دليل منقط)، إنهاء → نجمة ورسالة احتفال. أُعيد بناؤه لاستخدام `pointsRef` للكشف الموثوق للاكتمال.
+8. **`notebook/GamesTab.tsx`**: 3 ألعاب — مطابقة الحرف بالكلمة / البحث عن الحرف / قطار الحروف (ترتيب).
+9. **`notebook/ColoringTab.tsx`**: 8 صفحات تلوين من `COLORING_PAGES`.
+10. **`notebook/TeacherTab.tsx`**: إدارة الطلاب (إضافة/حذف/اختيار حالي) + شريط تقدم + ميداليات.
+11. **`notebook/CertTab.tsx`**: شهادة إنجاز باسم الطالب — طباعة/مشاركة/نسخ.
+
+### ملاحظات
+- إصلاح استيراد `sessionLetters` في `NotebookView` (كان من `./data` بدل `./utils`).
+- إصلاح أصناف `border-3/border-6` (ليست Tailwind حقيقية) إلى `border-[3px]/border-[6px]` في `CertTab`.
+- مسح متغيرات/استيرادات غير مستخدمة في `GamesTab` و `ColoringTab`.
+
+### التحقق
+- `npx tsc --noEmit` ✅ · `npm run build` ✅ · `mgdev.sh` ✅ (vite:200)
