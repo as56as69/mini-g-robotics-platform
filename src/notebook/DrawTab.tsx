@@ -36,42 +36,35 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const isDrawing = useRef(false);
+  const hasDrawnRef = useRef(false);
   const pointsRef = useRef<Array<{ x: number; y: number }>>([]);
-  const isDoneRef = useRef(false);
-  const dprRef = useRef(1);
 
   const char = session[index] ?? session[0];
   const key = letterKey(lang, mode, char);
   const isDone = completed.has(key);
   const path = LETTER_PATHS[char];
 
-  isDoneRef.current = isDone;
-
-  /* --- آلة رسم الكانفس (إحداثيات جهاز-بكسل، بلا setTransform) ---
-   * نمط مُثبت من TraceCanvas: نقط الرسم تُحسب عبر (dev) = device pixel،
-   * والضغط/التحريك يُحوَّل من CSS إلى جهاز عبر التطبيع.
+  /* --- آلة رسم الكانفس (نمط دقيق من «دفتر ماجيك كود.html» المُثبت) ---
+   * - الكانفس بمقياس CSS 1:1 (بلا devicePixelRatio/تطبيع) حتى تطابق
+   *   إحداثيات المؤشر (clientX - rect.left) أبعاد البيتامب تلقائياً.
+   * - الحبر يُرسم فوراً من آخر نقطة (لا تجميع/إعادة رسم كامل).
    * ================================================================ */
 
-  // رسم الدليل: حرف باهت + خط منقط + نقطة البداية، متمركز على سطر الكتابة الأوسط.
+  // رسم الدليل: حرف باهت + خط منقط + نقطة البداية في منتصف اللوحة.
   const drawGuide = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const dpr = dprRef.current;
-    const dw = canvas.width, dh = canvas.height;
+    const w = canvas.width, h = canvas.height;
+    if (w <= 0 || h <= 0) return;
+    const cx = w / 2, cy = h / 2;
+    const size = Math.min(w, h) * 0.28;
 
-    // سطر الكتابة الأوسط (بجهاز-بكسل)
-    const rows = Math.max(1, Math.floor(dh / (ROW_H * dpr)));
-    const cy = (Math.floor(rows / 2) + 0.5) * ROW_H * dpr;
-    const cx = dw / 2;
-
-    const letterSize = Math.min(dw, ROW_H * 2.4 * dpr) * 0.9;
-
-    // حرف باهت خلفيًا على سطر الكتابة
+    // حرف باهت خلفيًا
     ctx.save();
     ctx.globalAlpha = 0.08;
-    ctx.font = `${letterSize}px 'Comic Neue', 'Comic Sans MS', cursive`;
+    ctx.font = `${size * 1.8}px 'Comic Neue', 'Comic Sans MS', cursive`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = PRIMARY;
@@ -80,13 +73,13 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
 
     if (path) {
       ctx.save();
-      ctx.setLineDash([6 * dpr, 8 * dpr]);
+      ctx.setLineDash([6, 8]);
       ctx.strokeStyle = PRIMARY;
-      ctx.lineWidth = 2.5 * dpr;
+      ctx.lineWidth = 2.5;
       ctx.globalAlpha = 0.35;
       ctx.beginPath();
       path.forEach((p, i) => {
-        const px = (p.x / 100) * dw, py = cy + ((p.y - 50) / 100) * ROW_H * dpr;
+        const px = (p.x / 100) * w, py = (p.y / 100) * h;
         if (i === 0) ctx.moveTo(px, py);
         else ctx.lineTo(px, py);
       });
@@ -94,58 +87,34 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
       ctx.restore();
 
       const start = path[0];
-      const sx = (start.x / 100) * dw, sy = cy + ((start.y - 50) / 100) * ROW_H * dpr;
+      const sx = (start.x / 100) * w, sy = (start.y / 100) * h;
       ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.setLineDash([]);
       ctx.fillStyle = PRIMARY;
-      ctx.shadowBlur = 15 * dpr;
+      ctx.shadowBlur = 15;
       ctx.shadowColor = PRIMARY;
       ctx.beginPath();
-      ctx.arc(sx, sy, 12 * dpr, 0, Math.PI * 2);
+      ctx.arc(sx, sy, 12, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
   }, [char, path]);
 
-  // يضبط حجم الكانفس ليطابق حاوية الدفتر (مع dpr) — بلا setTransform
+  // يضبط حجم الكانفس ليطابق حاوية الدفتر (CSS 1:1، بلا dpr)
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const wrap = wrapRef.current;
     if (!canvas || !wrap) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    dprRef.current = dpr;
     const rect = wrap.getBoundingClientRect();
-    const w = Math.max(20, rect.width);
-    const h = Math.max(20, rect.height);
-    canvas.width = Math.max(20, Math.round(w * dpr));
-    canvas.height = Math.max(20, Math.round(h * dpr));
+    const w = Math.max(20, Math.round(rect.width));
+    const h = Math.max(20, Math.round(rect.height));
+    canvas.width = w;
+    canvas.height = h;
     drawGuide();
   }, [drawGuide]);
 
-  // إعادة رسم الحبر فوق الدليل (بجهاز-بكسل)
-  const redrawInk = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const dpr = dprRef.current;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawGuide();
-    const pts = pointsRef.current;
-    if (pts.length < 2) return;
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = INK;
-    ctx.lineWidth = 6 * dpr;
-    ctx.shadowBlur = 8 * dpr;
-    ctx.shadowColor = 'rgba(0,0,0,0.08)';
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-    ctx.stroke();
-    ctx.restore();
-  }, [drawGuide]);
-
+  // مسح الكانفس وإعادة رسم الدليل فقط
   const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -155,15 +124,45 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     drawGuide();
   }, [drawGuide]);
 
+  // رسم نقطة حبر فورية (كما في المرجع): خط من آخر نقطة، أو نقطة أولى
+  const drawPoint = useCallback((x: number, y: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 6;
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = 'rgba(0,0,0,0.08)';
+    const pts = pointsRef.current;
+    if (pts.length > 0) {
+      const last = pts[pts.length - 1];
+      ctx.beginPath();
+      ctx.moveTo(last.x, last.y);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    pts.push({ x, y });
+  }, []);
+
   // إعادة ضبط عند تغيير الحرف/اللغة/الوضع
   useEffect(() => {
     setHasDrawn(false);
+    hasDrawnRef.current = false;
     pointsRef.current = [];
     clearCanvas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, lang, mode]);
 
-  // مراقبة تغيّر حجم الحاوية مع debounce (يشمل دوران الشاشة و dpr)
+  // مراقبة تغيّر حجم الحاوية مع debounce
   useEffect(() => {
     const apply = () => resizeCanvas();
     let t: number;
@@ -182,36 +181,18 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resizeCanvas]);
 
-  // أحداث الرسم (إحداثيات جهاز-بكسل عبر التطبيع)
-  const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (isDoneRef.current) return;
+  // أحداث الرسم (إحداثيات CSS مباشرة عبر getBoundingClientRect)
+  const getPos = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.setPointerCapture(e.pointerId);
-    isDrawing.current = true;
-    setHasDrawn(true);
+    if (!canvas) return { x: clientX, y: clientY };
     const rect = canvas.getBoundingClientRect();
-    const x = rect.width ? ((e.clientX - rect.left) / rect.width) * canvas.width : e.clientX;
-    const y = rect.height ? ((e.clientY - rect.top) / rect.height) * canvas.height : e.clientY;
-    pointsRef.current = [{ x, y }];
-    redrawInk();
+    return { x: clientX - rect.left, y: clientY - rect.top };
   };
 
-  const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing.current || isDoneRef.current) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = rect.width ? ((e.clientX - rect.left) / rect.width) * canvas.width : e.clientX;
-    const y = rect.height ? ((e.clientY - rect.top) / rect.height) * canvas.height : e.clientY;
-    pointsRef.current.push({ x, y });
-    redrawInk();
-  };
-
-  const onUp = () => {
+  const finish = () => {
     if (!isDrawing.current) return;
     isDrawing.current = false;
-    if (hasDrawn && pointsRef.current.length >= 5 && !isDoneRef.current) {
+    if (hasDrawnRef.current && pointsRef.current.length >= 5 && !completed.has(key)) {
       addCompleted(key);
       addStars(1);
       const msg = CELEBRATION_MESSAGES[Math.floor(Math.random() * CELEBRATION_MESSAGES.length)];
@@ -219,11 +200,54 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
       setTimeout(() => {
         setCelebration(null);
         setHasDrawn(false);
+        hasDrawnRef.current = false;
         pointsRef.current = [];
         clearCanvas();
         if (index < session.length - 1) { setIndex(index + 1); }
       }, 1500);
     }
+  };
+
+  const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const { x, y } = getPos(e.clientX, e.clientY);
+    isDrawing.current = true;
+    hasDrawnRef.current = true;
+    setHasDrawn(true);
+    pointsRef.current = [];
+    drawPoint(x, y);
+  };
+
+  const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawing.current) return;
+    const { x, y } = getPos(e.clientX, e.clientY);
+    drawPoint(x, y);
+  };
+
+  const onUp = () => finish();
+
+  // اللمس: يستخدم حوادث لمس أصلية مع preventDefault (كما في المرجع)
+  const onTouchDown = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const t = e.touches[0];
+    const { x, y } = getPos(t.clientX, t.clientY);
+    isDrawing.current = true;
+    hasDrawnRef.current = true;
+    setHasDrawn(true);
+    pointsRef.current = [];
+    drawPoint(x, y);
+  };
+
+  const onTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing.current) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    const { x, y } = getPos(t.clientX, t.clientY);
+    drawPoint(x, y);
+  };
+
+  const onTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    finish();
   };
 
   const word = BAGHDADI_WORDS[char];
@@ -272,6 +296,10 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
                 onPointerMove={onMove}
                 onPointerUp={onUp}
                 onPointerCancel={onUp}
+                onTouchStart={onTouchDown}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+                onTouchCancel={onTouchEnd}
               />
             </div>
 
@@ -304,7 +332,7 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
             <button onClick={() => { if (index > 0) setIndex(index - 1); }} className="font-bold px-2 py-2 bg-[#74b9ff] text-white rounded-[20px_5px_20px_5px] border-[3px] border-[#4a8fd4] text-xs">⬅️ السابق</button>
             <button onClick={() => { if (index < total - 1) setIndex(index + 1); }} className="font-bold px-2 py-2 bg-[#55efc4] text-[#0a3d2a] rounded-[20px_5px_20px_5px] border-[3px] border-[#2cc998] text-xs">التالي ➡️</button>
             <button onClick={() => setIndex(Math.floor(Math.random() * total))} className="font-bold px-2 py-2 bg-[#fdcb6e] text-[#6c5200] rounded-[20px_5px_20px_5px] border-[3px] border-[#f0a500] text-xs">🔀 عشوائي</button>
-            <button onClick={() => { setHasDrawn(false); pointsRef.current = []; clearCanvas(); }} className="font-bold px-2 py-2 bg-[#ff7675] text-white rounded-[20px_5px_20px_5px] border-[3px] border-[#d63031] text-xs">🗑️ مسح</button>
+            <button onClick={() => { setHasDrawn(false); hasDrawnRef.current = false; pointsRef.current = []; clearCanvas(); }} className="font-bold px-2 py-2 bg-[#ff7675] text-white rounded-[20px_5px_20px_5px] border-[3px] border-[#d63031] text-xs">🗑️ مسح</button>
           </div>
         </div>
       </div>
