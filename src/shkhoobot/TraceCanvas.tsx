@@ -6,12 +6,12 @@ import { samplePath, ScribbleItem } from './ScribbleRenderer';
  * كود ماجيك — «شخبط وياي» ✏️ (Canvas + SVG مدمج)
  *
  * البنية:
- *   1) Canvas (z=5): حبر الطفل فقط — pointer events
+ *   1) Canvas (z=5): حبر الطفل — كل جرة = beginPath منفصل
  *   2) SVG (z=10, pointer-events:none): دليل الخطوط المنقط
  *   3) شارة نسبة (z=15): تتحدث لحظياً
  *
- * الاكتمال: نقاط الدليل تُsample، مسافة ≤ 30px من حبر الطفل = "زُرت"،
- * نسبة ≥ 80% → احتفال.
+ * كل ضغطة جديدة تبدأ جرة جديدة (بلا خطوط وصل بين الجرات).
+ * الاكتمال: نقاط الدليل تُsample، مسافة ≤ 30px = "زُرت"، ≥80% → احتفال.
  * ============================================================
  */
 
@@ -22,6 +22,8 @@ const INK_WIDTH = 8;
 const SAMPLING_STEP = 6;
 const COMPLETION_THRESHOLD = 0.8;
 const HIT_RADIUS = 30;
+
+type Stroke = Array<{ x: number; y: number }>;
 
 interface Props {
   item: ScribbleItem;
@@ -48,6 +50,13 @@ function guidePoints(strokes: string[]): Array<{ x: number; y: number }> {
   return points;
 }
 
+/** تجميع كل نقاط الجرات في مصفوفة واحدة (للاحتساب) */
+function allInkPoints(strokesArr: Stroke[]): Array<{ x: number; y: number }> {
+  const out: Array<{ x: number; y: number }> = [];
+  for (const s of strokesArr) out.push(...s);
+  return out;
+}
+
 export const TraceCanvas: React.FC<Props> = ({
   item,
   onComplete,
@@ -55,7 +64,8 @@ export const TraceCanvas: React.FC<Props> = ({
   className = '',
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [inkPoints, setInkPoints] = useState<Array<{ x: number; y: number }>>([]);
+  const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const activeStroke = useRef<Stroke>([]);
   const [progressPct, setProgressPct] = useState(0);
   const [completed, setCompleted] = useState(false);
   const isDrawing = useRef(false);
@@ -63,13 +73,13 @@ export const TraceCanvas: React.FC<Props> = ({
 
   const guidePts = React.useMemo(() => guidePoints(item.strokes), [item.strokes]);
 
-  const redrawInk = useCallback((pts: Array<{ x: number; y: number }>) => {
+  /** إعادة رسم كل الجرات على الكانفس */
+  const redrawInk = useCallback((allStrokes: Stroke[]) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (pts.length < 2) return;
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -77,12 +87,15 @@ export const TraceCanvas: React.FC<Props> = ({
     ctx.lineWidth = INK_WIDTH;
     ctx.shadowBlur = 8;
     ctx.shadowColor = 'rgba(0,0,0,0.08)';
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) {
-      ctx.lineTo(pts[i].x, pts[i].y);
+    for (const stroke of allStrokes) {
+      if (stroke.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(stroke[0].x, stroke[0].y);
+      for (let i = 1; i < stroke.length; i++) {
+        ctx.lineTo(stroke[i].x, stroke[i].y);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
     ctx.restore();
   }, []);
 
@@ -96,13 +109,9 @@ export const TraceCanvas: React.FC<Props> = ({
       const rect = canvas.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
       const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
-      setInkPoints((prev) => {
-        const next = [...prev, { x, y }];
-        redrawInk(next);
-        return next;
-      });
+      activeStroke.current = [{ x, y }];
     },
-    [completed, redrawInk],
+    [completed],
   );
 
   const handlePointerMove = useCallback(
@@ -113,10 +122,11 @@ export const TraceCanvas: React.FC<Props> = ({
       const rect = canvas.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
       const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
-      setInkPoints((prev) => {
-        const next = [...prev, { x, y }];
-        redrawInk(next);
-        return next;
+      activeStroke.current.push({ x, y });
+      setStrokes((prev) => {
+        const updated = [...prev.slice(0, -1), [...activeStroke.current]];
+        redrawInk(updated);
+        return updated;
       });
     },
     [completed, redrawInk],
@@ -133,11 +143,21 @@ export const TraceCanvas: React.FC<Props> = ({
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
 
-      setInkPoints((pts) => {
+      // حفظ الجرة النهائية
+      const finishedStroke = [...activeStroke.current];
+      activeStroke.current = [];
+
+      setStrokes((prev) => {
+        // استبدال آخر عنصر (الجرة النشطة) بالنسخة النهائية
+        const updated = prev.length > 0 ? [...prev.slice(0, -1), finishedStroke] : [finishedStroke];
+        redrawInk(updated);
+
+        // احتساب النقاط المُزارة
+        const allPts = allInkPoints(updated);
         for (let i = 0; i < guidePts.length; i++) {
           if (visitedRef.current.has(i)) continue;
           const gp = guidePts[i];
-          for (const ip of pts) {
+          for (const ip of allPts) {
             const dx = ip.x / scaleX - gp.x;
             const dy = ip.y / scaleY - gp.y;
             if (Math.hypot(dx, dy) <= HIT_RADIUS) {
@@ -155,14 +175,15 @@ export const TraceCanvas: React.FC<Props> = ({
           setCompleted(true);
           onComplete?.(ratio);
         }
-        return pts;
+        return updated;
       });
     },
-    [guidePts, completed, onComplete, onProgress],
+    [guidePts, completed, onComplete, onProgress, redrawInk],
   );
 
   useEffect(() => {
-    setInkPoints([]);
+    setStrokes([]);
+    activeStroke.current = [];
     setProgressPct(0);
     setCompleted(false);
     visitedRef.current.clear();
