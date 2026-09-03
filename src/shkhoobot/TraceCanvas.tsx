@@ -110,6 +110,7 @@ export const TraceCanvas: React.FC<Props> = ({
       const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
       const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
       activeStroke.current = [{ x, y }];
+      setStrokes((prev) => [...prev, []]);
     },
     [completed],
   );
