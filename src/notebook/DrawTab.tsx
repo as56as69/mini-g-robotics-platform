@@ -38,6 +38,7 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
   const isDrawing = useRef(false);
   const pointsRef = useRef<Array<{ x: number; y: number }>>([]);
   const isDoneRef = useRef(false);
+  const dprRef = useRef(1);
 
   const char = session[index] ?? session[0];
   const key = letterKey(lang, mode, char);
@@ -46,7 +47,10 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
 
   isDoneRef.current = isDone;
 
-  /* --- آلة رسم الكانفس بمقياس DPR --- */
+  /* --- آلة رسم الكانفس (إحداثيات جهاز-بكسل، بلا setTransform) ---
+   * نمط مُثبت من TraceCanvas: نقط الرسم تُحسب عبر (dev) = device pixel،
+   * والضغط/التحريك يُحوَّل من CSS إلى جهاز عبر التطبيع.
+   * ================================================================ */
 
   // رسم الدليل: حرف باهت + خط منقط + نقطة البداية، متمركز على سطر الكتابة الأوسط.
   const drawGuide = useCallback(() => {
@@ -54,17 +58,15 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    // بمسح حسب الأبعاد الفعلية بالنقاط بعد تحويل dpr
-    const w = canvas.width / dpr, h = canvas.height / dpr;
-    ctx.clearRect(0, 0, w, h);
+    const dpr = dprRef.current;
+    const dw = canvas.width, dh = canvas.height;
 
-    // سطر الكتابة الأوسط
-    const rows = Math.max(1, Math.floor(h / ROW_H));
-    const cy = (Math.floor(rows / 2) + 0.5) * ROW_H;
-    const cx = w / 2;
+    // سطر الكتابة الأوسط (بجهاز-بكسل)
+    const rows = Math.max(1, Math.floor(dh / (ROW_H * dpr)));
+    const cy = (Math.floor(rows / 2) + 0.5) * ROW_H * dpr;
+    const cx = dw / 2;
 
-    const letterSize = Math.min(w, ROW_H * 2.4) * 0.9;
+    const letterSize = Math.min(dw, ROW_H * 2.4 * dpr) * 0.9;
 
     // حرف باهت خلفيًا على سطر الكتابة
     ctx.save();
@@ -78,13 +80,13 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
 
     if (path) {
       ctx.save();
-      ctx.setLineDash([6, 8]);
+      ctx.setLineDash([6 * dpr, 8 * dpr]);
       ctx.strokeStyle = PRIMARY;
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 2.5 * dpr;
       ctx.globalAlpha = 0.35;
       ctx.beginPath();
       path.forEach((p, i) => {
-        const px = (p.x / 100) * w, py = cy + ((p.y - 50) / 100) * ROW_H;
+        const px = (p.x / 100) * dw, py = cy + ((p.y - 50) / 100) * ROW_H * dpr;
         if (i === 0) ctx.moveTo(px, py);
         else ctx.lineTo(px, py);
       });
@@ -92,52 +94,50 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
       ctx.restore();
 
       const start = path[0];
-      const sx = (start.x / 100) * w, sy = cy + ((start.y - 50) / 100) * ROW_H;
+      const sx = (start.x / 100) * dw, sy = cy + ((start.y - 50) / 100) * ROW_H * dpr;
       ctx.save();
       ctx.fillStyle = PRIMARY;
-      ctx.shadowBlur = 15;
+      ctx.shadowBlur = 15 * dpr;
       ctx.shadowColor = PRIMARY;
       ctx.beginPath();
-      ctx.arc(sx, sy, 12, 0, Math.PI * 2);
+      ctx.arc(sx, sy, 12 * dpr, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
   }, [char, path]);
 
-  // يضبط حجم الكانفس ليطابق حاوية الدفتر (مع dpr) ويُرجع أبعاد CSS.
+  // يضبط حجم الكانفس ليطابق حاوية الدفتر (مع dpr) — بلا setTransform
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const wrap = wrapRef.current;
     if (!canvas || !wrap) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    dprRef.current = dpr;
     const rect = wrap.getBoundingClientRect();
     const w = Math.max(20, rect.width);
     const h = Math.max(20, rect.height);
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-    const ctx = canvas.getContext('2d')!;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    canvas.width = Math.max(20, Math.round(w * dpr));
+    canvas.height = Math.max(20, Math.round(h * dpr));
     drawGuide();
   }, [drawGuide]);
 
-  // إعادة رسم الحبر فوق الدليل
+  // إعادة رسم الحبر فوق الدليل (بجهاز-بكسل)
   const redrawInk = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    const w = canvas.width / dpr, h = canvas.height / dpr;
-    const pts = pointsRef.current;
-    ctx.clearRect(0, 0, w, h);
+    const dpr = dprRef.current;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawGuide();
+    const pts = pointsRef.current;
     if (pts.length < 2) return;
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = INK;
-    ctx.lineWidth = 6;
-    ctx.shadowBlur = 8;
+    ctx.lineWidth = 6 * dpr;
+    ctx.shadowBlur = 8 * dpr;
     ctx.shadowColor = 'rgba(0,0,0,0.08)';
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
@@ -151,8 +151,7 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawGuide();
   }, [drawGuide]);
 
@@ -183,24 +182,28 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resizeCanvas]);
 
-  // أحداث الرسم
+  // أحداث الرسم (إحداثيات جهاز-بكسل عبر التطبيع)
   const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (isDoneRef.current) return;
-    const canvas = canvasRef.current!;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     canvas.setPointerCapture(e.pointerId);
     isDrawing.current = true;
     setHasDrawn(true);
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    const x = rect.width ? ((e.clientX - rect.left) / rect.width) * canvas.width : e.clientX;
+    const y = rect.height ? ((e.clientY - rect.top) / rect.height) * canvas.height : e.clientY;
     pointsRef.current = [{ x, y }];
     redrawInk();
   };
 
   const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing.current || isDoneRef.current) return;
-    const canvas = canvasRef.current!;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    const x = rect.width ? ((e.clientX - rect.left) / rect.width) * canvas.width : e.clientX;
+    const y = rect.height ? ((e.clientY - rect.top) / rect.height) * canvas.height : e.clientY;
     pointsRef.current.push({ x, y });
     redrawInk();
   };

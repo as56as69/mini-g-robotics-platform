@@ -626,3 +626,20 @@ TOLERANCE 25، Pointer Events، توزيع منتظم للنقاط، touch-actio
 
 ### التحقق
 - `npx tsc --noEmit` ✅ · `npm run build` ✅ · `mgdev.sh` ✅ (vite:200)
+
+## 🐛 إصلاح: الحبر لا يُرسم في الدفتر (بعد إعادة التصميم) (2026-09-03)
+
+بعد إعادة التصميم، توقّف ظهور الحبر عند الرسم في `DrawTab`.
+
+### السبب
+استخدام `ctx.setTransform(dpr,...)` + رسم بإحداثيات CSS المنطقية. الاعتماد على استمرار التحويل كان هشاً، فانكسر الحبر (مقابل النمط المُثبت في `TraceCanvas`).
+
+### الحل (نمط `TraceCanvas` المُثبت — إحداثيات جهاز-بكسل)
+1. **كانفس بمقياس DPR**: `canvas.width = round(cssW * dpr)` و `canvas.height = round(cssH * dpr)` — **بدون** `setTransform`.
+2. **تحويل الإحداثيات بالتطبيع** في `onDown`/`onMove`:
+   `x = ((e.clientX - rect.left) / rect.width) * canvas.width`
+   (CSS-offset × dpr = البكسل الجهازي الذي يطابق موضع المؤشر)
+3. كل الرسم (الدليل/الحبر/المسح) بأبعاد جهازية `canvas.width/height` و `ROW_H*dpr` و `lineWidth*dpr`. GUI تظهر تحت المؤشر بدقة على أي dpr.
+
+### التحقق
+- `npx tsc --noEmit` ✅ · `npm run build` ✅ · `mgdev.sh` ✅ (vite:200)
