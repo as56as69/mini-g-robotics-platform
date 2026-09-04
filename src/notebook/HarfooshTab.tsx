@@ -19,40 +19,6 @@ interface Props {
 /* حروف الكلمات العربية المستخدمة */
 const ARABIC_LETTERS = Object.keys(BAGHDADI_WORDS);
 
-/* ── هيلبرز الرسم اليدوي (ببذرة ثابتة = شكل خربشة ثابت) ── */
-function seededRandom(seed: number) {
-  let s = seed % 2147483647;
-  if (s <= 0) s += 2147483646;
-  return () => {
-    s = (s * 16807) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
-}
-
-/** جسم blob غير منتظم (خربشة عضوية كـ"مستر شخبوط") — مسار مغلق قابل للتعبئة */
-function makeBlobPath(seed: number, cx: number, cy: number, radius: number, n = 10): string {
-  const rnd = seededRandom(seed);
-  const pts: Array<[number, number]> = [];
-  let angle = rnd() * Math.PI * 2;
-  let rad = radius * (0.5 + rnd() * 0.5);
-  const step = (Math.PI * 2) / n;
-  for (let i = 0; i < n; i++) {
-    angle += (rnd() - 0.5) * 2.4 + step;
-    rad = Math.max(radius * 0.28, Math.min(radius, rad + (rnd() - 0.45) * 26));
-    pts.push([cx + Math.cos(angle) * rad, cy + Math.sin(angle) * rad]);
-  }
-  let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
-  for (let i = 0; i < pts.length; i++) {
-    const p0 = pts[i];
-    const p1 = pts[(i + 1) % pts.length];
-    const mx = (p0[0] + p1[0]) / 2;
-    const my = (p0[1] + p1[1]) / 2;
-    d += ` Q${p0[0].toFixed(1)} ${p0[1].toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)}`;
-  }
-  d += ' Z';
-  return d;
-}
-
 const reactions = {
   idle: 'جائع! أطعموني حرفًا لذيذًا!',
   hungry: 'هممم... ما أكلت حرفًا اليوم!',
@@ -84,39 +50,50 @@ const HarfooshFigure: React.FC<{ mood: string }> = ({ mood }) => {
   const [pupilR, setPupilR] = useState({ x: 3, y: 2 });
 
   // عينا الشخصية (مركزاهما داخل viewBox)
-  const eyeL = { x: 62, y: 63, r: 13 };
-  const eyeR = { x: 98, y: 63, r: 13 };
+  const eyeL = { x: 60, y: 66, r: 13 };
+  const eyeR = { x: 100, y: 66, r: 13 };
 
-  // رسم الجسم/الخربشة مرة واحدة بـ rough.js (ببذرة ثابتة = ثبات الشكل)
+  // رسم الشخصية المرتّبة مرة واحدة بـ rough.js (خطوط مرسومة يدويًا، أجزاء منظمة)
   useEffect(() => {
     const svg = svgRef.current;
     const anchor = roughRef.current;
     if (!svg || !anchor) return;
     const rc = rough.svg(svg);
-    const bodyPath = makeBlobPath(234567, 80, 86, 52);
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
 
-    const opt = (o: Record<string, unknown>) => ({ seed: 987654, roughness: 1.5, bowing: 1.1, ...o });
+    const lin = (o: Record<string, unknown>) => ({ seed: 101202, roughness: 1.9, bowing: 1.6, ...o });
 
-    // الأذنان (خلف الجسم)
-    group.appendChild(rc.ellipse(42, 30, 20, 34, opt({ fill: EAR, fillStyle: 'cross-hatch', stroke: INK, strokeWidth: 3 })));
-    group.appendChild(rc.ellipse(118, 30, 20, 34, opt({ fill: EAR, fillStyle: 'cross-hatch', stroke: INK, strokeWidth: 3, seed: 34567 })));
-    // القرن الشمعي
-    group.appendChild(rc.path('M72 26 L80 4 L90 28 Z', opt({ fill: CRAYON, fillStyle: 'hachure', stroke: INK, strokeWidth: 2.6, seed: 111 })));
-    // الجسم blob
-    group.appendChild(rc.path(bodyPath, opt({ fill: BODY, fillStyle: 'hachure', stroke: INK, strokeWidth: 3.2, seed: 222 })));
-    // بياض العينين (خربشة)
-    group.appendChild(rc.ellipse(eyeL.x, eyeL.y, eyeL.r * 2, eyeL.r * 2, opt({ fill: PAPER, fillStyle: 'solid', stroke: INK, strokeWidth: 2.6, seed: 333 })));
-    group.appendChild(rc.ellipse(eyeR.x, eyeR.y, eyeR.r * 2, eyeR.r * 2, opt({ fill: PAPER, fillStyle: 'solid', stroke: INK, strokeWidth: 2.6, seed: 444 })));
-    // وردتان خدّ
-    group.appendChild(rc.circle(42, 86, 9, opt({ fill: '#ff8fab80', fillStyle: 'zigzag', stroke: INK, strokeWidth: 1.6, seed: 555 })));
-    group.appendChild(rc.circle(118, 86, 9, opt({ fill: '#ff8fab80', fillStyle: 'zigzag', stroke: INK, strokeWidth: 1.6, seed: 666 })));
-    // الفم الواسع "للأكل"
-    group.appendChild(rc.path('M56 96 Q80 122 104 96 Q92 106 80 106 Q68 106 56 96 Z', opt({ fill: '#4a3f8a', fillStyle: 'solid', stroke: INK, strokeWidth: 2.8, seed: 777 })));
-    // أسنان بسيطة
-    group.appendChild(rc.line(72, 100, 72, 108, opt({ stroke: PAPER, strokeWidth: 2.4, seed: 888 })));
-    group.appendChild(rc.line(80, 102, 80, 110, opt({ stroke: PAPER, strokeWidth: 2.4, seed: 999 })));
-    group.appendChild(rc.line(88, 100, 88, 108, opt({ stroke: PAPER, strokeWidth: 2.4, seed: 1234 })));
+    // القدمان (خلف الجسم)
+    group.appendChild(rc.ellipse(64, 152, 26, 18, lin({ fill: BODY, fillStyle: 'zigzag', stroke: INK, strokeWidth: 2.6, seed: 11 })));
+    group.appendChild(rc.ellipse(96, 152, 26, 18, lin({ fill: BODY, fillStyle: 'zigzag', stroke: INK, strokeWidth: 2.6, seed: 12 })));
+    // الأذنان (خلف الجسم، متماثلتان وبارزتان خارج الجسم)
+    group.appendChild(rc.ellipse(34, 42, 20, 30, lin({ fill: EAR, fillStyle: 'zigzag', stroke: INK, strokeWidth: 2.8, seed: 13 })));
+    group.appendChild(rc.ellipse(126, 42, 20, 30, lin({ fill: EAR, fillStyle: 'zigzag', stroke: INK, strokeWidth: 2.8, seed: 14 })));
+    // القرنان الشمعيان
+    group.appendChild(rc.path('M72 26 Q80 4 88 26 Z', lin({ fill: CRAYON, fillStyle: 'hachure', stroke: INK, strokeWidth: 2.4, seed: 15 })));
+    group.appendChild(rc.path('M68 28 Q80 10 92 28 Z', lin({ fill: CRAYON, fillStyle: 'hachure', stroke: INK, strokeWidth: 2, seed: 16 })));
+    // الجسم: بيضاوي كروي ناعم منظّم (مقدّم، فوق الأذنين)
+    group.appendChild(rc.ellipse(80, 92, 92, 120, lin({ fill: BODY, fillStyle: 'hachure', stroke: INK, strokeWidth: 3.2, seed: 17 })));
+    // اليدان (زوائد قصيرة)
+    group.appendChild(rc.line(40, 110, 26, 122, lin({ stroke: INK, strokeWidth: 3, seed: 18 })));
+    group.appendChild(rc.line(120, 110, 134, 122, lin({ stroke: INK, strokeWidth: 3, seed: 19 })));
+    group.appendChild(rc.circle(25, 123, 5, lin({ fill: BODY, fillStyle: 'zigzag', stroke: INK, strokeWidth: 2, seed: 20 })));
+    group.appendChild(rc.circle(135, 123, 5, lin({ fill: BODY, fillStyle: 'zigzag', stroke: INK, strokeWidth: 2, seed: 21 })));
+    // بياض العينين (متماثلان)
+    group.appendChild(rc.ellipse(eyeL.x, eyeL.y, eyeL.r * 2, eyeL.r * 2, lin({ fill: PAPER, fillStyle: 'solid', stroke: INK, strokeWidth: 2.6, seed: 22 })));
+    group.appendChild(rc.ellipse(eyeR.x, eyeR.y, eyeR.r * 2, eyeR.r * 2, lin({ fill: PAPER, fillStyle: 'solid', stroke: INK, strokeWidth: 2.6, seed: 23 })));
+    // حواجب صغيرة للمزاج
+    group.appendChild(rc.line(eyeL.x - 9, 47, eyeL.x + 9, 45, lin({ stroke: INK, strokeWidth: 2.4, seed: 24 })));
+    group.appendChild(rc.line(eyeR.x - 9, 45, eyeR.x + 9, 47, lin({ stroke: INK, strokeWidth: 2.4, seed: 25 })));
+    // وردتا خدّ (متناظرتان)
+    group.appendChild(rc.circle(46, 100, 8, lin({ fill: '#ff8fab', fillStyle: 'zigzag', stroke: INK, strokeWidth: 1.6, seed: 26 })));
+    group.appendChild(rc.circle(114, 100, 8, lin({ fill: '#ff8fab', fillStyle: 'zigzag', stroke: INK, strokeWidth: 1.6, seed: 27 })));
+    // الفم المفتوح "للأكل" (ابتسامة واسعة منظمة)
+    group.appendChild(rc.path('M56 104 Q80 138 104 104 Q92 112 80 112 Q68 112 56 104 Z', lin({ fill: '#4a3f8a', fillStyle: 'solid', stroke: INK, strokeWidth: 2.8, seed: 28 })));
+    // أسنان علوية بسيطة
+    group.appendChild(rc.line(70, 104, 70, 112, lin({ stroke: PAPER, strokeWidth: 2.4, seed: 29 })));
+    group.appendChild(rc.line(80, 105, 80, 114, lin({ stroke: PAPER, strokeWidth: 2.4, seed: 30 })));
+    group.appendChild(rc.line(90, 104, 90, 112, lin({ stroke: PAPER, strokeWidth: 2.4, seed: 31 })));
 
     anchor.appendChild(group);
     return () => { anchor.removeChild(group); };
@@ -128,7 +105,7 @@ const HarfooshFigure: React.FC<{ mood: string }> = ({ mood }) => {
     const wrap = wrapRef.current;
     if (!svg || !wrap) return;
     const rect = svg.getBoundingClientRect();
-    const VW = 160, VH = 150;
+    const VW = 160, VH = 172;
     const px = ((e.clientX - rect.left) / rect.width) * VW;
     const py = ((e.clientY - rect.top) / rect.height) * VH;
     const shift = (cx: number, cy: number) => {
@@ -146,7 +123,7 @@ const HarfooshFigure: React.FC<{ mood: string }> = ({ mood }) => {
 
   return (
     <div ref={wrapRef} onPointerMove={handlePointer} className="relative inline-block w-40 h-auto select-none" style={{ touchAction: 'pan-y' }}>
-      <svg ref={svgRef} viewBox="0 0 160 150" className="w-full h-auto drop-shadow-sm" style={bodyAnim}>
+      <svg ref={svgRef} viewBox="0 0 160 172" className="w-full h-auto drop-shadow-sm" style={bodyAnim}>
         {/* تُلحق أشكال rough.js هنا (خلف البؤبؤين) */}
         <g ref={roughRef} />
         {/* البؤبؤان (فوق كل شيء) */}
