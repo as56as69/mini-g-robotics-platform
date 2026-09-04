@@ -17,10 +17,12 @@ interface Props {
   setMode: (m: CharMode) => void;
 }
 
-const INK = '#2d3436';
-const PRIMARY = '#6c5ce7';
-const ROW_H = 34;            // ارتفاع سطر المسطرة بالنقاط
-const RESIZE_DEBOUNCE = 120;
+  const INK = '#2d3436';
+  const PRIMARY = '#6c5ce7';
+  const ROW_H = 34;            // ارتفاع سطر المسطرة بالنقاط
+  const RESIZE_DEBOUNCE = 120;
+  const MAX_POINTS = 300;      // الحد الأقصى لعدد النقاط لمنع تراكم الذاكرة
+  const DRAW_DEBOUNCE = 16;    // تأخير redraw بالمللي ثانية (≈60fps)
 
 export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
   const { completed, addCompleted, addStars } = useNotebook();
@@ -50,7 +52,8 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
    * - الحبر يُرسم فوراً من آخر نقطة (لا تجميع/إعادة رسم كامل).
    * ================================================================ */
 
-  // رسم الدليل: حرف باهت + خط منقط + نقطة البداية في منتصف اللوحة.
+  // رسم الدليل: حرف باهت + خط منقط + نقطة البداية
+  // يتمركز على خط المسطرة الأوسط (سطر ثالث من الأسفل) وليس حرفياً في منتصف اللوحة.
   const drawGuide = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -58,7 +61,13 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     if (!ctx) return;
     const w = canvas.width, h = canvas.height;
     if (w <= 0 || h <= 0) return;
-    const cx = w / 2, cy = h / 2;
+    const cx = w / 2;
+    // حساب y على خط المسطرة الأوسط (سطر ثالث من الأسفل):
+    // عدد الأسطر = floor(h / ROW_H)
+    // الخط المطلوب = الأسطر - 2 (من الصفر)
+    const totalRows = Math.floor(h / ROW_H);
+    const targetRow = Math.max(1, totalRows - 2);
+    const cy = targetRow * ROW_H + ROW_H / 2;
     const size = Math.min(w, h) * 0.28;
 
     // حرف باهت خلفيًا
@@ -125,11 +134,15 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
   }, [drawGuide]);
 
   // رسم نقطة حبر فورية (كما في المرجع): خط من آخر نقطة، أو نقطة أولى
+  // مع debounce و limit لتقليل إعادة الرسم وتراكم الذاكرة
   const drawPoint = useCallback((x: number, y: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    const pts = pointsRef.current;
+    // التحقق من الحد الأقصى للنقاط
+    if (pts.length >= MAX_POINTS) return;
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -137,7 +150,6 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     ctx.lineWidth = 6;
     ctx.shadowBlur = 8;
     ctx.shadowColor = 'rgba(0,0,0,0.08)';
-    const pts = pointsRef.current;
     if (pts.length > 0) {
       const last = pts[pts.length - 1];
       ctx.beginPath();
@@ -217,15 +229,25 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     drawPoint(x, y);
   };
 
+  const lastPointerDrawTimeRef = useRef<number>(0);
+  
   const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing.current) return;
     const { x, y } = getPos(e.clientX, e.clientY);
-    drawPoint(x, y);
+    // Debounce: لا ترسم إلا إذا مر 16ms على الأقل منذ آخر نقطة
+    const now = Date.now();
+    if (now - lastPointerDrawTimeRef.current >= DRAW_DEBOUNCE) {
+      drawPoint(x, y);
+      lastPointerDrawTimeRef.current = now;
+    }
   };
 
   const onUp = () => finish();
 
   // اللمس: يستخدم حوادث لمس أصلية مع preventDefault (كما في المرجع)
+  // مع debounce لتقليل إعادة الرسم أثناء السحب السريع
+  const lastDrawTimeRef = useRef<number>(0);
+  
   const onTouchDown = (e: React.TouchEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     const t = e.touches[0];
@@ -235,6 +257,7 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     setHasDrawn(true);
     pointsRef.current = [];
     drawPoint(x, y);
+    lastDrawTimeRef.current = Date.now();
   };
 
   const onTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
@@ -242,7 +265,12 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     e.preventDefault();
     const t = e.touches[0];
     const { x, y } = getPos(t.clientX, t.clientY);
-    drawPoint(x, y);
+    // Debounce: لا ترسم إلا إذا مر 16ms على الأقل منذ آخر نقطة
+    const now = Date.now();
+    if (now - lastDrawTimeRef.current >= DRAW_DEBOUNCE) {
+      drawPoint(x, y);
+      lastDrawTimeRef.current = now;
+    }
   };
 
   const onTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
@@ -265,7 +293,7 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
       </div>
 
       {/* منطقة الرسم: دفتر بنسبة أبعاد متجاوبة + شريط جانبي (يتراص تحت الموبايل) */}
-      <div className="flex-1 min-h-0 px-3 sm:px-6 pb-3 flex flex-col lg:flex-row gap-4 items-center lg:items-stretch overflow-y-auto">
+      <div className="flex-1 min-h-0 px-3 sm:px-6 pb-3 flex flex-col lg:flex-row gap-4 items-center lg:items-stretch overflow-y-auto" role="region" aria-label="دفتر الكتابة">
         {/* خلفية ورقة بيج حول الدفتر */}
         <div className="flex-1 min-w-0 w-full rounded-[14px_28px_14px_28px] bg-[#f6ead9] p-3 sm:p-4 shadow-[inset_0_2px_6px_rgba(0,0,0,0.06)] flex items-center justify-center">
           {/* الدفتر الأبيض — نسبة أبعاد متجاوبة (aspect-ratio) تمنع الانهيار وتضبط الارتفاع حسب العرض */}
@@ -322,17 +350,34 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
         </div>
 
         {/* الشريط الجانبي: يتراص تحت الدفتر في الموبايل، وبجانبه في الشاشات الكبيرة */}
-        <div className="w-full lg:w-56 flex-shrink-0 flex flex-row lg:flex-col gap-3 items-center lg:items-stretch justify-center">
+        {/* الشريط الجانبي: يتراص تحت الدفتر في الموبايل، وبجانبه في الشاشات الكبيرة */}
+        <div className="w-full lg:w-56 flex-shrink-0 flex flex-row lg:flex-col gap-3 items-center lg:items-stretch justify-center" role="toolbar" aria-label="أدوات التحكم بالدفتر">
           <div className="bg-[#f8f4f0] rounded-[14px_5px_14px_5px] border-2 border-dashed border-[#d4b8a0] p-3 text-center">
             <div className="text-[10px] text-[#636e72] font-bold">⭐ الحرف الحالي</div>
-            <div className="text-5xl font-bold text-[#2d3436] my-1">{char}</div>
+            <div className="text-5xl font-bold text-[#2d3436] my-1" aria-label={`الحرف الحالي: ${char}`}>{char}</div>
             {word && <div className="text-[11px] text-[#636e72]">{word.emoji} {word.word} — {word.meaning}</div>}
           </div>
           <div className="grid grid-cols-4 lg:grid-cols-2 gap-2">
-            <button onClick={() => { if (index > 0) setIndex(index - 1); }} className="font-bold px-2 py-2 bg-[#74b9ff] text-white rounded-[20px_5px_20px_5px] border-[3px] border-[#4a8fd4] text-xs">⬅️ السابق</button>
-            <button onClick={() => { if (index < total - 1) setIndex(index + 1); }} className="font-bold px-2 py-2 bg-[#55efc4] text-[#0a3d2a] rounded-[20px_5px_20px_5px] border-[3px] border-[#2cc998] text-xs">التالي ➡️</button>
-            <button onClick={() => setIndex(Math.floor(Math.random() * total))} className="font-bold px-2 py-2 bg-[#fdcb6e] text-[#6c5200] rounded-[20px_5px_20px_5px] border-[3px] border-[#f0a500] text-xs">🔀 عشوائي</button>
-            <button onClick={() => { setHasDrawn(false); hasDrawnRef.current = false; pointsRef.current = []; clearCanvas(); }} className="font-bold px-2 py-2 bg-[#ff7675] text-white rounded-[20px_5px_20px_5px] border-[3px] border-[#d63031] text-xs">🗑️ مسح</button>
+            <button 
+              onClick={() => { if (index > 0) setIndex(index - 1); }} 
+              className="font-bold px-2 py-2 bg-[#74b9ff] text-white rounded-[20px_5px_20px_5px] border-[3px] border-[#4a8fd4] text-xs"
+              aria-label="الحرف السابق"
+            >⬅️ السابق</button>
+            <button 
+              onClick={() => { if (index < total - 1) setIndex(index + 1); }} 
+              className="font-bold px-2 py-2 bg-[#55efc4] text-[#0a3d2a] rounded-[20px_5px_20px_5px] border-[3px] border-[#2cc998] text-xs"
+              aria-label="الحرف التالي"
+            >التالي ➡️</button>
+            <button 
+              onClick={() => setIndex(Math.floor(Math.random() * total))} 
+              className="font-bold px-2 py-2 bg-[#fdcb6e] text-[#6c5200] rounded-[20px_5px_20px_5px] border-[3px] border-[#f0a500] text-xs"
+              aria-label="حرف عشوائي"
+            >🔀 عشوائي</button>
+            <button 
+              onClick={() => { setHasDrawn(false); hasDrawnRef.current = false; pointsRef.current = []; clearCanvas(); }} 
+              className="font-bold px-2 py-2 bg-[#ff7675] text-white rounded-[20px_5px_20px_5px] border-[3px] border-[#d63031] text-xs"
+              aria-label="مسح الرسم"
+            >🗑️ مسح</button>
           </div>
         </div>
       </div>
