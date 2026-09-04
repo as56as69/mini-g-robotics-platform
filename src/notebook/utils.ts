@@ -53,6 +53,38 @@ export function saveStudents(students: Student[]) {
   } catch { /* noop */ }
 }
 
+/* ── متجر حرفوش للقفز: مشتريات عالمية (عامة عبر الطلاب) ── */
+export interface ShopState {
+  owned: string[];
+  equippedHat: string;
+  equippedBg: string;
+}
+
+const SHOP_KEY = 'mg_harfoosh_shop';
+
+const DEFAULT_SHOP: ShopState = { owned: [], equippedHat: 'none', equippedBg: 'sky' };
+
+export function loadShop(): ShopState {
+  try {
+    const raw = localStorage.getItem(SHOP_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      return {
+        owned: Array.isArray(d.owned) ? d.owned : [],
+        equippedHat: typeof d.equippedHat === 'string' ? d.equippedHat : 'none',
+        equippedBg: typeof d.equippedBg === 'string' ? d.equippedBg : 'sky',
+      };
+    }
+  } catch { /* noop */ }
+  return { ...DEFAULT_SHOP };
+}
+
+export function saveShop(s: ShopState) {
+  try {
+    localStorage.setItem(SHOP_KEY, JSON.stringify(s));
+  } catch { /* noop */ }
+}
+
 export function letterKey(lang: string, mode: string, char: string): string {
   return `${lang}_${mode}_${char}`;
 }

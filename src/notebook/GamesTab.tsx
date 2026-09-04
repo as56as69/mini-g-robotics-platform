@@ -3,6 +3,7 @@ import { BAGHDADI_WORDS } from './data';
 import { useNotebook } from './notebookContext';
 import { shuffle } from './utils';
 import { HarfooshTab } from './HarfooshTab';
+import JumpTab from './JumpTab';
 
 /* كود ماجيك بالتفت — تبويب الألعاب (3 ألعاب + بوابة حرفوش)
  * ============================================================
@@ -14,7 +15,7 @@ interface Props {
 
 export const GamesTab: React.FC<Props> = ({ letters }) => {
   const { addStars, addCompleted } = useNotebook();
-  const [view, setView] = useState<'games' | 'harfoosh'>('games');
+  const [view, setView] = useState<'games' | 'harfoosh' | 'jump'>('games');
   const list = letters.length > 0 ? letters : ['أ', 'ب', 'ت'];
 
   // لعبة 1: مطابقة الحرف مع الكلمة
@@ -123,6 +124,8 @@ export const GamesTab: React.FC<Props> = ({ letters }) => {
 
   return view === 'harfoosh' ? (
     <HarfooshTab onBack={() => setView('games')} />
+  ) : view === 'jump' ? (
+    <JumpTab letters={list} onBack={() => setView('games')} />
   ) : (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
       {/* لعبة 1 */}
@@ -178,6 +181,19 @@ export const GamesTab: React.FC<Props> = ({ letters }) => {
         <div className="text-right">
           <div className="font-bold text-2xl leading-tight mb-1">حرفوش وحش الحروف</div>
           <div className="text-sm text-[#f0e6ff]">ادخل لعالم حرفوش السحري وأطعمه الحروف وابنِ الكلمات! ✨</div>
+        </div>
+        <span className="text-3xl group-hover:translate-x-1 transition">⬅️</span>
+      </button>
+
+      {/* بوابة لعبة قفز حرفوش */}
+      <button
+        onClick={() => setView('jump')}
+        className="group w-full bg-gradient-to-b from-[#fdcb6e] to-[#f39c12] text-[#2d3436] rounded-[24px_8px_24px_8px] border-[4px] border-double border-[#ff6b6b] p-5 shadow-[6px_6px_0_rgba(0,0,0,0.12)] hover:scale-[1.02] transition flex items-center justify-center gap-4"
+      >
+        <span className="text-5xl drop-shadow group-hover:animate-bounce">🐲</span>
+        <div className="text-right">
+          <div className="font-bold text-2xl leading-tight mb-1">⭐ قفز حرفوش</div>
+          <div className="text-sm text-[#6e3b00]">اقفز بين الغيوم ومنصات الحروف، اجمع النجوم واشترِ قبعات وخلفيات! 🎢✨</div>
         </div>
         <span className="text-3xl group-hover:translate-x-1 transition">⬅️</span>
       </button>
