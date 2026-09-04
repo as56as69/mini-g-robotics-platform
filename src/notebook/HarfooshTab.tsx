@@ -17,10 +17,23 @@ interface Props {
 const ARABIC_LETTERS = Object.keys(BAGHDADI_WORDS);
 
 const reactions = {
-  idle: 'جائوع! أطعموني حرفًا لذيذًا!',
+  idle: 'جائع! أطعموني حرفًا لذيذًا!',
   hungry: 'هممم... ما أكلت حرفًا اليوم!',
-  chew: 'يم يم يم... لذيذ جدًا!',
+  chew: 'يم يم يم... لذيذ جدًا! 🎉',
+  happy: 'رائع! شكرًا يا بطل! 🕺',
+  sad: 'أوتش! هذا ليس صحيحًا... جرّب ثانية!',
 };
+
+const keyframes = `
+@keyframes hf-jump { 0%,100%{transform:translateY(0)} 40%{transform:translateY(-14px) rotate(-6deg)} }
+@keyframes hf-wiggle { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-10deg)} 75%{transform:rotate(10deg)} }
+@keyframes hf-earl { 0%,100%{transform:rotate(-12deg)} 25%{transform:rotate(-28deg)} 75%{transform:rotate(12deg)} }
+@keyframes hf-earr { 0%,100%{transform:rotate(12deg)} 25%{transform:rotate(28deg)} 75%{transform:rotate(-12deg)} }
+`;
+const jumpAnim = { animation: 'hf-jump 0.6s ease' };
+const wiggleAnim = { animation: 'hf-wiggle 0.6s ease' };
+const earLAnim = { animation: 'hf-earl 0.5s ease' };
+const earRAnim = { animation: 'hf-earr 0.5s ease' };
 
 export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
   // ===== نشاط 1: أطعم حرفوش (إكمال الكلمة) =====
@@ -33,6 +46,7 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
   const [feedSolved, setFeedSolved] = useState(false);
 
   const startFeed = () => {
+    setMood('idle');
     const key = ARABIC_LETTERS[Math.floor(Math.random() * ARABIC_LETTERS.length)];
     const w = BAGHDADI_WORDS[key];
     const chars = w.word.split('');
@@ -48,16 +62,18 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
     setFeedColor('#636e72');
   };
 
-  const pickFeed = (opt: string) => {
-    if (feedSolved) return;
+  const pickFeed = (opt: string): string => {
+    if (feedSolved) return 'chew';
     const missing = feedWord.charAt(feedMissing);
     if (opt === missing) {
       setFeedSolved(true);
       setFeedMsg(`🍽️ صحيح! أكل حرفوش حرف "${missing}" وارتاح! الكلمة: ${feedWord} ${feedEmoji}`);
       setFeedColor('#00b894');
+      return 'happy';
     } else {
-      setFeedMsg(`😋 لا... حرفوشهز أذنيه! جرّب حرفًا آخر!`);
+      setFeedMsg(`😋 لا... حرفوش هزّ أذنيه! جرّب حرفًا آخر!`);
       setFeedColor('#ff6b6b');
+      return 'sad';
     }
   };
 
@@ -72,6 +88,7 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
   const [buildSolved, setBuildSolved] = useState(false);
 
   const startBuild = () => {
+    setMood('idle');
     const key = ARABIC_LETTERS[Math.floor(Math.random() * ARABIC_LETTERS.length)];
     const w = BAGHDADI_WORDS[key];
     const chars = w.word.split('');
@@ -85,9 +102,9 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
     setBuildColor('#636e72');
   };
 
-  const pickBuild = (ch: string, origIdx: number) => {
-    if (buildSolved) return;
-    if (buildDisplay[origIdx] === undefined) return;
+  const pickBuild = (ch: string, origIdx: number): string => {
+    if (buildSolved) return 'chew';
+    if (buildDisplay[origIdx] === undefined) return 'chew';
     const expected = buildTarget[buildIdx];
     if (ch === expected) {
       setBuildDisplay((prev) => prev.map((p, i) => (i === origIdx ? '' : p)));
@@ -97,36 +114,43 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
         setBuildSolved(true);
         setBuildMsg(`🎉 رائع! بنيت كلمة "${buildWord}" ${buildEmoji} وأكلها حرفوش!`);
         setBuildColor('#00b894');
+        return 'happy';
       } else {
         setBuildMsg(`👍 أحسنت! اختر التالي (${next + 1}/${buildTarget.length})`);
         setBuildColor('#fdcb6e');
+        return 'chew';
       }
     } else {
       setBuildMsg('😋 لا، هذا ليس الحرف التالي!');
       setBuildColor('#ff6b6b');
+      return 'sad';
     }
   };
 
   // ===== تفاعل الشخصية =====
   const [mood, setMood] = useState<string>('idle');
   const currentMood = useMemo(() => {
-    if (mood === 'chew') return reactions.chew;
+    if (mood === 'chew' || mood === 'happy') return mood === 'happy' ? reactions.happy : reactions.chew;
+    if (mood === 'sad') return reactions.sad;
     if (mood === 'hungry') return reactions.hungry;
     return reactions.idle;
   }, [mood]);
 
   const handleFeedGood = (opt: string) => {
-    setMood('chew');
-    pickFeed(opt);
+    setMood(pickFeed(opt)); // الصحيحة: happy، الخطأ: sad
   };
 
   const handleBuildGood = (ch: string, i: number) => {
-    setMood('chew');
-    pickBuild(ch, i);
+    setMood(pickBuild(ch, i)); // الصحيحة: happy/chew، الخطأ: sad
   };
+
+  const charAnim = mood === 'sad' ? wiggleAnim : mood === 'chew' || mood === 'happy' ? jumpAnim : undefined;
+  const earLeft = mood === 'sad' ? earLAnim : undefined;
+  const earRight = mood === 'sad' ? earRAnim : undefined;
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
+      <style>{keyframes}</style>
       {/* شريط علوي: رجوع + عنوان */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <button
@@ -141,10 +165,10 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
       {/* بطاقة الشخصية */}
       <div className="bg-white rounded-[24px_8px_24px_8px] border-[3px] border-dashed border-[#6c5ce7] p-5 shadow-[5px_5px_0_rgba(0,0,0,0.06)] flex flex-col items-center gap-3 text-center">
         {/* جسم حرفوش (CSS + Emoji) */}
-        <div className="relative w-28 h-28 sm:w-32 sm:h-32">
+        <div className="relative w-28 h-28 sm:w-32 sm:h-32" style={charAnim}>
           {/* الأذنان */}
-          <div className="absolute -top-1 -left-2 w-10 h-14 bg-[#a29bfe] rounded-[100%_20%_50%_50%/100%_80%_40%_40%] -rotate-12 border-[3px] border-[#6c5ce7]" />
-          <div className="absolute -top-1 -right-2 w-10 h-14 bg-[#a29bfe] rounded-[20%_100%_50%_50%/80%_100%_40%_40%] rotate-12 border-[3px] border-[#6c5ce7]" />
+          <div className="absolute -top-1 -left-2 w-10 h-14 bg-[#a29bfe] rounded-[100%_20%_50%_50%/100%_80%_40%_40%] -rotate-12 border-[3px] border-[#6c5ce7]" style={earLeft} />
+          <div className="absolute -top-1 -right-2 w-10 h-14 bg-[#a29bfe] rounded-[20%_100%_50%_50%/80%_100%_40%_40%] rotate-12 border-[3px] border-[#6c5ce7]" style={earRight} />
           {/* القرن */}
           <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-6 h-6 bg-[#fdcb6e] rounded-full border-[3px] border-[#6c5ce7] flex items-center justify-center">⭐</div>
           {/* الجسم */}
