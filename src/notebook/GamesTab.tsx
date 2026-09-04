@@ -17,10 +17,6 @@ export const GamesTab: React.FC<Props> = ({ letters }) => {
   const [view, setView] = useState<'games' | 'harfoosh'>('games');
   const list = letters.length > 0 ? letters : ['أ', 'ب', 'ت'];
 
-  if (view === 'harfoosh') {
-    return <HarfooshTab onBack={() => setView('games')} />;
-  }
-
   // لعبة 1: مطابقة الحرف مع الكلمة
   const [matchLetter, setMatchLetter] = useState<string | null>(null);
   const [matchOptions, setMatchOptions] = useState<string[]>([]);
@@ -125,7 +121,9 @@ export const GamesTab: React.FC<Props> = ({ letters }) => {
     // (الاحتفال البصري يتم عبر شريط النجوم/الميداليات المحدث فوراً)
   };
 
-  return (
+  return view === 'harfoosh' ? (
+    <HarfooshTab onBack={() => setView('games')} />
+  ) : (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
       {/* لعبة 1 */}
       <div className="bg-white rounded-[18px_5px_18px_5px] border-[3px] border-dashed border-[#d4b8a0] p-4 shadow-[5px_5px_0_rgba(0,0,0,0.06)]">
