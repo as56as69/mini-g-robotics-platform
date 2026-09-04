@@ -650,3 +650,34 @@ TOLERANCE 25، Pointer Events، توزيع منتظم للنقاط، touch-actio
 
 ### التحقق
 - `npx tsc --noEmit` ✅ · `npm run build` ✅ · `mgdev.sh` ✅ (vite:200)
+
+## 🚀 خطة التطوير الجزئية — تنفيذ 6 مراحل متكاملة (2026-09-04)
+
+بناءً على خطة مقترحة وُزّعت إلى 6 مراحل:
+
+### المرحلة 1: أداء اللمس (Touch Performance) — ✅
+- `MAX_POINTS = 300` — حد أقصى لعدد النقاط لمنع تراكم الذاكرة.
+- `DRAW_DEBOUNCE = 16` (≈60fps) — تأخير redraw لتقليل إعادة الرسم أثناء السحب السريع.
+- `lastDrawTimeRef` و `lastPointerDrawTimeRef` — تتبع وقت آخر نقطة لكل نوع حدث بشكل مستقل.
+
+### المرحلة 2: ضبط Baseline الكتابة — ✅
+- **قبل**: `cy = h / 2` (منتصف اللوحة الحرفية).
+- **بعد**: `cy = targetRow * ROW_H + ROW_H / 2` — مركز على سطر ثالث من الأسفل.
+- `totalRows = Math.floor(h / ROW_H)` · `targetRow = Math.max(1, totalRows - 2)`.
+
+### المرحلة 3: الحفظ والاستمرارية — ✅ (كانت موجودة بالفعل)
+- `localStorage` فقط (`mg_notebook_progress` + `mg_notebook_students`).
+
+### المرحلة 4: الوصولية (Accessibility) — ✅
+- `role="region/toolbar"` + `aria-label` على الحاويات والأزرار.
+
+### المرحلة 5: التحسينات البصرية (DPR Toggle) — ✅
+- زر "وضوح عالي / وضوح عادي" — DPR mode بحد أقصى 3x + مراقبة تغيّر DPR عبر `matchMedia`.
+
+### المرحلة 6: اختبارات شاملة (QA) — ✅
+- `npx tsc --noEmit` ✅ · `npm run build` ✅ · `mgdev.sh` ✅ (vite:200)
+
+### Commits
+- `05864227` — DPR toggle + تحسينات بصريات + مراقبة تغيّر الدقة
+- `7b0259ca` — أداء اللمس + baseline المسطرة + وصولية
+- `caafa806` — أبعاد دفتر متجاوبة + شريط جانبي يتراص تحت الموبايل
