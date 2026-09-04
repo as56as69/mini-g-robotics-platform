@@ -244,7 +244,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, bg: string, scroll: numbe
 }
 
 /* ══════ الأنواع ══════ */
-interface Platform { x: number; y: number; w: number; kind: 'normal' | 'letter'; letter?: string; isTarget?: boolean; broken: boolean; isGateExit?: boolean; pairY?: number; }
+interface Platform { x: number; y: number; w: number; kind: 'normal' | 'letter'; letter?: string; isTarget?: boolean; broken: boolean; }
 interface StarObj { x: number; y: number; c: string; taken: boolean; }
 interface Balloon { x: number; y: number; letter: string; }
 
@@ -390,8 +390,8 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
 
     /* البناء المشترك: حواجز أصلب (55) + من باب الحين: «اختيار حرفين»
      * - الزوج فوق الحاجز الحالي بـ120 (يُدرك بقفزة عادية)
-     * - «منصة النجاح» فوقه بـ250 (تُدرك فقط بالقفزة السحرية من الحرف الصحيح)
-     * - الحرف الصحيح لا يُستهلك ولا يُحوَّل حتى ينجح الطفل بالهبوط على منصة النجاح
+     * - الحرف الصحيح = نجاح فوري: يتحوَّل الزوج لغُيمة ويُحسب الحرف وتنطلق القفزة السحرية
+     * - «منصة النجاح» فوقها بـ250 منصّة هبوط (تُدرك فقط بالقفزة السحرية بعد الاختيار الصحيح)
      */
     const spawnNext = () => {
       phase++;
@@ -401,7 +401,7 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
         addLetterPair(pairY, pair[0], pair[1]);
         addStar(pairY - 148, 10 + Math.random() * (W - 20));
         front -= 370;
-        platforms.push({ x: 10 + Math.random() * (W - PLAT_W - 20), y: front, w: PLAT_W, kind: 'normal', broken: false, isGateExit: true, pairY });
+        platforms.push({ x: 10 + Math.random() * (W - PLAT_W - 20), y: front, w: PLAT_W, kind: 'normal', broken: false });
       } else {
         front -= STEP;
         addPlatform(front, 'normal');
@@ -459,10 +459,11 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
       confetti({ particleCount: 90, spread: 100, origin: { y: 0.35 } });
     };
 
-    /* النجاح في الاختيار: الهبوط على «منصة النجاح» → يُتحوَّل الزوج لغُيمة ويُحسب الحرف */
-    const onGateSuccess = (p: Platform) => {
+    /* النجاح في الاختيار: الهبوط على الحرف الأخضر → يتحوَّل الزوج لغُيمة ويُحسب الحرف
+     * (النجاح لحظة الاختيار الصحيح مباشرة، لا عند «منصة النجاح» التي تُحجب بغيمة فوقها) */
+    const onGateSuccess = (pairY: number) => {
       for (const pf of platforms) {
-        if (pf.kind === 'letter' && pf.y === p.pairY) {
+        if (pf.kind === 'letter' && pf.y === pairY) {
           pf.kind = 'normal'; pf.isTarget = false; pf.letter = undefined; pf.w = PLAT_W;
         }
       }
@@ -471,7 +472,7 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
       sessionStars.current += 1;
       addStars(1);
       if (sfx && soundRef.current) sfx.coin();
-      confetti({ particleCount: 30, spread: 55, origin: { x: px / W, y: Math.max(0, p.y - camY) / H } });
+      confetti({ particleCount: 30, spread: 55, origin: { x: px / W, y: Math.max(0, pairY - camY) / H } });
       if (solved >= SOLVED_PER_STAGE) advanceStage();
     };
 
@@ -626,9 +627,9 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
         if (hit) {
           if (hit.kind === 'letter') {
             if (hit.isTarget) {
-              // الحرف الصحيح: قفزة سحرية (والأخضر يبقى ليعيد المحاولة حتى النجاح)
+              // الحرف الصحيح = نجاح فوري: يتحوَّل الزوج لغُيمة، يُحسب الحرف، وتنطلق القفزة السحرية
               vy = MEGA_VY;
-              scoreRef.current += 20;
+              onGateSuccess(hit.y);
               bodyColor = letterColor(hit.letter || '');
               if (sfx && soundRef.current) sfx.correct();
               confetti({ particleCount: 25, spread: 45, origin: { x: px / W, y: Math.max(0, hit.y - camY) / H } });
@@ -636,9 +637,6 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
               vy = JUMP_VY;
               if (sfx && soundRef.current) sfx.retry();
             }
-          } else if (hit.isGateExit) {
-            vy = JUMP_VY;
-            onGateSuccess(hit);
           } else {
             vy = JUMP_VY;
             if (sfx && soundRef.current) sfx.jump();
