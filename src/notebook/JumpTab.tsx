@@ -204,7 +204,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, bg: string, scroll: numbe
       break;
     }
     default: {
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fillStyle = 'rgba(150,125,235,0.16)';
       cloud(60, mod(scroll * 1.2, H), 1); cloud(260 + mod(scroll * 1.5 + 40, 220), mod(scroll * 1.5 + 320, H) - 40, 1.1);
       ctx.fillStyle = 'rgba(253,203,110,0.5)';
       ctx.beginPath(); ctx.arc(318, 60, 24, 0, Math.PI * 2); ctx.fill();
@@ -405,22 +405,23 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
     /* ── رسم منصة ── */
     const drawPlatform = (p: Platform) => {
       const sy = p.y - camY;
-      if (sy < -40 || sy > H + 40 || p.broken) return;
-      ctx.lineWidth = 2.5; ctx.strokeStyle = '#2b2a33';
+      if (sy < -80 || sy > H + 80 || p.broken) return;
+      const x = p.x, w = p.w;
       if (p.kind === 'normal') {
-        ctx.fillStyle = '#f0e6ff';
-        const x = p.x, w = p.w;
+        ctx.lineWidth = 2.5; ctx.strokeStyle = '#6c5ce7';
+        ctx.fillStyle = '#c9b6ff';
         ctx.beginPath();
         ctx.moveTo(x, sy);
         ctx.quadraticCurveTo(x, sy - 12, x + w / 2, sy - 5);
         ctx.quadraticCurveTo(x + w, sy - 12, x + w, sy);
         ctx.closePath(); ctx.fill(); ctx.stroke();
-        ctx.strokeStyle = 'rgba(108,92,231,0.3)'; ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.5; ctx.strokeStyle = '#5a4bbf';
         ctx.beginPath(); ctx.moveTo(x + 7, sy + 3); ctx.lineTo(x + w - 7, sy + 3); ctx.stroke();
       } else {
-        const cx = p.x + p.w / 2;
-        ctx.fillStyle = p.isTarget ? '#7dffa1' : '#ffd1dc';
-        ctx.beginPath(); ctx.arc(cx, sy, p.w / 2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        const cx = x + w / 2;
+        ctx.lineWidth = 2.5; ctx.strokeStyle = '#2b2a33';
+        ctx.fillStyle = p.isTarget ? '#2ecc71' : '#ff6b6b';
+        ctx.beginPath(); ctx.arc(cx, sy, w / 2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         ctx.fillStyle = '#2b2a33';
         ctx.font = "900 21px 'Cairo', sans-serif";
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
