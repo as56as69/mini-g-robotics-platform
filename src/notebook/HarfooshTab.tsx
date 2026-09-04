@@ -64,21 +64,21 @@ const HarfooshFigure: React.FC<{ mood: string }> = ({ mood }) => {
     const lin = (o: Record<string, unknown>) => ({ seed: 101202, roughness: 1.9, bowing: 1.6, ...o });
 
     // القدمان (خلف الجسم)
-    group.appendChild(rc.ellipse(64, 152, 26, 18, lin({ fill: BODY, fillStyle: 'zigzag', stroke: INK, strokeWidth: 2.6, seed: 11 })));
-    group.appendChild(rc.ellipse(96, 152, 26, 18, lin({ fill: BODY, fillStyle: 'zigzag', stroke: INK, strokeWidth: 2.6, seed: 12 })));
-    // الأذنان (خلف الجسم، متماثلتان وبارزتان خارج الجسم)
-    group.appendChild(rc.ellipse(34, 42, 20, 30, lin({ fill: EAR, fillStyle: 'zigzag', stroke: INK, strokeWidth: 2.8, seed: 13 })));
-    group.appendChild(rc.ellipse(126, 42, 20, 30, lin({ fill: EAR, fillStyle: 'zigzag', stroke: INK, strokeWidth: 2.8, seed: 14 })));
+    group.appendChild(rc.ellipse(64, 152, 26, 18, lin({ fill: BODY, fillStyle: 'solid', stroke: INK, strokeWidth: 2.6, seed: 11 })));
+    group.appendChild(rc.ellipse(96, 152, 26, 18, lin({ fill: BODY, fillStyle: 'solid', stroke: INK, strokeWidth: 2.6, seed: 12 })));
+    // الأذنان (خلف الجسم، كبيرة ومتّصلتان بالرأس/الجسم)
+    group.appendChild(rc.ellipse(40, 50, 30, 42, lin({ fill: EAR, fillStyle: 'solid', stroke: INK, strokeWidth: 3, seed: 13 })));
+    group.appendChild(rc.ellipse(120, 50, 30, 42, lin({ fill: EAR, fillStyle: 'solid', stroke: INK, strokeWidth: 3, seed: 14 })));
     // القرنان الشمعيان
     group.appendChild(rc.path('M72 26 Q80 4 88 26 Z', lin({ fill: CRAYON, fillStyle: 'hachure', stroke: INK, strokeWidth: 2.4, seed: 15 })));
     group.appendChild(rc.path('M68 28 Q80 10 92 28 Z', lin({ fill: CRAYON, fillStyle: 'hachure', stroke: INK, strokeWidth: 2, seed: 16 })));
-    // الجسم: بيضاوي كروي ناعم منظّم (مقدّم، فوق الأذنين)
-    group.appendChild(rc.ellipse(80, 92, 92, 120, lin({ fill: BODY, fillStyle: 'hachure', stroke: INK, strokeWidth: 3.2, seed: 17 })));
+    // الجسم: بيضاوي كروي ناعم منظّم (تعبية صلبة معتمة تباين مع الخلفية)
+    group.appendChild(rc.ellipse(80, 92, 92, 120, lin({ fill: BODY, fillStyle: 'solid', stroke: INK, strokeWidth: 3.2, seed: 17 })));
     // اليدان (زوائد قصيرة)
     group.appendChild(rc.line(40, 110, 26, 122, lin({ stroke: INK, strokeWidth: 3, seed: 18 })));
     group.appendChild(rc.line(120, 110, 134, 122, lin({ stroke: INK, strokeWidth: 3, seed: 19 })));
-    group.appendChild(rc.circle(25, 123, 5, lin({ fill: BODY, fillStyle: 'zigzag', stroke: INK, strokeWidth: 2, seed: 20 })));
-    group.appendChild(rc.circle(135, 123, 5, lin({ fill: BODY, fillStyle: 'zigzag', stroke: INK, strokeWidth: 2, seed: 21 })));
+    group.appendChild(rc.circle(25, 123, 5, lin({ fill: BODY, fillStyle: 'solid', stroke: INK, strokeWidth: 2, seed: 20 })));
+    group.appendChild(rc.circle(135, 123, 5, lin({ fill: BODY, fillStyle: 'solid', stroke: INK, strokeWidth: 2, seed: 21 })));
     // بياض العينين (متماثلان)
     group.appendChild(rc.ellipse(eyeL.x, eyeL.y, eyeL.r * 2, eyeL.r * 2, lin({ fill: PAPER, fillStyle: 'solid', stroke: INK, strokeWidth: 2.6, seed: 22 })));
     group.appendChild(rc.ellipse(eyeR.x, eyeR.y, eyeR.r * 2, eyeR.r * 2, lin({ fill: PAPER, fillStyle: 'solid', stroke: INK, strokeWidth: 2.6, seed: 23 })));
@@ -267,7 +267,7 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
       >
         {/* هالة شمعية خلف الشخصية */}
         <div className="relative w-44 h-auto">
-          <div className="absolute -inset-3 bg-[#ffd93d]/40 rounded-[60%_50%_55%_45%/50%_60%_45%_55%] -rotate-6" aria-hidden />
+          <div className="absolute -inset-3 bg-white rounded-[60%_50%_55%_45%/50%_60%_45%_55%] -rotate-6 shadow-[0_2px_0_rgba(0,0,0,0.05)]" aria-hidden />
           <HarfooshFigure mood={mood} />
         </div>
 
