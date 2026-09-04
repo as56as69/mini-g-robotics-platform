@@ -158,9 +158,10 @@ function drawHat(ctx: CanvasRenderingContext2D, hat: string) {
 
 /* ══════ رسم الخلفيات ══════ */
 function drawBackground(ctx: CanvasRenderingContext2D, bg: string, scroll: number) {
+  const mod = (v: number, m: number) => ((v % m) + m) % m;
   ctx.fillStyle = '#fffdf7'; ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = 'rgba(180,160,220,0.16)'; ctx.lineWidth = 1;
-  const off = scroll % 28;
+  const off = mod(scroll, 28);
   for (let y = -off; y < H; y += 28) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
   ctx.fillStyle = 'rgba(108,92,231,0.06)'; ctx.fillRect(0, 0, 18, H);
   const cloud = (x: number, y: number, s: number) => {
@@ -181,7 +182,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, bg: string, scroll: numbe
     }
     case 'bg_garden': {
       for (let i = 0; i < 7; i++) {
-        const x = (i * 60 + ((scroll * 0.6) % 60)) - 20;
+        const x = (i * 60 + mod(scroll * 0.6, 60)) - 20;
         ctx.fillStyle = '#2ecc71'; ctx.fillRect(x, H - 90, 22, 90);
         ctx.fillStyle = '#27ae60';
         ctx.beginPath(); ctx.arc(x + 11, H - 96, 20, 0, Math.PI * 2); ctx.fill();
@@ -193,7 +194,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, bg: string, scroll: numbe
       g.addColorStop(0, '#2c3e50'); g.addColorStop(1, '#1a1a2e');
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
       ctx.fillStyle = '#fdcb6e';
-      ctx.beginPath(); ctx.arc((scroll * 0.2) % W, 70, 22, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(mod(scroll * 0.2, W), 70, 22, 0, Math.PI * 2); ctx.fill();
       for (let i = 0; i < 16; i++) { ctx.fillStyle = '#fff'; ctx.fillRect((i * 29) % W, (i * 47) % H, 2, 2); }
       break;
     }
@@ -204,7 +205,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, bg: string, scroll: numbe
     }
     default: {
       ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      cloud(60, (scroll * 1.2) % H, 1); cloud(260 + ((scroll * 1.5 + 40) % 220), ((scroll * 1.5 + 320) % H) - 40, 1.1);
+      cloud(60, mod(scroll * 1.2, H), 1); cloud(260 + mod(scroll * 1.5 + 40, 220), mod(scroll * 1.5 + 320, H) - 40, 1.1);
       ctx.fillStyle = 'rgba(253,203,110,0.5)';
       ctx.beginPath(); ctx.arc(318, 60, 24, 0, Math.PI * 2); ctx.fill();
       break;
@@ -296,10 +297,9 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
     let frameCount = 0;
 
     // حالة اللعبة (داخل الحلقة)
-    let px = W / 2, py = H - 120, vy = 0, camY = 0, phase = 0;
+    let px = W / 2, py = H - 120, vy = 0, camY = 0, phase = 0, topY = 0, maxClimb = 0;
     let platforms: Platform[] = [];
     let starsArr: StarObj[] = [];
-    let nextGenY = 0;
     let bodyColor = '#6c5ce7';
     const BODY_COLORS = ['#6c5ce7', '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c'];
     const STAR_COLORS = ['#FF4B4B', '#F39C12', '#2EA44F', '#2E86DE', '#9B59B6', '#E91E63'];
@@ -317,10 +317,19 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
       return [t, d];
     };
 
-    const addPlatform = (y: number, kind: 'normal' | 'letter' = 'normal', letter?: string, isTarget?: boolean) => {
+    const addPlatform = (y: number, kind: 'normal' | 'letter' = 'normal', letter?: string, isTarget?: boolean, xC?: number) => {
       const w = kind === 'letter' ? 54 : 66;
-      const x = 10 + Math.random() * (W - w - 20);
+      const x = xC ?? (10 + Math.random() * (W - w - 20));
       platforms.push({ x, y, w, kind, letter, isTarget, broken: false });
+    };
+
+    /* زوج منصّتي حروف في فتحتين متباعدتين (يسار/يمين) لسهولة الاختيار */
+    const addLetterPair = (y: number, t: string, d: string) => {
+      const w = 54;
+      const left = Math.random() < 0.5 ? t : d;
+      const right = left === t ? d : t;
+      addPlatform(y, 'letter', left, left === t, 20);
+      addPlatform(y, 'letter', right, right === t, W - w - 20);
     };
 
     const addStar = (y: number, x?: number) => {
@@ -329,40 +338,33 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
 
     const reset = () => {
       platforms = []; starsArr = [];
-      px = W / 2; py = H - 120; vy = 0; camY = 0; phase = 0;
+      px = W / 2; py = H - 120; vy = 0; camY = 0; phase = 0; maxClimb = 0;
       bodyColor = '#6c5ce7';
-      addPlatform(H - 20, 'normal');
+      addPlatform(H - 20, 'normal', undefined, undefined, (W - 66) / 2);
       let y = H - 100;
-      let pair = pickRound();
       for (let i = 0; i < 22; i++) {
         y -= 70;
         if (i > 4 && i % 6 === 0) {
-          pair = pickRound();
-          addPlatform(y, 'letter', pair[0], true);
-          addPlatform(y, 'letter', pair[1], false);
+          const pair = pickRound();
+          addLetterPair(y, pair[0], pair[1]);
           addStar(y - 28, (10 + Math.random() * (W - 20)));
         } else {
           addPlatform(y, 'normal');
           if (Math.random() < 0.3) addStar(y - 28);
         }
       }
-      nextGenY = y;
+      topY = y;
     };
 
-    /* الحرف المطلوب = الحرف على أقرب منصة حروف محققة لم يمرّرها اللاعب */
+    /* الحرف المطلوب = الأقرب عالميًا (قبل اللاعب) على منصة حروف صحيحة لم تمرّ */
     const nearestTarget = (): string | null => {
       const candidates = platforms.filter((p) => p.kind === 'letter' && p.isTarget && !p.broken);
       if (!candidates.length) return null;
       let best: Platform | null = null;
       for (const c of candidates) {
-        const screenY = c.y - camY;
         if (!best) { best = c; continue; }
-        const bScreenY = best.y - camY;
-        // اختر المنصة الأقرب فوق اللاعب (أعلى screenY لم تتجاوز اللاعب بفارق صغير)
-        const a = screenY <= py + 40 ? screenY : Infinity;
-        const b = bScreenY <= py + 40 ? bScreenY : Infinity;
-        if (a !== Infinity && (b === Infinity || a > b)) { best = c; continue; }
-        if (a === Infinity && b === Infinity && screenY > bScreenY) best = c;
+        const dc = Math.abs(c.y - py), db = Math.abs(best.y - py);
+        if (dc < db || (dc === db && c.y < best.y)) best = c;
       }
       return best.letter || null;
     };
@@ -449,58 +451,62 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
       vy += GRAVITY;
       py += vy;
 
-      // الهبوط على منصة
+      // الهبوط على منصة (الأقرب أسفل أولًا)
       if (vy > 0) {
+        let hit: Platform | null = null;
         for (const p of platforms) {
           if (p.broken) continue;
           const bottom = py + PR, prevBottom = py - vy + PR;
           if (bottom >= p.y && prevBottom <= p.y && px + PR > p.x && px - PR < p.x + p.w) {
-            if (p.kind === 'letter') {
-              if (p.isTarget) {
-                vy = MEGA_VY;
-                scoreRef.current += 40;
-                bodyColor = letterColor(p.letter || '');
-                if (sfx && soundRef.current) sfx.correct();
-                confetti({ particleCount: 40, spread: 60, origin: { x: px / W, y: Math.max(0, p.y - camY) / H } });
-              } else {
-                p.broken = true;
-                vy = 2;
-                bodyColor = '#888';
-                if (sfx && soundRef.current) sfx.breakP();
-              }
+            if (!hit || p.y < hit.y) hit = p;
+          }
+        }
+        if (hit) {
+          if (hit.kind === 'letter') {
+            if (hit.isTarget) {
+              vy = MEGA_VY;
+              scoreRef.current += 40;
+              bodyColor = letterColor(hit.letter || '');
+              hit.kind = 'normal'; hit.isTarget = false; hit.letter = undefined; hit.w = 66;
+              if (sfx && soundRef.current) sfx.correct();
+              confetti({ particleCount: 40, spread: 60, origin: { x: px / W, y: Math.max(0, hit.y - camY) / H } });
             } else {
-              vy = JUMP_VY;
-              if (sfx && soundRef.current) sfx.jump();
+              hit.broken = true;
+              vy = 2;
+              bodyColor = '#888';
+              if (sfx && soundRef.current) sfx.breakP();
             }
-            break;
+          } else {
+            vy = JUMP_VY;
+            if (sfx && soundRef.current) sfx.jump();
           }
         }
       }
 
-      // الصعود وتحريك الكاميرا
-      const threshold = H * 0.45;
-      if (py < threshold) {
-        const diff = threshold - py;
-        py = threshold;
-        camY += diff;
-        if (camY > nextGenY) {
-          nextGenY -= 70;
-          phase++;
-          if (phase % 7 === 0) {
-            const pair = pickRound();
-            addPlatform(nextGenY - 40, 'letter', pair[0], true);
-            addPlatform(nextGenY - 40, 'letter', pair[1], false);
-            addStar(nextGenY - 68, 10 + Math.random() * (W - 20));
-          } else {
-            addPlatform(nextGenY - 40, 'normal');
-            if (Math.random() < 0.35) addStar(nextGenY - 68);
-          }
+      // الصعود: إبقاء اللاعب عند مرساة الشاشة وتحرّك الكاميرا للخلف (لأعلى)
+      const anchor = H * 0.45;
+      if (py - camY < anchor) {
+        camY = py - anchor;
+        maxClimb = Math.max(maxClimb, -camY);
+      }
+
+      // توليد منصات من الأعلى لملء الشاشة دائمًا
+      while (topY - camY > -80) {
+        topY -= 70;
+        phase++;
+        if (phase % 7 === 0) {
+          const pair = pickRound();
+          addLetterPair(topY, pair[0], pair[1]);
+          addStar(topY - 28, 10 + Math.random() * (W - 20));
+        } else {
+          addPlatform(topY, 'normal');
+          if (Math.random() < 0.35) addStar(topY - 28);
         }
       }
 
       // جمع النجوم
       for (const st of starsArr) {
-        if (!st.taken && Math.abs(st.y - (py - camY)) < 28 && Math.abs(st.x - px) < 28) {
+        if (!st.taken && Math.abs(st.y - py) < 28 && Math.abs(st.x - px) < 28) {
           st.taken = true;
           sessionStars.current += 1;
           addStars(1);
@@ -518,17 +524,17 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
       ctx.restore();
 
       // حدّث العداد والتقاط الحرف المطلوب (مخفّف: كل 12 إطار)
-      scoreRef.current = Math.max(scoreRef.current, Math.floor(camY / 10));
+      scoreRef.current = Math.max(scoreRef.current, Math.floor(maxClimb / 10));
       if (frameCount % 12 === 0) {
         setLiveScore(Math.floor(scoreRef.current));
         const nt = nearestTarget();
         if (nt) setTarget(nt);
       }
 
-      // تنظيف دوري خفيف: إزالة المنصات/النجوم البعيدة أسفل الشاشة
+      // تنظيف دوري: إزالة المنصات/النجوم خارج نطاق الشاشة
       if (frameCount % 90 === 0) {
-        platforms = platforms.filter((p) => p.y - camY > -40);
-        starsArr = starsArr.filter((st) => st.taken || st.y - camY > -40);
+        platforms = platforms.filter((p) => p.y - camY > -120 && p.y - camY < H + 160);
+        starsArr = starsArr.filter((st) => st.taken || (st.y - camY > -120 && st.y - camY < H + 160));
       }
 
       // السقوط
