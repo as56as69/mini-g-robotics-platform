@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { TAB_NAMES, TabId, MEDALS, LETTERS_ARABIC, LETTERS_ENGLISH, NUMBERS_ARABIC, NUMBERS_ENGLISH, LangMode, CharMode } from './data';
 import { NotebookProvider, useNotebook } from './notebookContext';
-import { letterKey, sessionLetters } from './utils';
+import { sessionLetters } from './utils';
 import { DrawTab } from './DrawTab';
 import { GamesTab } from './GamesTab';
 import { ColoringTab } from './ColoringTab';
@@ -19,16 +19,12 @@ export const NotebookView: React.FC = () => (
 );
 
 function NotebookInner() {
-  const { stars, completed } = useNotebook();
+  const { stars } = useNotebook();
   const [tab, setTab] = useState<TabId>('draw');
   const [lang, setLang] = useState<LangMode>('arabic');
   const [mode, setMode] = useState<CharMode>('letters');
 
   const letters = useMemo(() => sessionLetters(lang, mode, LETTERS_ARABIC, LETTERS_ENGLISH, NUMBERS_ARABIC, NUMBERS_ENGLISH), [lang, mode]);
-
-  // الكلمة المعروضة في الشريط السفلي
-  const currentChar = letters[0] ?? 'أ';
-  const activeLetterCount = Array.from(completed).filter((k) => lang === 'arabic' ? LETTERS_ARABIC.includes(k.split('_')[2]) : LETTERS_ENGLISH.includes(k.split('_')[2])).length;
 
   return (
     <div className="flex-1 min-h-0 flex flex-col" dir="rtl" style={{ background: '#f5e6d3' }}>
@@ -89,26 +85,18 @@ function NotebookInner() {
         </div>
       )}
 
-      {/* شريط الحروف السفلي */}
+      {/* شريط الحروف السفلي — كل الحروف مفتوحة ومتاحة بلا علامات إتمام */}
       <div className="flex-shrink-0 px-2 py-1.5 bg-white/80 border-t-[3px] border-dashed border-[#d4b8a0] flex items-center gap-1.5 overflow-x-auto">
-        {letters.map((ch, i) => {
-          const key = letterKey(lang, mode, ch);
-          const done = completed.has(key);
-          return (
-            <span
-              key={ch}
-              className={`min-w-[30px] h-[30px] flex items-center justify-center font-bold text-sm border-[3px] rounded-[50%_25%_50%_25%] transition relative ${
-                done ? 'bg-[#55efc4] border-[#00b894]' : 'bg-white border-[#d4b8a0]'
-              } ${i === 0 ? 'ring-2 ring-[#6c5ce7]' : ''}`}
-            >
-              {ch}
-              {done && <span className="absolute -top-1.5 -right-1.5 text-[9px]">⭐</span>}
-            </span>
-          );
-        })}
-        <span className="text-[10px] text-[#636e72] mr-auto pl-2 whitespace-nowrap">
-          {activeLetterCount} مكتمل من {letters.length}
-        </span>
+        {letters.map((ch, i) => (
+          <span
+            key={ch}
+            className={`min-w-[30px] h-[30px] flex items-center justify-center font-bold text-sm border-[3px] rounded-[50%_25%_50%_25%] transition ${
+              i === 0 ? 'ring-2 ring-[#6c5ce7]' : 'bg-white border-[#d4b8a0]'
+            }`}
+          >
+            {ch}
+          </span>
+        ))}
       </div>
     </div>
   );

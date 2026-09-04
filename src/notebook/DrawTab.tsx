@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { LETTER_PATHS, LETTERS_ARABIC, LETTERS_ENGLISH, NUMBERS_ARABIC, NUMBERS_ENGLISH, CELEBRATION_MESSAGES, BAGHDADI_WORDS, LangMode, CharMode } from './data';
-import { useNotebook } from './notebookContext';
+import { LETTER_PATHS, LETTERS_ARABIC, LETTERS_ENGLISH, NUMBERS_ARABIC, NUMBERS_ENGLISH, BAGHDADI_WORDS, LangMode, CharMode } from './data';
 import { letterKey } from './utils';
 
 /* كود ماجيك بالتفت — تبويب الرسم (تتبع الحروف)
@@ -25,26 +24,19 @@ interface Props {
   const DRAW_DEBOUNCE = 16;    // تأخير redraw بالمللي ثانية (≈60fps)
 
 export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
-  const { completed, addCompleted, addStars } = useNotebook();
-
   const list = mode === 'numbers'
     ? (lang === 'arabic' ? NUMBERS_ARABIC : NUMBERS_ENGLISH)
     : (lang === 'arabic' ? LETTERS_ARABIC : LETTERS_ENGLISH);
   const session = list;
 
   const [index, setIndex] = useState(0);
-  const [hasDrawn, setHasDrawn] = useState(false);
-  const [celebration, setCelebration] = useState<string | null>(null);
   const [dprMode, setDprMode] = useState(false); // false = CSS 1:1 (آمن)، true = DPR (أوضح على Retina)
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const isDrawing = useRef(false);
-  const hasDrawnRef = useRef(false);
   const pointsRef = useRef<Array<{ x: number; y: number }>>([]);
 
   const char = session[index] ?? session[0];
-  const key = letterKey(lang, mode, char);
-  const isDone = completed.has(key);
   const path = LETTER_PATHS[char];
 
   /* --- آلة رسم الكانفس (نمط دقيق من «دفتر ماجيك كود.html» المُثبت) ---
@@ -186,8 +178,6 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
 
   // إعادة ضبط عند تغيير الحرف/اللغة/الوضع
   useEffect(() => {
-    setHasDrawn(false);
-    hasDrawnRef.current = false;
     pointsRef.current = [];
     clearCanvas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -227,30 +217,14 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     return { x: clientX - rect.left, y: clientY - rect.top };
   };
 
+  // نهاية الرسم — تُسنّد isDrawing فقط (لا إتمام/تقييم/رسائل/انتقال)
   const finish = () => {
-    if (!isDrawing.current) return;
     isDrawing.current = false;
-    if (hasDrawnRef.current && pointsRef.current.length >= 5 && !completed.has(key)) {
-      addCompleted(key);
-      addStars(1);
-      const msg = CELEBRATION_MESSAGES[Math.floor(Math.random() * CELEBRATION_MESSAGES.length)];
-      setCelebration(msg);
-      setTimeout(() => {
-        setCelebration(null);
-        setHasDrawn(false);
-        hasDrawnRef.current = false;
-        pointsRef.current = [];
-        clearCanvas();
-        if (index < session.length - 1) { setIndex(index + 1); }
-      }, 1500);
-    }
   };
 
   const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const { x, y } = getPos(e.clientX, e.clientY);
     isDrawing.current = true;
-    hasDrawnRef.current = true;
-    setHasDrawn(true);
     pointsRef.current = [];
     drawPoint(x, y);
   };
@@ -279,8 +253,6 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     const t = e.touches[0];
     const { x, y } = getPos(t.clientX, t.clientY);
     isDrawing.current = true;
-    hasDrawnRef.current = true;
-    setHasDrawn(true);
     pointsRef.current = [];
     drawPoint(x, y);
     lastDrawTimeRef.current = Date.now();
@@ -366,18 +338,7 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
             {/* شريط المعلومات فوق الكانفس */}
             <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center px-3 py-2 bg-white/0 pointer-events-none">
               <span className="bg-white/80 px-2 py-0.5 rounded-lg text-xs font-bold text-[#2d3436]">{index + 1} من {total}</span>
-              {isDone && <span className="bg-[#00b894] text-white px-2 py-0.5 rounded-full text-xs font-bold">⭐ متقن</span>}
             </div>
-
-            {celebration && (              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/10 backdrop-blur-[2px]">
-                <div className="bg-white rounded-[20px_8px_20px_8px] border-4 border-dashed border-[#6c5ce7] px-6 py-4 text-center animate-bounce">
-                  <div className="text-4xl">🎉</div>
-                  <div className="text-lg font-bold text-[#2d3436] mt-1">ممتاز! {char}</div>
-                  <div className="text-sm text-[#6c5ce7]">{word?.emoji} {word?.word}</div>
-                  <div className="text-xs text-[#636e72] mt-1">{celebration}</div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -405,7 +366,7 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
               aria-label="حرف عشوائي"
             >🔀 عشوائي</button>
             <button 
-              onClick={() => { setHasDrawn(false); hasDrawnRef.current = false; pointsRef.current = []; clearCanvas(); }} 
+              onClick={() => { pointsRef.current = []; clearCanvas(); }} 
               className="font-bold px-2 py-2 bg-[#ff7675] text-white rounded-[20px_5px_20px_5px] border-[3px] border-[#d63031] text-xs"
               aria-label="مسح الرسم"
             >🗑️ مسح</button>
