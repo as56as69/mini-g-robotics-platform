@@ -41,6 +41,20 @@ const EAR = '#a78bfa';
 const CRAYON = '#ffd93d';
 const PAPER = '#fffdf7';
 
+/* ── لوحة ألوان مبهجة لكل حرف (Child-Friendly Palette) ── */
+const LETTER_COLORS = ['#FF4B4B', '#F39C12', '#2EA44F', '#2E86DE', '#9B59B6', '#1ABC9C', '#E91E63'];
+const colorFor = (i: number) => LETTER_COLORS[i % LETTER_COLORS.length];
+
+/* حرف واحد بلون مختلف + توهج + قفزة تفاعلية */
+const Letter: React.FC<{ i: number; children: React.ReactNode; className?: string }> = ({ i, children, className = '' }) => (
+  <span
+    className={`inline-block transition-transform hover:-translate-y-0.5 hover:scale-110 ${className}`}
+    style={{ color: colorFor(i), textShadow: `0 1px 6px ${colorFor(i)}55`, fontWeight: 800 }}
+  >
+    {children}
+  </span>
+);
+
 /* ── شخصية حرفوش: وحش خربشاتي SVG (blob ببذرة) + rough.js + عينان تتبعان ── */
 const HarfooshFigure: React.FC<{ mood: string }> = ({ mood }) => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -294,19 +308,26 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
           <span className="text-4xl font-bold text-[#6c5ce7]" dir="rtl">
             {feedWord.split('').map((c, i) =>
               i === feedMissing ? (
-                <span key={i} className="w-8 inline-block border-b-4 border-dotted border-[#6c5ce7] mx-1 text-center">{feedSolved ? c : '؟'}</span>
+                <span
+                  key={i}
+                  className="inline-block w-8 mx-1 text-center border-b-4 border-dotted text-[#6c5ce7]"
+                  style={{ color: colorFor(i), borderColor: colorFor(i) }}
+                >
+                  {feedSolved ? <Letter i={i}>{c}</Letter> : '؟'}
+                </span>
               ) : (
-                <span key={i}>{c}</span>
+                <Letter key={i} i={i}>{c}</Letter>
               )
             )}
           </span>
         </div>
         <div className="flex flex-wrap gap-2 justify-center mt-3">
-          {feedOptions.map((o) => (
+          {feedOptions.map((o, oi) => (
             <button
               key={o}
               onClick={() => handleFeedGood(o)}
-              className="font-bold text-xl px-5 py-2 bg-[#f8f4f0] text-[#2d3436] border-[3px] border-[#d4b8a0] shadow-[3px_3px_0_#e6d6c2] rounded-[30px_8px_30px_8px] hover:border-[#6c5ce7] transition"
+              className="font-bold text-2xl px-5 py-2 border-[3px] shadow-[3px_3px_0_rgba(0,0,0,0.12)] rounded-[30px_8px_30px_8px] hover:scale-105 transition"
+              style={{ color: '#fff', backgroundColor: colorFor(oi), borderColor: colorFor(oi), textShadow: '0 1px 2px rgba(0,0,0,0.25)' }}
             >
               {o}
             </button>
@@ -326,7 +347,12 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
           <div className="flex flex-wrap gap-2 justify-center">
             {buildDisplay.map((ch, i) =>
               ch ? (
-                <button key={`${ch}-${i}`} onClick={() => handleBuildGood(ch, i)} className="font-bold text-xl w-11 h-11 bg-[#f8f4f0] text-[#2d3436] border-[3px] border-[#d4b8a0] shadow-[3px_3px_0_#e6d6c2] rounded-[50%_25%_50%_25%] hover:border-[#6c5ce7] transition">
+                <button
+                  key={`${ch}-${i}`}
+                  onClick={() => handleBuildGood(ch, i)}
+                  className="font-bold text-2xl w-12 h-12 border-[3px] shadow-[3px_3px_0_rgba(0,0,0,0.12)] rounded-[50%_25%_50%_25%] hover:scale-110 transition"
+                  style={{ color: '#fff', backgroundColor: colorFor(i), borderColor: colorFor(i), textShadow: '0 1px 2px rgba(0,0,0,0.25)' }}
+                >
                   {ch}
                 </button>
               ) : (
@@ -338,7 +364,9 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
         {/* الكلمة المبنية */}
         <div className="flex flex-wrap justify-center gap-1 mt-3 min-h-[40px]">
           {buildTarget.map((c, i) => (
-            <span key={i} className="font-bold text-3xl text-[#00b894]" style={{ display: i < buildIdx ? 'inline' : 'none' }}>{c}</span>
+            <span key={i} style={{ display: i < buildIdx ? 'inline' : 'none' }}>
+              <Letter i={i} className="text-3xl">{c}</Letter>
+            </span>
           ))}
         </div>
         <div className="text-center text-sm font-bold my-2" style={{ color: buildColor }}>{buildMsg}</div>
