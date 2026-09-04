@@ -55,8 +55,8 @@ const Letter: React.FC<{ i: number; children: React.ReactNode; className?: strin
   </span>
 );
 
-/* ── شخصية حرفوش: وحش خربشاتي SVG (blob ببذرة) + rough.js + عينان تتبعان ── */
-const HarfooshFigure: React.FC<{ mood: string }> = ({ mood }) => {
+/* ── شخصية حرفوش: وحش خربشاتي SVG + rough.js + عينان تتبعان + لون الجسم حسب الحرف المختار ── */
+const HarfooshFigure: React.FC<{ mood: string; color?: string }> = ({ mood, color = BODY }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const roughRef = useRef<SVGGElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -78,21 +78,21 @@ const HarfooshFigure: React.FC<{ mood: string }> = ({ mood }) => {
     const lin = (o: Record<string, unknown>) => ({ seed: 101202, roughness: 1.9, bowing: 1.6, ...o });
 
     // القدمان (خلف الجسم)
-    group.appendChild(rc.ellipse(64, 152, 26, 18, lin({ fill: BODY, fillStyle: 'solid', stroke: INK, strokeWidth: 2.6, seed: 11 })));
-    group.appendChild(rc.ellipse(96, 152, 26, 18, lin({ fill: BODY, fillStyle: 'solid', stroke: INK, strokeWidth: 2.6, seed: 12 })));
+    group.appendChild(rc.ellipse(64, 152, 26, 18, lin({ fill: color, fillStyle: 'solid', stroke: INK, strokeWidth: 2.6, seed: 11 })));
+    group.appendChild(rc.ellipse(96, 152, 26, 18, lin({ fill: color, fillStyle: 'solid', stroke: INK, strokeWidth: 2.6, seed: 12 })));
     // الأذنان (خلف الجسم، كبيرة ومتّصلتان بالرأس/الجسم)
     group.appendChild(rc.ellipse(40, 50, 30, 42, lin({ fill: EAR, fillStyle: 'solid', stroke: INK, strokeWidth: 3, seed: 13 })));
     group.appendChild(rc.ellipse(120, 50, 30, 42, lin({ fill: EAR, fillStyle: 'solid', stroke: INK, strokeWidth: 3, seed: 14 })));
     // القرنان الشمعيان
     group.appendChild(rc.path('M72 26 Q80 4 88 26 Z', lin({ fill: CRAYON, fillStyle: 'hachure', stroke: INK, strokeWidth: 2.4, seed: 15 })));
     group.appendChild(rc.path('M68 28 Q80 10 92 28 Z', lin({ fill: CRAYON, fillStyle: 'hachure', stroke: INK, strokeWidth: 2, seed: 16 })));
-    // الجسم: بيضاوي كروي ناعم منظّم (تعبية صلبة معتمة تباين مع الخلفية)
-    group.appendChild(rc.ellipse(80, 92, 92, 120, lin({ fill: BODY, fillStyle: 'solid', stroke: INK, strokeWidth: 3.2, seed: 17 })));
+    // الجسم: بيضاوي كروي ناعم منظّم (لون حسب الحرف المختار)
+    group.appendChild(rc.ellipse(80, 92, 92, 120, lin({ fill: color, fillStyle: 'solid', stroke: INK, strokeWidth: 3.2, seed: 17 })));
     // اليدان (زوائد قصيرة)
     group.appendChild(rc.line(40, 110, 26, 122, lin({ stroke: INK, strokeWidth: 3, seed: 18 })));
     group.appendChild(rc.line(120, 110, 134, 122, lin({ stroke: INK, strokeWidth: 3, seed: 19 })));
-    group.appendChild(rc.circle(25, 123, 5, lin({ fill: BODY, fillStyle: 'solid', stroke: INK, strokeWidth: 2, seed: 20 })));
-    group.appendChild(rc.circle(135, 123, 5, lin({ fill: BODY, fillStyle: 'solid', stroke: INK, strokeWidth: 2, seed: 21 })));
+    group.appendChild(rc.circle(25, 123, 5, lin({ fill: color, fillStyle: 'solid', stroke: INK, strokeWidth: 2, seed: 20 })));
+    group.appendChild(rc.circle(135, 123, 5, lin({ fill: color, fillStyle: 'solid', stroke: INK, strokeWidth: 2, seed: 21 })));
     // بياض العينين (متماثلان)
     group.appendChild(rc.ellipse(eyeL.x, eyeL.y, eyeL.r * 2, eyeL.r * 2, lin({ fill: PAPER, fillStyle: 'solid', stroke: INK, strokeWidth: 2.6, seed: 22 })));
     group.appendChild(rc.ellipse(eyeR.x, eyeR.y, eyeR.r * 2, eyeR.r * 2, lin({ fill: PAPER, fillStyle: 'solid', stroke: INK, strokeWidth: 2.6, seed: 23 })));
@@ -111,7 +111,7 @@ const HarfooshFigure: React.FC<{ mood: string }> = ({ mood }) => {
 
     anchor.appendChild(group);
     return () => { anchor.removeChild(group); };
-  }, []);
+  }, [color]);
 
   // تتبع المؤشر/الإصبع — البؤبؤان يتحركان داخل العينين
   const handlePointer = (e: React.PointerEvent) => {
@@ -163,6 +163,7 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
 
   const startFeed = () => {
     setMood('idle');
+    setBodyColor(BODY);
     const key = ARABIC_LETTERS[Math.floor(Math.random() * ARABIC_LETTERS.length)];
     const w = BAGHDADI_WORDS[key];
     const chars = w.word.split('');
@@ -205,6 +206,7 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
 
   const startBuild = () => {
     setMood('idle');
+    setBodyColor(BODY);
     const key = ARABIC_LETTERS[Math.floor(Math.random() * ARABIC_LETTERS.length)];
     const w = BAGHDADI_WORDS[key];
     const chars = w.word.split('');
@@ -245,6 +247,7 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
 
   // ===== تفاعل الشخصية =====
   const [mood, setMood] = useState<string>('idle');
+  const [bodyColor, setBodyColor] = useState<string>(BODY);
   const currentMood = useMemo(() => {
     if (mood === 'chew' || mood === 'happy') return mood === 'happy' ? reactions.happy : reactions.chew;
     if (mood === 'sad') return reactions.sad;
@@ -252,11 +255,13 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
     return reactions.idle;
   }, [mood]);
 
-  const handleFeedGood = (opt: string) => {
+  const handleFeedGood = (opt: string, oi: number) => {
+    setBodyColor(colorFor(oi)); // لون الجسم = لون الحرف المختار
     setMood(pickFeed(opt)); // الصحيحة: happy، الخطأ: sad
   };
 
   const handleBuildGood = (ch: string, i: number) => {
+    setBodyColor(colorFor(i)); // لون الجسم = لون الحرف المختار
     setMood(pickBuild(ch, i)); // الصحيحة: happy/chew، الخطأ: sad
   };
 
@@ -282,7 +287,7 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
         {/* هالة شمعية خلف الشخصية */}
         <div className="relative w-44 h-auto">
           <div className="absolute -inset-3 bg-white rounded-[60%_50%_55%_45%/50%_60%_45%_55%] -rotate-6 shadow-[0_2px_0_rgba(0,0,0,0.05)]" aria-hidden />
-          <HarfooshFigure mood={mood} />
+          <HarfooshFigure mood={mood} color={bodyColor} />
         </div>
 
         <div className="font-black text-2xl text-[#6c5ce7]" style={{ fontFamily: "'Cairo Play', Cairo, sans-serif" }}>حرفوش وحش الحروف 🐲</div>
@@ -325,7 +330,7 @@ export const HarfooshTab: React.FC<Props> = ({ onBack }) => {
           {feedOptions.map((o, oi) => (
             <button
               key={o}
-              onClick={() => handleFeedGood(o)}
+              onClick={() => handleFeedGood(o, oi)}
               className="font-bold text-2xl px-5 py-2 border-[3px] shadow-[3px_3px_0_rgba(0,0,0,0.12)] rounded-[30px_8px_30px_8px] hover:scale-105 transition"
               style={{ color: '#fff', backgroundColor: colorFor(oi), borderColor: colorFor(oi), textShadow: '0 1px 2px rgba(0,0,0,0.25)' }}
             >
