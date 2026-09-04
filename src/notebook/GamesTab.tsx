@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { BAGHDADI_WORDS } from './data';
 import { useNotebook } from './notebookContext';
 import { shuffle } from './utils';
+import { HarfooshTab } from './HarfooshTab';
 
-/* كود ماجيك بالتفت — تبويب الألعاب (3 ألعاب)
+/* كود ماجيك بالتفت — تبويب الألعاب (3 ألعاب + بوابة حرفوش)
  * ============================================================
  */
 
@@ -13,7 +14,12 @@ interface Props {
 
 export const GamesTab: React.FC<Props> = ({ letters }) => {
   const { addStars, addCompleted } = useNotebook();
+  const [view, setView] = useState<'games' | 'harfoosh'>('games');
   const list = letters.length > 0 ? letters : ['أ', 'ب', 'ت'];
+
+  if (view === 'harfoosh') {
+    return <HarfooshTab onBack={() => setView('games')} />;
+  }
 
   // لعبة 1: مطابقة الحرف مع الكلمة
   const [matchLetter, setMatchLetter] = useState<string | null>(null);
@@ -164,6 +170,19 @@ export const GamesTab: React.FC<Props> = ({ letters }) => {
         <div className="text-center text-sm font-bold my-2" style={{ color: trainColor }}>{trainMsg}</div>
         <div className="text-center"><button onClick={startTrain} className="font-bold px-5 py-2 bg-[#6c5ce7] text-white rounded-[30px_8px_30px_8px] shadow-[4px_4px_0_#4a3f8a]">🔄 لعبة جديدة</button></div>
       </div>
+
+      {/* بوابة حرفوش وحش الحروف */}
+      <button
+        onClick={() => setView('harfoosh')}
+        className="group w-full bg-gradient-to-b from-[#6c5ce7] to-[#4a3f8a] text-white rounded-[24px_8px_24px_8px] border-[4px] border-double border-[#fdcb6e] p-5 shadow-[6px_6px_0_rgba(74,63,138,0.5)] hover:scale-[1.02] transition flex items-center justify-center gap-4"
+      >
+        <span className="text-5xl drop-shadow group-hover:animate-bounce">🐲</span>
+        <div className="text-right">
+          <div className="font-bold text-2xl leading-tight mb-1">حرفوش وحش الحروف</div>
+          <div className="text-sm text-[#f0e6ff]">ادخل لعالم حرفوش السحري وأطعمه الحروف وابنِ الكلمات! ✨</div>
+        </div>
+        <span className="text-3xl group-hover:translate-x-1 transition">⬅️</span>
+      </button>
     </div>
   );
 };
