@@ -18,7 +18,7 @@ interface Props { letters: string[]; onBack: () => void; }
 /* ══════ ثوابت الفيزياء ══════ */
 const W = 360, H = 640;
 const GRAVITY = 0.42;
-const JUMP_VY = -11.5;
+const JUMP_VY = -12.5;
 const MEGA_VY = -20.5;
 const MOVE_SPEED = 6;
 const PR = 17; // نصف قطر اللاعب
@@ -323,13 +323,13 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
       platforms.push({ x, y, w, kind, letter, isTarget, broken: false });
     };
 
-    /* زوج منصّتي حروف في فتحتين متباعدتين (يسار/يمين) لسهولة الاختيار */
+    /* زوج منصّتي حروف جنبًا إلى جنب قرب المنتصف لسهولة الاختيار */
     const addLetterPair = (y: number, t: string, d: string) => {
       const w = 54;
       const left = Math.random() < 0.5 ? t : d;
       const right = left === t ? d : t;
-      addPlatform(y, 'letter', left, left === t, 20);
-      addPlatform(y, 'letter', right, right === t, W - w - 20);
+      addPlatform(y, 'letter', left, left === t, 70);
+      addPlatform(y, 'letter', right, right === t, 210);
     };
 
     const addStar = (y: number, x?: number) => {
@@ -341,19 +341,24 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
       px = W / 2; py = H - 120; vy = 0; camY = 0; phase = 0; maxClimb = 0;
       bodyColor = '#6c5ce7';
       addPlatform(H - 20, 'normal', undefined, undefined, (W - 66) / 2);
-      let y = H - 100;
-      for (let i = 0; i < 22; i++) {
-        y -= 70;
-        if (i > 4 && i % 6 === 0) {
+      const step = 70;
+      for (let k = 0; k < 22; k++) {
+        const y = H - 20 - step * (k + 1);
+        if (k > 4 && k % 6 === 0) {
           const pair = pickRound();
           addLetterPair(y, pair[0], pair[1]);
-          addStar(y - 28, (10 + Math.random() * (W - 20)));
+          addStar(y - 28);
         } else {
-          addPlatform(y, 'normal');
+          let x = 10 + Math.random() * (W - 66 - 20);
+          if (k < 4) {
+            x = (W - 66) / 2 + (Math.random() * 80 - 40);
+            x = Math.max(10, Math.min(W - 66 - 10, x));
+          }
+          addPlatform(y, 'normal', undefined, undefined, x);
           if (Math.random() < 0.3) addStar(y - 28);
         }
       }
-      topY = y;
+      topY = H - 20 - step * 22;
     };
 
     /* الحرف المطلوب = الأقرب عالميًا (قبل اللاعب) على منصة حروف صحيحة لم تمرّ */
@@ -613,29 +618,13 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
               {status === 'over' ? '🔁 العب مجددًا' : '▶️ ابدأ اللعب'}
             </button>
             <div className="grid grid-cols-2 gap-2 text-[11px] text-[#6c5ce7] font-bold">
-              <div className="bg-white/80 rounded-lg p-1">⬅️➡️ حرّك يمين/يسار</div>
+              <div className="bg-white/80 rounded-lg p-1">🤚 اضغط يمين/يسار على اللوحة للتحرك</div>
               <div className="bg-white/80 rounded-lg p-1">🟢 الحرف الصحيح = قفزة سحرية</div>
               <div className="bg-white/80 rounded-lg p-1">⭐ اجمع النجوم</div>
               <div className="bg-white/80 rounded-lg p-1">🔴 الحرف الخاطئ ينكسر</div>
             </div>
           </div>
         )}
-      </div>
-
-      {/* أزرار تحرّك */}
-      <div className="flex gap-4 justify-center items-center">
-        <button
-          className="w-16 h-16 text-3xl bg-[#f0e6ff] rounded-[50%_25%_50%_25%] border-[3px] border-[#6c5ce7] active:scale-95 transition shadow-[3px_3px_0_rgba(0,0,0,0.1)]"
-          onPointerDown={() => { keys.current.left = true; keys.current.right = false; }}
-          onPointerUp={() => { keys.current.left = false; }}
-          onPointerLeave={() => { keys.current.left = false; }}
-        >◀️</button>
-        <button
-          className="w-16 h-16 text-3xl bg-[#f0e6ff] rounded-[50%_25%_50%_25%] border-[3px] border-[#6c5ce7] active:scale-95 transition shadow-[3px_3px_0_rgba(0,0,0,0.1)]"
-          onPointerDown={() => { keys.current.right = true; keys.current.left = false; }}
-          onPointerUp={() => { keys.current.right = false; }}
-          onPointerLeave={() => { keys.current.right = false; }}
-        >▶️</button>
       </div>
 
       {/* المتجر */}
