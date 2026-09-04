@@ -35,6 +35,7 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
   const [index, setIndex] = useState(0);
   const [hasDrawn, setHasDrawn] = useState(false);
   const [celebration, setCelebration] = useState<string | null>(null);
+  const [dprMode, setDprMode] = useState(false); // false = CSS 1:1 (آمن)، true = DPR (أوضح على Retina)
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const isDrawing = useRef(false);
@@ -56,10 +57,14 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
   // يتمركز على خط المسطرة الأوسط (سطر ثالث من الأسفل) وليس حرفياً في منتصف اللوحة.
   const drawGuide = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const wrap = wrapRef.current;
+    if (!canvas || !wrap) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const w = canvas.width, h = canvas.height;
+    // استخدام أبعاد CSS (وليس أبعاد الكانفس الداخلية) لتطابق الإحداثيات مع setTransform
+    const rect = wrap.getBoundingClientRect();
+    const w = Math.max(20, Math.round(rect.width));
+    const h = Math.max(20, Math.round(rect.height));
     if (w <= 0 || h <= 0) return;
     const cx = w / 2;
     // حساب y على خط المسطرة الأوسط (سطر ثالث من الأسفل):
@@ -70,7 +75,6 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     const cy = targetRow * ROW_H + ROW_H / 2;
     const size = Math.min(w, h) * 0.28;
 
-    // حرف باهت خلفيًا
     ctx.save();
     ctx.globalAlpha = 0.08;
     ctx.font = `${size * 1.8}px 'Comic Neue', 'Comic Sans MS', cursive`;
@@ -110,18 +114,32 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     }
   }, [char, path]);
 
-  // يضبط حجم الكانفس ليطابق حاوية الدفتر (CSS 1:1، بلا dpr)
+  // يضبط حجم الكانفس ليطابق حاوية الدفتر
+  // CSS 1:1 (بلا dpr) — الافتراضي الآمن
+  // DPR mode — أوضح على الشاشات العالية الدقة (Retina) لكن يحتاج تطبيع للإحداثيات
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const wrap = wrapRef.current;
     if (!canvas || !wrap) return;
     const rect = wrap.getBoundingClientRect();
-    const w = Math.max(20, Math.round(rect.width));
-    const h = Math.max(20, Math.round(rect.height));
-    canvas.width = w;
-    canvas.height = h;
+    const cssW = Math.max(20, Math.round(rect.width));
+    const cssH = Math.max(20, Math.round(rect.height));
+    if (dprMode) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 3); // حد أقصى 3x
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      canvas.style.width = cssW + 'px';
+      canvas.style.height = cssH + 'px';
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    } else {
+      canvas.width = cssW;
+      canvas.height = cssH;
+      canvas.style.width = '';
+      canvas.style.height = '';
+    }
     drawGuide();
-  }, [drawGuide]);
+  }, [drawGuide, dprMode]);
 
   // مسح الكانفس وإعادة رسم الدليل فقط
   const clearCanvas = useCallback(() => {
@@ -129,9 +147,10 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // استخدام أبعاد CSS لتطابق setTransform
+    ctx.clearRect(0, 0, canvas.width / (dprMode ? (window.devicePixelRatio || 1) : 1), canvas.height / (dprMode ? (window.devicePixelRatio || 1) : 1));
     drawGuide();
-  }, [drawGuide]);
+  }, [drawGuide, dprMode]);
 
   // رسم نقطة حبر فورية (كما في المرجع): خط من آخر نقطة، أو نقطة أولى
   // مع debounce و limit لتقليل إعادة الرسم وتراكم الذاكرة
@@ -174,7 +193,7 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, lang, mode]);
 
-  // مراقبة تغيّر حجم الحاوية مع debounce
+  // مراقبة تغيّر حجم الحاوية مع debounce + تغيّر DPR
   useEffect(() => {
     const apply = () => resizeCanvas();
     let t: number;
@@ -185,10 +204,17 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
     window.addEventListener('resize', onResize);
     const ro = new ResizeObserver(onResize);
     if (wrapRef.current) ro.observe(wrapRef.current);
+
+    // مراقبة تغيّر devicePixelRatio (عند نقل النافذة بين شاشات)
+    const dprQuery = window.matchMedia(`resolution: ${window.devicePixelRatio}dppx`);
+    const onDprChange = () => { apply(); };
+    dprQuery.addEventListener('change', onDprChange);
+
     apply();
     return () => {
       window.removeEventListener('resize', onResize);
       ro.disconnect();
+      dprQuery.removeEventListener('change', onDprChange);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resizeCanvas]);
@@ -290,6 +316,12 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
         <span className="mx-1 text-[#d4b8a0]">|</span>
         <button onClick={() => setMode('letters')} className={`font-bold px-3 py-1.5 rounded-[20px_6px_20px_6px] border-[3px] text-xs ${mode === 'letters' ? 'bg-[#00b894] text-white border-[#00917b]' : 'bg-white text-[#2d3436] border-[#d4b8a0]'}`}>🔤 حروف</button>
         <button onClick={() => setMode('numbers')} className={`font-bold px-3 py-1.5 rounded-[20px_6px_20px_6px] border-[3px] text-xs ${mode === 'numbers' ? 'bg-[#00b894] text-white border-[#00917b]' : 'bg-white text-[#2d3436] border-[#d4b8a0]'}`}>🔢 أرقام</button>
+        <span className="mx-1 text-[#d4b8a0]">|</span>
+        <button 
+          onClick={() => setDprMode(!dprMode)} 
+          className={`font-bold px-3 py-1.5 rounded-[20px_6px_20px_6px] border-[3px] text-xs ${dprMode ? 'bg-[#fdcb6e] text-[#6c5200] border-[#f0a500]' : 'bg-white text-[#2d3436] border-[#d4b8a0]'}`}
+          aria-label={dprMode ? 'وضع الدقة العالية (مفعّل)' : 'وضع الدقة العالية (معطّل)'}
+        >{dprMode ? '🔍 وضوح عالي' : '👁️ وضوح عادي'}</button>
       </div>
 
       {/* منطقة الرسم: دفتر بنسبة أبعاد متجاوبة + شريط جانبي (يتراص تحت الموبايل) */}
@@ -349,7 +381,6 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
           </div>
         </div>
 
-        {/* الشريط الجانبي: يتراص تحت الدفتر في الموبايل، وبجانبه في الشاشات الكبيرة */}
         {/* الشريط الجانبي: يتراص تحت الدفتر في الموبايل، وبجانبه في الشاشات الكبيرة */}
         <div className="w-full lg:w-56 flex-shrink-0 flex flex-row lg:flex-col gap-3 items-center lg:items-stretch justify-center" role="toolbar" aria-label="أدوات التحكم بالدفتر">
           <div className="bg-[#f8f4f0] rounded-[14px_5px_14px_5px] border-2 border-dashed border-[#d4b8a0] p-3 text-center">
