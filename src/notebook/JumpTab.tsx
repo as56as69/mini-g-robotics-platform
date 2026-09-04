@@ -40,13 +40,18 @@ const SHOP_ITEMS: ShopItem[] = [
 /* ══════ نظام الصوت ══════ */
 function makeSound() {
   let ctx: AudioContext | null = null;
+  const AC = typeof window !== 'undefined'
+    ? (window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)
+    : undefined;
   const ac = () => {
-    if (!ctx) ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    if (ctx.state === 'suspended') void ctx.resume();
+    if (!AC) return null;
+    if (!ctx) ctx = new AC();
+    if (ctx && ctx.state === 'suspended') void ctx.resume();
     return ctx;
   };
   const tone = (freq: number, start: number, dur: number, type: OscillatorType, gain: number) => {
     const c = ac();
+    if (!c) return;
     const o = c.createOscillator(), g = c.createGain();
     o.type = type; o.frequency.value = freq;
     const t0 = c.currentTime + start;
@@ -57,8 +62,10 @@ function makeSound() {
     o.start(t0); o.stop(t0 + dur + 0.05);
   };
   return {
+    unlock() { const c = ac(); if (c && c.state === 'suspended') void c.resume(); },
     correct() { tone(523, 0, 0.14, 'triangle', 0.2); tone(659, 0.1, 0.14, 'triangle', 0.2); tone(784, 0.2, 0.28, 'triangle', 0.2); },
     coin() { tone(988, 0, 0.12, 'sine', 0.18); tone(1319, 0.09, 0.2, 'sine', 0.18); },
+    retry() { tone(330, 0, 0.12, 'sine', 0.12); tone(247, 0.1, 0.14, 'sine', 0.12); },
     breakP() { tone(300, 0, 0.2, 'sawtooth', 0.12); tone(160, 0.08, 0.28, 'sawtooth', 0.12); },
     jump() { tone(392, 0, 0.1, 'sine', 0.1); },
     over() { tone(392, 0, 0.18, 'triangle', 0.2); tone(311, 0.16, 0.2, 'triangle', 0.2); tone(262, 0.34, 0.4, 'triangle', 0.2); },
@@ -254,6 +261,7 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
   const bgRef = useRef('sky');
   const soundRef = useRef(true);
   const sfxRef = useRef<ReturnType<typeof makeSound> | null>(null);
+  const pendingBuyRef = useRef(false);
 
   const [shop, setShop] = useState<ShopState>(() => {
     try {
@@ -281,9 +289,15 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
       if (e.key === 'ArrowLeft') keys.current.left = false;
       if (e.key === 'ArrowRight') keys.current.right = false;
     };
+    const clearKeys = () => { keys.current.left = false; keys.current.right = false; };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
-    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
+    window.addEventListener('blur', clearKeys);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', clearKeys);
+    };
   }, []);
 
   // عكس الحالات الحالية إلى refs تُقرأ داخل حلقة اللعبة
@@ -298,10 +312,13 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
   }, []);
 
   const buy = (item: ShopItem) => {
+    if (pendingBuyRef.current) return;
     if (shop.owned.includes(item.id) || stars < item.cost) return;
+    pendingBuyRef.current = true;
     addStars(-item.cost);
     persistShop({ ...shop, owned: [...shop.owned, item.id] });
     if (sfxRef.current && soundOn) sfxRef.current.buy();
+    setTimeout(() => { pendingBuyRef.current = false; }, 250);
   };
 
   const equip = (itemId: string, type: 'hat' | 'bg') => {
@@ -314,6 +331,12 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (canvas.width !== W * dpr || canvas.height !== H * dpr) {
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const sfx = sfxRef.current;
 
     let raf = 0;
@@ -321,7 +344,7 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
     let frameCount = 0;
 
     // حالة اللعبة (داخل الحلقة)
-    let px = W / 2, py = H - 120, vy = 0, camY = 0, phase = 0, topY = 0, maxClimb = 0;
+    let px = W / 2, py = H - 120, vy = 0, camY = 0, phase = 0, front = 0, maxClimb = 0;
     let platforms: Platform[] = [];
     let starsArr: StarObj[] = [];
     let bodyColor = '#6c5ce7';
@@ -360,45 +383,53 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
       starsArr.push({ x: x ?? (10 + Math.random() * (W - 20)), y, c: STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)], taken: false });
     };
 
+    /* البناء المشترك: بنية واحدة فوق أعلى منصة حالية (front).
+     * - منصات عادية كل 70 بكسل.
+     * - كل 7 مرات: «قفل الحروف» = زوجا حرفين فوق بـ120 (يُدرَكان بقفزة عادية)،
+     *   ومنصة خروج فوق الزوج بـ250 (لا تُدرَك إلا بالقفزة السحرية) ← الحرف الصحيح إلزامي للصعود.
+     */
+    const spawnNext = () => {
+      phase++;
+      if (phase % 7 === 0) {
+        const pair = pickRound();
+        addLetterPair(front - 120, pair[0], pair[1]);
+        addStar(front - 148, 10 + Math.random() * (W - 20));
+        front -= 370;
+        addPlatform(front, 'normal');
+      } else {
+        front -= 70;
+        addPlatform(front, 'normal');
+        if (Math.random() < 0.35) addStar(front - 28);
+      }
+    };
+
     const reset = () => {
       platforms = []; starsArr = [];
       px = W / 2; py = H - 120; vy = 0; camY = 0; phase = 0; maxClimb = 0;
       bodyColor = '#6c5ce7';
       addPlatform(H - 20, 'normal', undefined, undefined, (W - 66) / 2);
-      const step = 70;
-      for (let k = 0; k < 22; k++) {
-        const y = H - 20 - step * (k + 1);
-        if (k > 4 && k % 6 === 0) {
-          const pair = pickRound();
-          addLetterPair(y, pair[0], pair[1]);
-          addStar(y - 28);
-        } else {
-          let x = 10 + Math.random() * (W - 66 - 20);
-          if (k < 4) {
-            x = (W - 66) / 2 + (Math.random() * 80 - 40);
-            x = Math.max(10, Math.min(W - 66 - 10, x));
-          }
-          addPlatform(y, 'normal', undefined, undefined, x);
-          if (Math.random() < 0.3) addStar(y - 28);
-        }
-      }
-      topY = H - 20 - step * 22;
+      front = H - 20;
+      for (let i = 0; i < 18; i++) spawnNext();
     };
 
-    /* الحرف المطلوب = الأقرب عالميًا (قبل اللاعب) على منصة حروف صحيحة لم تمرّ */
+    /* الحرف المطلوب = منصة الحروف «التالية» أمام اللاعب فقط (لا تقفز لوراء بعد القفزة السحرية) */
     const nearestTarget = (): string | null => {
       const candidates = platforms.filter((p) => p.kind === 'letter' && p.isTarget && !p.broken);
       if (!candidates.length) return null;
+      let ahead: Platform | null = null;
+      for (const c of candidates) {
+        if (c.y <= py + 60 && (!ahead || c.y < ahead.y)) ahead = c;
+      }
+      if (ahead) return ahead.letter || null;
       let best: Platform | null = null;
       for (const c of candidates) {
-        if (!best) { best = c; continue; }
-        const dc = Math.abs(c.y - py), db = Math.abs(best.y - py);
-        if (dc < db || (dc === db && c.y < best.y)) best = c;
+        if (!best || Math.abs(c.y - py) < Math.abs(best.y - py)) best = c;
       }
-      return best.letter || null;
+      return best ? best.letter || null : null;
     };
 
     const startGame = () => {
+      sfxRef.current?.unlock();
       reset();
       scoreRef.current = 0;
       sessionStars.current = 0;
@@ -409,6 +440,7 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
     };
 
     const endGame = () => {
+      keys.current.left = false; keys.current.right = false;
       statusRef.current = 'over';
       setStatus('over');
       if (sfx && soundRef.current) sfx.over();
@@ -497,14 +529,18 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
               vy = MEGA_VY;
               scoreRef.current += 40;
               bodyColor = letterColor(hit.letter || '');
-              hit.kind = 'normal'; hit.isTarget = false; hit.letter = undefined; hit.w = 66;
+              // حل القفل: تحويل الزوج كاملًا إلى غيمات صامدة (لا يختفي أي حاجز)
+              for (const p of platforms) {
+                if (p.kind === 'letter' && p.y === hit.y) {
+                  p.kind = 'normal'; p.isTarget = false; p.letter = undefined; p.w = 66;
+                }
+              }
               if (sfx && soundRef.current) sfx.correct();
               confetti({ particleCount: 40, spread: 60, origin: { x: px / W, y: Math.max(0, hit.y - camY) / H } });
             } else {
-              hit.broken = true;
-              vy = 2;
-              bodyColor = '#888';
-              if (sfx && soundRef.current) sfx.breakP();
+              // الحرف الخاطئ: قفزة آمنة عادية فقط، ويبقى أحمر لإعادة المحاولة (لا كسر ولا سقوط).
+              vy = JUMP_VY;
+              if (sfx && soundRef.current) sfx.retry();
             }
           } else {
             vy = JUMP_VY;
@@ -521,18 +557,7 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
       }
 
       // توليد منصات من الأعلى لملء الشاشة دائمًا
-      while (topY - camY > -80) {
-        topY -= 70;
-        phase++;
-        if (phase % 7 === 0) {
-          const pair = pickRound();
-          addLetterPair(topY, pair[0], pair[1]);
-          addStar(topY - 28, 10 + Math.random() * (W - 20));
-        } else {
-          addPlatform(topY, 'normal');
-          if (Math.random() < 0.35) addStar(topY - 28);
-        }
-      }
+      while (front - camY > -80) spawnNext();
 
       // جمع النجوم
       for (const st of starsArr) {
@@ -634,7 +659,7 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
             <p className="text-sm text-[#636e72] max-w-xs">
               {status === 'over'
                 ? `انتهت الجولة! درجاتك ${Math.floor(scoreRef.current)} وجمعت ${sessionStars.current} ⭐. جرب مجددًا!`
-                : 'حرّك حرفوش يمينًا ويسارًا فقط. قف على المنصة الخضراء التي تحمل الحرف المطلوب لتقفز عاليًا! اجمع النجوم لشراء من المتجر.'}
+                : 'حرّك حرفوش يمينًا ويسارًا فقط. عند «قفل الحروف» قف على المنصة الخضراء تحمل الحرف المطلوب لتصعد عاليًا — بدونها لا يمكنك تجاوز القفل. اجمع النجوم لشراء من المتجر!'}
             </p>
             <button
               onClick={() => apiRef.current?.start()}
@@ -644,9 +669,9 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
             </button>
             <div className="grid grid-cols-2 gap-2 text-[11px] text-[#6c5ce7] font-bold">
               <div className="bg-white/80 rounded-lg p-1">🤚 اضغط يمين/يسار على اللوحة للتحرك</div>
-              <div className="bg-white/80 rounded-lg p-1">🟢 الحرف الصحيح = قفزة سحرية</div>
+              <div className="bg-white/80 rounded-lg p-1">🟢 الحرف الصحيح = قفزة سحرية تعبر القفل</div>
               <div className="bg-white/80 rounded-lg p-1">⭐ اجمع النجوم</div>
-              <div className="bg-white/80 rounded-lg p-1">🔴 الحرف الخاطئ ينكسر</div>
+              <div className="bg-white/80 rounded-lg p-1">🔴 الحرف الخاطئ = حاول مجددًا بأمان</div>
             </div>
           </div>
         )}
