@@ -547,8 +547,8 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
         maxClimb = Math.max(maxClimb, -camY);
       }
 
-      // توليد منصات من الأعلى لملء الشاشة دائمًا
-      while (front - camY > -80) spawnNext();
+      // توليد منصات من الأعلى: أبقِ 160+ بكسل من السلم فوق الشاشة دائمًا
+      while (front - camY > -160) spawnNext();
 
       // جمع النجوم
       for (const st of starsArr) {
@@ -577,10 +577,11 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
         if (nt) setTarget(nt);
       }
 
-      // تنظيف دوري: إزالة المنصات/النجوم خارج نطاق الشاشة
+      // تنظيف دوري: حذف ما انخفض عن الشاشة فقط — الموجود فوق يُبقى ليبقى «السلم» متصلًا
+      // (حذف ما فوق الشاشة كان يفتح فجوة فارغة ويعطل الصعود بعد أقفال الحروف)
       if (frameCount % 90 === 0) {
-        platforms = platforms.filter((p) => p.y - camY > -120 && p.y - camY < H + 160);
-        starsArr = starsArr.filter((st) => st.taken || (st.y - camY > -120 && st.y - camY < H + 160));
+        platforms = platforms.filter((p) => p.y - camY < H + 160);
+        starsArr = starsArr.filter((st) => !st.taken && st.y - camY < H + 160);
       }
 
       // السقوط
