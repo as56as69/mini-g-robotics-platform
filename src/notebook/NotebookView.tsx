@@ -91,7 +91,9 @@ function NotebookInner() {
           <span
             key={ch}
             className={`min-w-[30px] h-[30px] flex items-center justify-center font-bold text-sm border-[3px] rounded-[50%_25%_50%_25%] transition ${
-              i === 0 ? 'ring-2 ring-[#6c5ce7]' : 'bg-white border-[#d4b8a0]'
+              i === 0
+                ? 'bg-[#6c5ce7] text-white border-[#4a3f8a] shadow-[3px_3px_0_rgba(74,63,138,0.4)]'
+                : 'bg-[#f8f4f0] text-[#2d3436] border-[#d4b8a0] shadow-[2px_2px_0_#e6d6c2]'
             }`}
           >
             {ch}
