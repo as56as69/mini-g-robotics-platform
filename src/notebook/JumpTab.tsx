@@ -172,13 +172,6 @@ function drawBackground(ctx: CanvasRenderingContext2D, bg: string, scroll: numbe
   const off = mod(scroll, 28);
   for (let y = -off; y < H; y += 28) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
   ctx.fillStyle = 'rgba(108,92,231,0.06)'; ctx.fillRect(0, 0, 18, H);
-  const cloud = (x: number, y: number, s: number) => {
-    ctx.beginPath();
-    ctx.arc(x, y, 12 * s, 0, Math.PI * 2);
-    ctx.arc(x + 13 * s, y - 6 * s, 9 * s, 0, Math.PI * 2);
-    ctx.arc(x + 24 * s, y, 11 * s, 0, Math.PI * 2);
-    ctx.fill();
-  };
   switch (bg) {
     case 'bg_sunset': {
       const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -235,8 +228,6 @@ function drawBackground(ctx: CanvasRenderingContext2D, bg: string, scroll: numbe
       break;
     }
     default: {
-      ctx.fillStyle = 'rgba(150,125,235,0.16)';
-      cloud(60, mod(scroll * 1.2, H), 1); cloud(260 + mod(scroll * 1.5 + 40, 220), mod(scroll * 1.5 + 320, H) - 40, 1.1);
       ctx.fillStyle = 'rgba(253,203,110,0.5)';
       ctx.beginPath(); ctx.arc(318, 60, 24, 0, Math.PI * 2); ctx.fill();
       break;
