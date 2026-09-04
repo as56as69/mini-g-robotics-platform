@@ -128,7 +128,7 @@ export const GamesTab: React.FC<Props> = ({ letters }) => {
           <span className="text-4xl font-bold text-[#6c5ce7]">{matchLetter ?? '?'}</span>
           <div className="flex flex-wrap gap-2 justify-center">
             {matchOptions.map((o) => (
-              <button key={o} onClick={() => pickMatch(o)} className="font-bold text-lg px-4 py-2 bg-white border-[3px] border-[#d4b8a0] rounded-[30px_8px_30px_8px] hover:border-[#6c5ce7] transition">{o}</button>
+              <button key={o} onClick={() => pickMatch(o)} className="font-bold text-lg px-4 py-2 bg-[#f8f4f0] text-[#2d3436] border-[3px] border-[#d4b8a0] shadow-[3px_3px_0_#e6d6c2] rounded-[30px_8px_30px_8px] hover:border-[#6c5ce7] transition">{o}</button>
             ))}
           </div>
         </div>
@@ -144,7 +144,7 @@ export const GamesTab: React.FC<Props> = ({ letters }) => {
           <span className="text-sm text-[#636e72]">ابحث عن: <span className="text-2xl font-bold text-[#6c5ce7]">{findTarget}</span></span>
           <div className="flex flex-wrap gap-2 justify-center">
             {findOptions.map((o) => (
-              <button key={o} onClick={() => pickFind(o)} className="font-bold text-lg px-4 py-2 bg-white border-[3px] border-[#d4b8a0] rounded-[30px_8px_30px_8px] hover:border-[#6c5ce7] transition">{o}</button>
+              <button key={o} onClick={() => pickFind(o)} className="font-bold text-lg px-4 py-2 bg-[#f8f4f0] text-[#2d3436] border-[3px] border-[#d4b8a0] shadow-[3px_3px_0_#e6d6c2] rounded-[30px_8px_30px_8px] hover:border-[#6c5ce7] transition">{o}</button>
             ))}
           </div>
         </div>
@@ -157,7 +157,7 @@ export const GamesTab: React.FC<Props> = ({ letters }) => {
         <h3 className="font-bold text-lg text-[#2d3436] mb-2">🚂 قطار الحروف</h3>
         <div className="flex flex-wrap items-center justify-center gap-2 min-h-[70px]">
           {trainDisplay.map((ch, i) =>
-            ch ? <button key={`${ch}-${i}`} onClick={() => pickTrain(ch, i)} className="font-bold text-xl w-12 h-12 bg-white border-[3px] border-[#d4b8a0] rounded-[50%_25%_50%_25%] hover:border-[#6c5ce7] transition">{ch}</button>
+            ch ? <button key={`${ch}-${i}`} onClick={() => pickTrain(ch, i)} className="font-bold text-xl w-12 h-12 bg-[#f8f4f0] text-[#2d3436] border-[3px] border-[#d4b8a0] shadow-[3px_3px_0_#e6d6c2] rounded-[50%_25%_50%_25%] hover:border-[#6c5ce7] transition">{ch}</button>
               : <span key={i} className="w-12 h-12 flex items-center justify-center text-green-600 text-xl">✅</span>
           )}
         </div>
