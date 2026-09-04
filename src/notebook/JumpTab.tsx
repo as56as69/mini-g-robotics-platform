@@ -32,6 +32,7 @@ const SHOP_ITEMS: ShopItem[] = [
   { id: 'hat_crown', name: 'تاج الملك', emoji: '🤴', cost: 15, type: 'hat' },
   { id: 'bg_sunset', name: 'شمس بغداد الغاربة', emoji: '🌇', cost: 8, type: 'bg' },
   { id: 'bg_garden', name: 'حديقة الحروف', emoji: '🌳', cost: 12, type: 'bg' },
+  { id: 'bg_sea', name: 'بحر الأمواج', emoji: '🌊', cost: 18, type: 'bg' },
   { id: 'bg_night', name: 'ليلة دجلة', emoji: '🌙', cost: 15, type: 'bg' },
   { id: 'bg_rainbow', name: 'قوس قزح', emoji: '🌈', cost: 20, type: 'bg' },
 ];
@@ -186,6 +187,29 @@ function drawBackground(ctx: CanvasRenderingContext2D, bg: string, scroll: numbe
         ctx.fillStyle = '#2ecc71'; ctx.fillRect(x, H - 90, 22, 90);
         ctx.fillStyle = '#27ae60';
         ctx.beginPath(); ctx.arc(x + 11, H - 96, 20, 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+    }
+    case 'bg_sea': {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#79b8ff'); g.addColorStop(0.5, '#3da9f5'); g.addColorStop(1, '#0a5cc8');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#ffeaa7';
+      ctx.beginPath(); ctx.arc(312, 74, 26, 0, Math.PI * 2); ctx.fill();
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = 'rgba(253,203,110,0.5)';
+        ctx.beginPath(); ctx.arc(312 + i * 9, 74 - i * 9, 22 - i * 5, 0, Math.PI * 2); ctx.fill();
+      }
+      for (let band = 0; band < 3; band++) {
+        const wy = H - 78 + band * 26;
+        ctx.fillStyle = band === 0 ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.22)';
+        ctx.beginPath(); ctx.moveTo(0, wy);
+        for (let x = 0; x <= W; x += 22) ctx.quadraticCurveTo(x + 11, wy - 11, x + 22, wy);
+        ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath(); ctx.arc(30 + i * 70 + ((scroll * 0.25) % 40), H - 40 + (i % 2) * 18, 5, 0, Math.PI * 2); ctx.fill();
       }
       break;
     }
