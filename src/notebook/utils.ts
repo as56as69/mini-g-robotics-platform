@@ -1,4 +1,4 @@
-import { LETTERS_PER_SESSION } from './data';
+
 
 /* كود ماجيك بالتفت — أدوات حفظ/استرجاع دفتر بغداد
  * ============================================================
@@ -68,7 +68,7 @@ export function sessionLetters(
   const list = mode === 'numbers'
     ? (lang === 'arabic' ? arabicNums : englishNums)
     : (lang === 'arabic' ? arabic : english);
-  return list.slice(0, LETTERS_PER_SESSION);
+  return list;
 }
 
 /** فرز الطلاب حسب الاسم حرفياً */

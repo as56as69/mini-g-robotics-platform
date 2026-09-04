@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { TAB_NAMES, TabId, MEDALS, LETTERS_ARABIC, LETTERS_ENGLISH, NUMBERS_ARABIC, NUMBERS_ENGLISH, LETTERS_PER_SESSION, LangMode, CharMode } from './data';
+import { TAB_NAMES, TabId, MEDALS, LETTERS_ARABIC, LETTERS_ENGLISH, NUMBERS_ARABIC, NUMBERS_ENGLISH, LangMode, CharMode } from './data';
 import { NotebookProvider, useNotebook } from './notebookContext';
 import { letterKey, sessionLetters } from './utils';
 import { DrawTab } from './DrawTab';
@@ -107,7 +107,7 @@ function NotebookInner() {
           );
         })}
         <span className="text-[10px] text-[#636e72] mr-auto pl-2 whitespace-nowrap">
-          {activeLetterCount} مكتمل من {LETTERS_PER_SESSION}
+          {activeLetterCount} مكتمل من {letters.length}
         </span>
       </div>
     </div>

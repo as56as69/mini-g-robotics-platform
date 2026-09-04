@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { LETTER_PATHS, LETTERS_ARABIC, LETTERS_ENGLISH, NUMBERS_ARABIC, NUMBERS_ENGLISH, LETTERS_PER_SESSION, CELEBRATION_MESSAGES, BAGHDADI_WORDS, LangMode, CharMode } from './data';
+import { LETTER_PATHS, LETTERS_ARABIC, LETTERS_ENGLISH, NUMBERS_ARABIC, NUMBERS_ENGLISH, CELEBRATION_MESSAGES, BAGHDADI_WORDS, LangMode, CharMode } from './data';
 import { useNotebook } from './notebookContext';
 import { letterKey } from './utils';
 
@@ -30,7 +30,7 @@ export const DrawTab: React.FC<Props> = ({ lang, mode, setLang, setMode }) => {
   const list = mode === 'numbers'
     ? (lang === 'arabic' ? NUMBERS_ARABIC : NUMBERS_ENGLISH)
     : (lang === 'arabic' ? LETTERS_ARABIC : LETTERS_ENGLISH);
-  const session = list.slice(0, LETTERS_PER_SESSION);
+  const session = list;
 
   const [index, setIndex] = useState(0);
   const [hasDrawn, setHasDrawn] = useState(false);
