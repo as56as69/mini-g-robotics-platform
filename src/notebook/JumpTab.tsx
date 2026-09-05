@@ -28,7 +28,7 @@ const PR = 17;                  // نصف قطر اللاعب
 const STEP = 55;                // حواجز أكثر (كان 70)
 const PLAT_W = 84;              // حواجز أعرض (كان 66)
 const LETTER_W = 62;            // دوائر الحروف
-const GATE_EVERY = 6;           // اختيار حرف كل 6 حواجز
+const GATE_EVERY = 5;           // اختيار حرف كل 5 حواجز (أبكر وأكثر ظهورًا)
 const FIRST_GATE_AT = 3;        // أول اختيار يظهر مبكرًا عند الحاجز 3
 const SOLVED_PER_STAGE = 5;     // اكتمال مرحلة بعد 5 اختيارات
 
@@ -350,6 +350,7 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
     let stage = 0, solved = 0, rescues = 0;
     let platforms: Platform[] = [];
     let starsArr: StarObj[] = [];
+    let spawnCount = 0;
     let bodyColor = '#6c5ce7';
     let pal = STAGES[0];
     let rescuing = false, rescueT = 0;
@@ -403,9 +404,16 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
         addStar(pairY - 148, 10 + Math.random() * (W - 20));
         front -= 370;
         platforms.push({ x: 10 + Math.random() * (W - PLAT_W - 20), y: front, w: PLAT_W, kind: 'normal', broken: false });
+        addStar(front - 34, 10 + Math.random() * (W - 20)); // نجمة فوق منصّة النجاح: يملأ الفراغ البصري بعد القفزة السحرية
       } else {
         front -= STEP;
-        addPlatform(front, 'normal');
+        if (spawnCount < 6) {
+          // بداية مضمونة: حواجز أولى قرب منتصف الشاشة ليبدأ التسلق فورًا بسلاسة
+          addPlatform(front, 'normal', undefined, undefined, W / 2 - PLAT_W / 2 + (spawnCount % 3 - 1) * 65);
+        } else {
+          addPlatform(front, 'normal');
+        }
+        spawnCount++;
         if (Math.random() < 0.35) addStar(front - 28);
       }
     };
@@ -419,6 +427,7 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
       bgRef.current = STAGES[0].bg; // أثناء اللعب: خلفية المرحلة، لا خلفية المتجر
       addPlatform(H - 20, 'normal', undefined, undefined, (W - PLAT_W) / 2);
       front = H - 20;
+      spawnCount = 0;
       for (let i = 0; i < 22; i++) spawnNext();
     };
 
@@ -684,6 +693,25 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
 
       // توليد منصات من الأعلى: أبقِ 160+ بكسل من السلم فوق الشاشة دائمًا
       while (front - camY > -160) spawnNext();
+
+      // شبكة الأمان: إن غاب سلم قابل للوصول فوق حرفوش، تُولد منصة طوارئ فورًا → لا فراغ أبدًا
+      if (statusRef.current === 'playing') {
+        let ok = vy < JUMP_VY; // أثناء القفزة السحرية لا نملأ فجوة البوابة (إنها آلية الاختيار)
+        if (!ok) {
+          for (const p of platforms) {
+            if (p.broken) continue;
+            if (p.y <= py - 3 && p.y >= py - 193) {
+              if (p.x < px + PR && p.x + p.w > px - PR || p.kind === 'letter') { ok = true; break; }
+            }
+          }
+        }
+        if (!ok) {
+          const ey = py - 150;
+          const ex = Math.max(10, Math.min(W - PLAT_W - 10, px + (Math.random() * 120 - 60)));
+          platforms.push({ x: ex, y: ey, w: PLAT_W, kind: 'normal', broken: false });
+          front = Math.min(front, ey);
+        }
+      }
 
       // جمع النجوم
       for (const st of starsArr) {
