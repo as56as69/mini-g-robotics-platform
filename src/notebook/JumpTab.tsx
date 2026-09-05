@@ -28,7 +28,8 @@ const PR = 17;                  // نصف قطر اللاعب
 const STEP = 55;                // حواجز أكثر (كان 70)
 const PLAT_W = 84;              // حواجز أعرض (كان 66)
 const LETTER_W = 62;            // دوائر الحروف
-const GATE_EVERY = 8;           // اختيار حرف كل 8 حواجز
+const GATE_EVERY = 6;           // اختيار حرف كل 6 حواجز
+const FIRST_GATE_AT = 3;        // أول اختيار يظهر مبكرًا عند الحاجز 3
 const SOLVED_PER_STAGE = 5;     // اكتمال مرحلة بعد 5 اختيارات
 
 /* ══════ مراحل العالم المتغيّرة (الخلفية + مظهر الحواجز) ══════ */
@@ -395,7 +396,7 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
      */
     const spawnNext = () => {
       phase++;
-      if (phase % GATE_EVERY === 0) {
+      if (phase === FIRST_GATE_AT || (phase - FIRST_GATE_AT) % GATE_EVERY === 0) {
         const pair = pickRound();
         const pairY = front - 120;
         addLetterPair(pairY, pair[0], pair[1]);
@@ -415,24 +416,47 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
       bodyColor = '#6c5ce7';
       rescuing = false; rescueT = 0; rescues = 0; stage = 0; solved = 0;
       pal = STAGES[0];
+      bgRef.current = STAGES[0].bg; // أثناء اللعب: خلفية المرحلة، لا خلفية المتجر
       addPlatform(H - 20, 'normal', undefined, undefined, (W - PLAT_W) / 2);
       front = H - 20;
       for (let i = 0; i < 22; i++) spawnNext();
     };
 
-    const nearestTarget = (): string | null => {
+    const nearestLetterPlat = (): Platform | null => {
       const candidates = platforms.filter((p) => p.kind === 'letter' && p.isTarget && !p.broken);
       if (!candidates.length) return null;
       let ahead: Platform | null = null;
       for (const c of candidates) {
         if (c.y <= py + 60 && (!ahead || c.y < ahead.y)) ahead = c;
       }
-      if (ahead) return ahead.letter || null;
+      if (ahead) return ahead;
       let best: Platform | null = null;
       for (const c of candidates) {
         if (!best || Math.abs(c.y - py) < Math.abs(best.y - py)) best = c;
       }
-      return best ? best.letter || null : null;
+      return best;
+    };
+
+    const nearestTarget = (): string | null => nearestLetterPlat()?.letter ?? null;
+
+    /* سهم متمايل فوق الحرف المطلوب (حثّ بصري) */
+    const drawHint = (p: Platform) => {
+      const sy = p.y - camY;
+      if (sy < 34 || sy > H + 10) return;
+      const cx = p.x + p.w / 2;
+      const bob = Math.sin(frameCount / 9) * 4;
+      const hy = sy - p.w / 2 - 32 + bob;
+      ctx.fillStyle = '#ffd93d';
+      ctx.strokeStyle = '#6c5ce7';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 8, hy + 10); ctx.lineTo(cx + 8, hy + 10); ctx.lineTo(cx, hy); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.font = "900 16px 'Cairo', sans-serif";
+      ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = pal.edge;
+      ctx.fillText(p.letter || '', cx, hy - 3);
+      ctx.textAlign = 'left';
     };
 
     const startGame = () => {
@@ -488,17 +512,25 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
     };
 
     const finishRescue = () => {
+      // منصة قريبة من موضع السقوط (لا نعيده للقاع البعيد) ليعاود المحاولة على الحرف نفسه
       let best: Platform | null = null;
-      let bestSy = -Infinity;
+      let bestD = Infinity;
+      const home = H * 0.62;
       for (const p of platforms) {
         const sy = p.y - camY;
-        if (sy < H - 20 && sy > H * 0.12 && sy > bestSy) { bestSy = sy; best = p; }
+        if (sy < H - 20 && sy > H * 0.12) {
+          const d = Math.abs(sy - home);
+          if (d < bestD) { bestD = d; best = p; }
+        }
       }
       if (!best) {
-        bestSy = -Infinity;
+        bestD = Infinity;
         for (const p of platforms) {
           const sy = p.y - camY;
-          if (sy < H - 20 && sy > bestSy) { bestSy = sy; best = p; }
+          if (sy < H - 20) {
+            const d = Math.abs(sy - home);
+            if (d < bestD) { bestD = d; best = p; }
+          }
         }
       }
       if (best) {
@@ -669,6 +701,8 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
       ctx.translate(0, -camY);
       starsArr.forEach(drawStar);
       platforms.forEach(drawPlatform);
+      const hint = nearestLetterPlat();
+      if (hint) drawHint(hint);
       drawHarfoosh(ctx, px, py, bodyColor, hatRef.current, performance.now() / 300);
       ctx.restore();
 
@@ -692,7 +726,7 @@ const JumpTab: React.FC<Props> = ({ letters, onBack }) => {
       }
 
       // لا خسارة قاطعة: السقوط تحت الشاشة = النُّفّاخة تنقذ حرفوش
-      if (py - camY > H + 60) startRescue();
+      if (py - camY > H + 40) startRescue();
     };
 
     raf = requestAnimationFrame(frame);
